@@ -1,0 +1,35 @@
+{
+  "name": "@pathrule/mcp",
+  "version": "0.1.0",
+  "description": "Pathrule Remote MCP server",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://www.pathrule.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pathrule/mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pathrule/mcp/issues"
+  },
+  "files": [
+    "dist",
+    "api",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "main": "./dist/server.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server.js",
+    "./server.json": "./server.json"
+  },
+  "scripts": {
+    "start": "node dist/server.js"
+  },
+  "engines": {
+    "node": ">=20.11.1"
+  }
+}

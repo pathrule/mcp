@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.pathrule/pathrule-remote-mcp",
+  "title": "Pathrule",
+  "description": "Path-scoped team memories, rules and skills for Claude Code, Cursor, Codex and other MCP clients.",
+  "version": "0.1.0",
+  "websiteUrl": "https://www.pathrule.io",
+  "repository": {
+    "url": "https://github.com/pathrule/mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.pathrule.io/mcp"
+    }
+  ]
+}
