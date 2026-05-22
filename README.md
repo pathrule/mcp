@@ -22,21 +22,27 @@ Remote MCP is intentionally cloud-only. It can read and write Pathrule cloud rec
 
 ## Using Pathrule Remote MCP
 
-Most users should use the hosted server:
+Pathrule Remote MCP is the MCP endpoint for Pathrule Web workspaces. It is not a general-purpose hosted memory service that works without Pathrule.
 
-```text
-https://mcp.pathrule.io/mcp
-```
+To use it:
 
-You need a Pathrule account and at least one workspace created through:
+1. Create or sign in to a Pathrule account:
 
 ```text
 https://app.pathrule.io
 ```
 
-When an MCP client connects to the hosted server, it starts an OAuth flow through Pathrule Web. After approval, the client can access only the Pathrule workspaces visible to that signed-in account, using the scopes you approved.
+2. Create or select a Pathrule workspace in the app.
 
-This repository is the public source and directory listing target for the hosted Pathrule Remote MCP server. It is not a standalone local memory database and it does not create a usable Pathrule workspace without a Pathrule account.
+3. Connect your MCP client to:
+
+```text
+https://mcp.pathrule.io/mcp
+```
+
+When an MCP client connects, it starts an OAuth flow through Pathrule Web. After approval, the client can access only the Pathrule workspaces visible to that signed-in account, using the scopes you approved.
+
+This repository is the public source and directory listing target for Pathrule's Remote MCP endpoint. It is not a standalone local memory database, and it does not create a usable Pathrule workspace without a Pathrule account.
 
 ## Tools
 
@@ -91,9 +97,9 @@ Snapshots, refreshes, and activity:
 - MCP event telemetry is metadata-only: tool name, user/workspace/client identifiers, status/error code, and latency bucket. Tool input and content bodies are not logged.
 - The remote server never accesses the user's filesystem and never writes local companion files.
 
-## Self-Hosting And Operator Notes
+## Operator Notes
 
-The hosted `mcp.pathrule.io` service is operated by Pathrule. The environment variables below are for Pathrule operators or advanced self-hosting against a compatible Pathrule Supabase backend. They are not required to connect an MCP client to the hosted server.
+The `mcp.pathrule.io` service is operated by Pathrule. The environment variables below are for Pathrule operators deploying the service against Pathrule's backend. They are not required to connect an MCP client to Pathrule Remote MCP.
 
 Required production secrets are environment variables only. Do not commit values for:
 
@@ -109,9 +115,9 @@ PATHRULE_WEB_ORIGIN
 
 `SUPABASE_JWT_SECRET` is used to sign short-lived authenticated-role user JWTs for Supabase RLS. Treat it like production infrastructure secret material and store it only in the hosting provider's secret manager.
 
-## Running A Self-Hosted Server
+## Running The Server
 
-The public `pathrule/mcp` repository is staged from the Pathrule monorepo and contains a bundled Node.js server. Running it yourself requires the environment variables above and a compatible Pathrule backend.
+The public `pathrule/mcp` repository is staged from the Pathrule monorepo and contains a bundled Node.js server for transparency and deployment reproducibility. Running it yourself requires the environment variables above and Pathrule's compatible backend; it is not the recommended user setup path.
 
 ```bash
 npm install
