@@ -46954,6 +46954,11 @@ var AUTHORIZATION_SERVER_METADATA_PATHS = /* @__PURE__ */ new Set([
 ]);
 var SERVER_MANIFEST_PATH = "/server.json";
 var HEALTH_PATH = "/healthz";
+var GLAMA_CONNECTOR_CLAIM_PATH = "/.well-known/glama.json";
+var glamaConnectorClaim = {
+  $schema: "https://glama.ai/mcp/schemas/connector.json",
+  maintainers: [{ email: "hello@pathrule.io" }]
+};
 function getRequestPath(req) {
   const url = new URL(req.url ?? "/", "https://mcp.pathrule.io");
   return url.pathname;
@@ -46967,7 +46972,7 @@ function createCloudConnectorHttpRouter(options = {}) {
     const path = getRequestPath(req);
     const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
     const corsHeaders = getCorsHeaders(origin);
-    if (req.method === "OPTIONS" && (path === "/oauth/register" || path === "/oauth/token" || path === "/oauth/authorize/approve" || path === SERVER_MANIFEST_PATH || path === HEALTH_PATH || PROTECTED_RESOURCE_METADATA_PATHS.has(path) || AUTHORIZATION_SERVER_METADATA_PATHS.has(path))) {
+    if (req.method === "OPTIONS" && (path === "/oauth/register" || path === "/oauth/token" || path === "/oauth/authorize/approve" || path === SERVER_MANIFEST_PATH || path === HEALTH_PATH || path === GLAMA_CONNECTOR_CLAIM_PATH || PROTECTED_RESOURCE_METADATA_PATHS.has(path) || AUTHORIZATION_SERVER_METADATA_PATHS.has(path))) {
       res.writeHead(204, corsHeaders);
       res.end();
       return;
@@ -47040,6 +47045,25 @@ function createCloudConnectorHttpRouter(options = {}) {
         return;
       }
       writeJson(res, 200, serverManifest, {
+        ...corsHeaders,
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=300"
+      });
+      return;
+    }
+    if (path === GLAMA_CONNECTOR_CLAIM_PATH) {
+      if (req.method !== "GET") {
+        writeJsonError(
+          res,
+          405,
+          {
+            code: "method_not_allowed",
+            message: "Glama connector claim metadata accepts only GET."
+          },
+          corsHeaders
+        );
+        return;
+      }
+      writeJson(res, 200, glamaConnectorClaim, {
         ...corsHeaders,
         "Cache-Control": "public, max-age=300, stale-while-revalidate=300"
       });
