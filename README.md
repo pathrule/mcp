@@ -20,6 +20,24 @@ Pathrule gives AI coding agents path-scoped project context. The remote MCP serv
 
 Remote MCP is intentionally cloud-only. It can read and write Pathrule cloud records, but it cannot read local files, install hooks, render `AGENTS.md` / `CLAUDE.md`, or materialize local skills. For those local runtime features, use Pathrule Desktop or `@pathrule/cli`.
 
+## Using Pathrule Remote MCP
+
+Most users should use the hosted server:
+
+```text
+https://mcp.pathrule.io/mcp
+```
+
+You need a Pathrule account and at least one workspace created through:
+
+```text
+https://app.pathrule.io
+```
+
+When an MCP client connects to the hosted server, it starts an OAuth flow through Pathrule Web. After approval, the client can access only the Pathrule workspaces visible to that signed-in account, using the scopes you approved.
+
+This repository is the public source and directory listing target for the hosted Pathrule Remote MCP server. It is not a standalone local memory database and it does not create a usable Pathrule workspace without a Pathrule account.
+
 ## Tools
 
 Workspace and context:
@@ -73,6 +91,10 @@ Snapshots, refreshes, and activity:
 - MCP event telemetry is metadata-only: tool name, user/workspace/client identifiers, status/error code, and latency bucket. Tool input and content bodies are not logged.
 - The remote server never accesses the user's filesystem and never writes local companion files.
 
+## Self-Hosting And Operator Notes
+
+The hosted `mcp.pathrule.io` service is operated by Pathrule. The environment variables below are for Pathrule operators or advanced self-hosting against a compatible Pathrule Supabase backend. They are not required to connect an MCP client to the hosted server.
+
 Required production secrets are environment variables only. Do not commit values for:
 
 ```text
@@ -87,9 +109,9 @@ PATHRULE_WEB_ORIGIN
 
 `SUPABASE_JWT_SECRET` is used to sign short-lived authenticated-role user JWTs for Supabase RLS. Treat it like production infrastructure secret material and store it only in the hosting provider's secret manager.
 
-## Running The Server
+## Running A Self-Hosted Server
 
-The public `pathrule/mcp` repository is staged from the Pathrule monorepo and contains a bundled Node.js server.
+The public `pathrule/mcp` repository is staged from the Pathrule monorepo and contains a bundled Node.js server. Running it yourself requires the environment variables above and a compatible Pathrule backend.
 
 ```bash
 npm install
