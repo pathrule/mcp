@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke test bundled MCP
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate public package metadata
+        run: |
+          node -e "const pkg=require('./package.json'); if (pkg.name !== '@pathrule/mcp') throw new Error('unexpected package name');"
+          test -f dist/glama-stdio.js
+          test -f dist/server.js
+          test -f server.json
+
+      - name: Smoke test stdio MCP
+        run: |
+          node <<'NODE'
+          const { spawn } = require('node:child_process');
+
+          const child = spawn(process.execPath, ['dist/glama-stdio.js'], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+          });
+
+          let stdout = '';
+          let stderr = '';
+          const timeout = setTimeout(() => {
+            child.kill('SIGTERM');
+          }, 3000);
+
+          child.stdout.on('data', (chunk) => {
+            stdout += chunk;
+          });
+          child.stderr.on('data', (chunk) => {
+            stderr += chunk;
+          });
+
+          child.stdin.write(JSON.stringify({
+            jsonrpc: '2.0',
+            id: 0,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-11-25',
+              capabilities: {},
+              clientInfo: { name: 'github-actions', version: '0.0.0' },
+            },
+          }) + '\n');
+          child.stdin.write(JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'notifications/initialized',
+            params: {},
+          }) + '\n');
+          child.stdin.write(JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/list',
+            params: {},
+          }) + '\n');
+          child.stdin.write(JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: {
+              name: 'pathrule_ping',
+              arguments: { message: 'ci' },
+            },
+          }) + '\n');
+
+          child.on('close', () => {
+            clearTimeout(timeout);
+            const messages = stdout.trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
+            const init = messages.find((message) => message.id === 0);
+            const list = messages.find((message) => message.id === 1);
+            const ping = messages.find((message) => message.id === 2);
+            if (!init?.result?.serverInfo?.name) throw new Error('initialize failed');
+            if (!list?.result?.tools?.some((tool) => tool.name === 'pathrule_ping')) {
+              throw new Error('pathrule_ping missing from tools/list');
+            }
+            const text = ping?.result?.content?.[0]?.text;
+            const body = text ? JSON.parse(text) : null;
+            if (!body?.ok || body.pong !== true || body.authenticated !== false) {
+              throw new Error('public pathrule_ping smoke test failed');
+            }
+            if (stderr.trim()) console.error(stderr.trim());
+          });
+          NODE
