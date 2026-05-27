@@ -18,6 +18,7 @@
     "README.md",
     "SECURITY.md",
     "LICENSE",
+    "glama.json",
     "server.json"
   ],
   "main": "./dist/server.js",
