@@ -18,6 +18,7 @@
     "README.md",
     "SECURITY.md",
     "LICENSE",
+    "Dockerfile",
     "glama.json",
     "server.json"
   ],

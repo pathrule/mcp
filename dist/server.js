@@ -46201,6 +46201,7 @@ function createCloudMcpHttpHandler(options = {}) {
   const createServer2 = options.createServer ?? createCloudConnectorServer;
   const handleAuthorizedRequest = options.handleAuthorizedRequest ?? handleStreamableMcpRequest;
   const requireHttps = options.requireHttps ?? process.env.NODE_ENV === "production";
+  const allowUnauthenticatedIntrospection = options.allowUnauthenticatedIntrospection ?? process.env.PATHRULE_MCP_PUBLIC_INTROSPECTION === "1";
   return async function cloudMcpHttpHandler(req, res) {
     const corsHeaders = getCorsHeaders(getHeader(req, "origin"));
     if (req.method === "OPTIONS") {
@@ -46234,6 +46235,10 @@ function createCloudMcpHttpHandler(options = {}) {
     }
     const authorizationHeader = getHeader(req, "authorization");
     if (!authorizationHeader || !options.resolveAuth) {
+      if (allowUnauthenticatedIntrospection) {
+        await handleAuthorizedRequest(req, res, createServer2());
+        return;
+      }
       writeJsonError(
         res,
         401,

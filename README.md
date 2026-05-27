@@ -138,6 +138,12 @@ curl -fsS http://localhost:8787/healthz
 curl -fsS http://localhost:8787/server.json
 ```
 
+## Registry Inspection
+
+The public repository includes a `Dockerfile` for MCP registry scanners such as Glama. The container sets `PATHRULE_MCP_PUBLIC_INTROSPECTION=1`, which exposes MCP schema introspection without a bearer token so registries can verify the server shape.
+
+That mode does not grant Pathrule data access. Tool calls still require an authenticated Pathrule context and return auth errors without OAuth.
+
 ## MCP Directory Submission
 
 Use these fields for MCP directories:
