@@ -26,6 +26,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./server": "./dist/server.js",
+    "./glama-stdio": "./dist/glama-stdio.js",
     "./server.json": "./server.json"
   },
   "scripts": {

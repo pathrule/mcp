@@ -144,6 +144,12 @@ The public repository includes a `Dockerfile` for MCP registry scanners such as 
 
 That mode does not grant Pathrule data access. Tool calls still require an authenticated Pathrule context and return auth errors without OAuth.
 
+Glama's Docker build runner launches MCP servers through stdio. Use this command in Glama's Dockerfile admin form:
+
+```json
+["node", "dist/glama-stdio.js"]
+```
+
 ## MCP Directory Submission
 
 Use these fields for MCP directories:
