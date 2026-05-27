@@ -45995,11 +45995,13 @@ var writeSkillTool = {
 var updateSkillTool = {
   name: "pathrule_update_skill",
   title: "Pathrule Update Skill",
-  description: "Update an existing Pathrule skill's metadata, SKILL.md content, source reference, tags, or workspace path. Use pathrule_read_skill first when you need the current approved skill body, then send only changed fields in patch. Cloud-only: this updates the cloud skill record and does not install files into .codex/skills, .claude/skills, or editor folders.",
+  description: "Partially update an existing Pathrule skill record. Use pathrule_update_skill only when you already have a skill_id and want to change metadata, SKILL.md content, source/github_url, tags, or move the skill to another workspace path; use pathrule_write_skill to create a new skill, pathrule_read_skill to inspect the current body first, and pathrule_delete_skill to remove one. Requires an authenticated connector token with pathrule:write and an active workspace subscription. Side effects: writes the cloud skill record, may replace fields present in patch, may move the skill when move_to_path is set, and may fail on version conflict; it never installs files into .codex/skills, .claude/skills, or editor folders.",
   inputSchema: {
     workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
     skill_id: external_exports.string().uuid().describe("Skill UUID returned by pathrule_get_context, pathrule_goto, or pathrule_read_skill."),
-    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription),
+    expected_version_id: external_exports.string().uuid().optional().describe(
+      "Optional version UUID from the current skill. Pass it after pathrule_read_skill to prevent overwriting someone else's newer edit; a stale value makes the update fail instead of silently replacing data."
+    ),
     patch: external_exports.object({
       name: external_exports.string().min(1).max(200).optional().describe("Replacement skill name."),
       description: external_exports.string().nullable().optional().describe("Replacement usage summary. Use null to clear it."),
@@ -46007,8 +46009,12 @@ var updateSkillTool = {
       source: external_exports.enum(["manual", "template", "github_ref"]).optional().describe("Updated source type. Use github_ref only with a valid github_url."),
       github_url: external_exports.string().url().nullable().optional().describe("Updated canonical GitHub URL for github_ref skills, or null to clear it."),
       tags: external_exports.array(external_exports.string()).optional().describe("Replacement discovery tag list.")
-    }),
-    move_to_path: external_exports.string().optional().describe(moveToPathDescription)
+    }).describe(
+      "Partial update object. Include only fields that should change; omitted fields keep their current values. At least one field should be present. Replacing content overwrites the stored approved SKILL.md body."
+    ),
+    move_to_path: external_exports.string().optional().describe(
+      "Optional workspace-relative path to move the skill attachment, such as / or /packages/app. When provided, Pathrule moves the skill to that node and may create missing nodes; omit it to keep the current path."
+    )
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -46093,6 +46099,18 @@ function runPublicPingTool(args) {
     local_runtime: { cta: LOCAL_RUNTIME_CTA }
   };
 }
+function inferToolAnnotations(tool) {
+  const readOnly = tool.mode === "read";
+  const destructive = !readOnly && (tool.name.includes("_delete_") || tool.name.includes("_update_") || tool.name === "pathrule_resolve_refresh");
+  return {
+    title: tool.title,
+    readOnlyHint: readOnly,
+    destructiveHint: readOnly ? false : destructive,
+    idempotentHint: false,
+    openWorldHint: false,
+    ...tool.annotations
+  };
+}
 function createCloudConnectorServer() {
   const server = new McpServer({
     name: "pathrule-cloud-connector",
@@ -46104,7 +46122,8 @@ function createCloudConnectorServer() {
       {
         title: tool.title,
         description: tool.description,
-        inputSchema: tool.inputSchema
+        inputSchema: tool.inputSchema,
+        annotations: inferToolAnnotations(tool)
       },
       async (args, extra) => {
         const body = tool.name === "pathrule_ping" && !extra.authInfo?.extra ? runPublicPingTool(args) : await runRemoteTool(
