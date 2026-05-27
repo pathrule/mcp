@@ -24790,6 +24790,20 @@ var remoteTools = [
 ];
 
 // src/mcp/create-server.ts
+function runPublicPingTool(args) {
+  const message = args && typeof args === "object" && "message" in args && typeof args.message === "string" ? args.message : null;
+  return {
+    ok: true,
+    pong: true,
+    echo: message,
+    cloud: true,
+    client_id: null,
+    authenticated: false,
+    ts: (/* @__PURE__ */ new Date()).toISOString(),
+    version: "0.1.0-cloud-connector",
+    local_runtime: { cta: LOCAL_RUNTIME_CTA }
+  };
+}
 function createCloudConnectorServer() {
   const server2 = new McpServer({
     name: "pathrule-cloud-connector",
@@ -24804,7 +24818,7 @@ function createCloudConnectorServer() {
         inputSchema: tool.inputSchema
       },
       async (args, extra) => {
-        const body = await runRemoteTool(
+        const body = tool.name === "pathrule_ping" && !extra.authInfo?.extra ? runPublicPingTool(args) : await runRemoteTool(
           tool,
           args,
           createRemoteToolContext(extra.authInfo)
