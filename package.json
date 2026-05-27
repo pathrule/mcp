@@ -19,6 +19,7 @@
     "SECURITY.md",
     "LICENSE",
     "Dockerfile",
+    ".mcp.json",
     "glama.json",
     "server.json"
   ],
