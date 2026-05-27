@@ -43306,10 +43306,10 @@ function charCount(value) {
 var listPendingRefreshesTool = {
   name: "pathrule_list_pending_refreshes",
   title: "List pending memory/rule refresh tasks",
-  description: "List cloud-visible refresh tasks handed off from Pathrule Suggestions. Use pathrule_get_refresh_brief for the full brief.",
+  description: "List pending Pathrule refresh tasks for a workspace. Refresh tasks are cloud suggestions that may update stale memories or rules. Use this first, then call pathrule_get_refresh_brief with a returned refresh_id before deciding whether to reject or resolve the task.",
   inputSchema: {
     workspace_id: external_exports.string().uuid().describe("Workspace UUID from pathrule_list_workspaces."),
-    include_in_progress: external_exports.boolean().optional()
+    include_in_progress: external_exports.boolean().optional().describe("Include tasks already claimed by a client. Defaults to false for a clean todo list.")
   },
   requiredScopes: ["pathrule:read", "pathrule:activity"],
   mode: "read",
@@ -43336,7 +43336,7 @@ var listPendingRefreshesTool = {
 var getRefreshBriefTool = {
   name: "pathrule_get_refresh_brief",
   title: "Get memory/rule refresh brief",
-  description: "Claim a refresh task and return its brief. Remote MCP can inspect DB content only; local-source verification requires Desktop or CLI.",
+  description: "Claim one refresh task and return the subject, stale-signal evidence, AI instructions, and any proposed patch. Call pathrule_list_pending_refreshes first to choose a refresh_id. Remote MCP can inspect cloud records only; use Desktop/CLI before claiming local source code was verified.",
   inputSchema: {
     refresh_id: external_exports.string().uuid().describe("Refresh task UUID from pathrule_list_pending_refreshes.")
   },
@@ -43386,11 +43386,13 @@ var getRefreshBriefTool = {
 var resolveRefreshTool = {
   name: "pathrule_resolve_refresh",
   title: "Close a memory/rule refresh task",
-  description: "Reject or close a refresh task from cloud context. Remote MCP refuses applied status when local verification would be implied.",
+  description: "Close a Pathrule refresh task after reviewing its brief. Normal remote flow: call pathrule_list_pending_refreshes, then pathrule_get_refresh_brief, then use this tool with status='rejected' when the signal is stale or not actionable. Remote MCP may refuse status='applied' because it cannot verify local source files; use Pathrule Desktop/CLI for applied resolutions that require local verification.",
   inputSchema: {
-    refresh_id: external_exports.string().uuid().describe("Refresh task UUID."),
-    status: external_exports.enum(["applied", "rejected"]),
-    note: external_exports.string().max(500).optional()
+    refresh_id: external_exports.string().uuid().describe("Refresh task UUID returned by pathrule_list_pending_refreshes or pathrule_get_refresh_brief."),
+    status: external_exports.enum(["applied", "rejected"]).describe(
+      "Use 'rejected' from Remote MCP when the signal is stale or cannot be safely applied. 'applied' may be refused unless local verification is available."
+    ),
+    note: external_exports.string().max(500).optional().describe("Short reason for the resolution, especially when rejecting a stale or unsafe refresh.")
   },
   requiredScopes: ["pathrule:activity"],
   mode: "write_beta",
@@ -43703,9 +43705,9 @@ var getNodeTool = {
 var listMemoriesTool = {
   name: "pathrule_list_memories",
   title: "List Memories",
-  description: "Return a compact memory index for a node.",
+  description: "List active memories attached to a specific Pathrule tree node. Use pathrule_get_context, pathrule_goto, or pathrule_get_node first to discover the node_id. Returns compact previews only; call pathrule_read_memory with a memory_id when you need the full body.",
   inputSchema: {
-    node_id: external_exports.string().uuid().describe("Tree node UUID.")
+    node_id: external_exports.string().uuid().describe("Tree node UUID returned by pathrule_get_node, pathrule_goto, or the workspace tree.")
   },
   requiredScopes: ["pathrule:read"],
   mode: "read",
@@ -43733,9 +43735,9 @@ var listMemoriesTool = {
 var readMemoryTool = {
   name: "pathrule_read_memory",
   title: "Read Memory",
-  description: "Return a single memory body by id.",
+  description: "Read the full body and metadata for one Pathrule memory. Use this after pathrule_get_context, pathrule_goto, or pathrule_list_memories returns a memory_id. This reads cloud data only and does not inspect the user's local filesystem.",
   inputSchema: {
-    memory_id: external_exports.string().uuid().describe("Memory UUID.")
+    memory_id: external_exports.string().uuid().describe("Memory UUID returned by pathrule_get_context, pathrule_goto, or pathrule_list_memories.")
   },
   requiredScopes: ["pathrule:read"],
   mode: "read",
@@ -43754,9 +43756,9 @@ var readMemoryTool = {
 var readRuleTool = {
   name: "pathrule_read_rule",
   title: "Read Rule",
-  description: "Return a single rule body by id.",
+  description: "Read the full body and metadata for one Pathrule rule. Use this after pathrule_get_context, pathrule_goto, or pathrule_get_node returns a rule_id. Rules are instructions the AI should obey for a project path; this tool only reads the cloud rule record and does not modify anything.",
   inputSchema: {
-    rule_id: external_exports.string().uuid().describe("Rule UUID.")
+    rule_id: external_exports.string().uuid().describe("Rule UUID returned by pathrule_get_context, pathrule_goto, or pathrule_get_node.")
   },
   requiredScopes: ["pathrule:read"],
   mode: "read",
@@ -43775,9 +43777,9 @@ var readRuleTool = {
 var readSkillTool = {
   name: "pathrule_read_skill",
   title: "Read Skill",
-  description: "Return a single approved Pathrule skill snapshot by id.",
+  description: "Read the approved snapshot for one Pathrule skill. Use this after pathrule_get_context, pathrule_goto, or pathrule_get_node returns a skill_id. Returns the cloud SKILL.md content for the AI to follow; it does not install or materialize files locally.",
   inputSchema: {
-    skill_id: external_exports.string().uuid().describe("Skill UUID.")
+    skill_id: external_exports.string().uuid().describe("Skill UUID returned by pathrule_get_context, pathrule_goto, or pathrule_get_node.")
   },
   requiredScopes: ["pathrule:read"],
   mode: "read",
@@ -44403,6 +44405,9 @@ var memorySourceSchema = external_exports.enum(["claude", "manual"]).optional();
 var skillSourceSchema = external_exports.enum(["manual", "template", "github_ref"]).optional();
 var ruleScopeSchema = external_exports.enum(["folder", "file_type", "project"]);
 var rulePrioritySchema = external_exports.enum(["high", "medium", "low"]);
+var workspaceIdDescription = "Workspace UUID from pathrule_list_workspaces.";
+var expectedVersionDescription = "Optional optimistic-concurrency token from the existing record. Pass it when available to avoid overwriting a newer edit.";
+var moveToPathDescription = "Optional workspace-relative destination path such as /packages/app. Missing nodes are created when allowed by the backend.";
 async function ccSetContextPaths(supabase, workspaceId, memoryId, paths) {
   if (paths.length === 0) return;
   const cleaned = paths.map((p) => p.trim()).filter((p) => p.length > 0).slice(0, 32);
@@ -44460,13 +44465,13 @@ var updateMemoryTool = {
   title: "Pathrule Update Memory",
   description: "Update a memory's content or title, optionally moving it. Uses optimistic concurrency via expected_version_id. Cloud-only.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    memory_id: external_exports.string().uuid(),
-    content: external_exports.string().min(1),
-    title: external_exports.string().min(1).max(200).optional(),
-    expected_version_id: external_exports.string().uuid().optional(),
-    move_to_path: external_exports.string().optional(),
-    allow_duplicate: external_exports.boolean().optional(),
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    memory_id: external_exports.string().uuid().describe("Memory UUID returned by pathrule_get_context, pathrule_goto, or pathrule_read_memory."),
+    content: external_exports.string().min(1).describe("Replacement memory body in clear project-language prose."),
+    title: external_exports.string().min(1).max(200).optional().describe("Optional replacement memory title."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription),
+    move_to_path: external_exports.string().optional().describe(moveToPathDescription),
+    allow_duplicate: external_exports.boolean().optional().describe("Set true only when intentionally allowing another memory with the same title."),
     related_paths: external_exports.array(external_exports.string()).nullable().optional().describe(
       "Optional list of workspace-relative paths this memory is also relevant to. null = unchanged. Pass [] to clear all manual links. Max 32 entries."
     )
@@ -44502,10 +44507,10 @@ var deleteMemoryTool = {
   title: "Pathrule Delete Memory",
   description: "Soft-delete a memory by default. Pass hard:true to permanently delete (requires workspace_admin). Cloud-only.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    memory_id: external_exports.string().uuid(),
-    hard: external_exports.boolean().optional(),
-    expected_version_id: external_exports.string().uuid().optional()
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    memory_id: external_exports.string().uuid().describe("Memory UUID to delete."),
+    hard: external_exports.boolean().optional().describe("False or omitted performs a soft delete. True permanently deletes and requires admin rights."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription)
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44529,13 +44534,17 @@ var writeRuleTool = {
   title: "Pathrule Write Rule",
   description: "Create a new rule at a workspace path. Missing nodes auto-create. Use scope_type/priority honestly: high only when a violation causes a real bug or regression. Cloud-only \u2014 Pathrule Desktop/CLI also renders the rule into the user's CLAUDE.md/AGENTS.md and editor companion files automatically.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    node_path: external_exports.string().min(1),
-    name: external_exports.string().min(1).max(200),
-    content: external_exports.string().min(1),
-    scope_type: ruleScopeSchema,
-    priority: rulePrioritySchema,
-    allow_duplicate: external_exports.boolean().optional()
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    node_path: external_exports.string().min(1).describe("Workspace-relative path where the rule applies, e.g. / or /packages/app."),
+    name: external_exports.string().min(1).max(200).describe("Short human-readable rule name."),
+    content: external_exports.string().min(1).describe("Rule body: the instruction agents must follow."),
+    scope_type: ruleScopeSchema.describe(
+      "Use project for global rules, folder for path-specific rules, or file_type when the rule targets a class of files."
+    ),
+    priority: rulePrioritySchema.describe(
+      "Use high only for rules whose violation causes bugs, security issues, or real regressions."
+    ),
+    allow_duplicate: external_exports.boolean().optional().describe("Set true only when intentionally allowing another rule with the same name.")
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44562,17 +44571,17 @@ var updateRuleTool = {
   title: "Pathrule Update Rule",
   description: "Update a rule's fields and/or path. Optimistic concurrency via expected_version_id. Cloud-only.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    rule_id: external_exports.string().uuid(),
-    expected_version_id: external_exports.string().uuid().optional(),
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    rule_id: external_exports.string().uuid().describe("Rule UUID returned by pathrule_get_context, pathrule_goto, or pathrule_read_rule."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription),
     patch: external_exports.object({
-      name: external_exports.string().min(1).max(200).optional(),
-      content: external_exports.string().min(1).optional(),
-      scope_type: ruleScopeSchema.optional(),
-      priority: rulePrioritySchema.optional()
+      name: external_exports.string().min(1).max(200).optional().describe("Replacement rule name."),
+      content: external_exports.string().min(1).optional().describe("Replacement rule body."),
+      scope_type: ruleScopeSchema.optional().describe("Updated rule scope: project, folder, or file_type."),
+      priority: rulePrioritySchema.optional().describe("Updated priority. Use high only when violating the rule causes real regressions.")
     }),
-    move_to_path: external_exports.string().optional(),
-    allow_duplicate: external_exports.boolean().optional()
+    move_to_path: external_exports.string().optional().describe(moveToPathDescription),
+    allow_duplicate: external_exports.boolean().optional().describe("Set true only when intentionally allowing another rule with the same name.")
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44598,10 +44607,10 @@ var deleteRuleTool = {
   title: "Pathrule Delete Rule",
   description: "Soft-delete a rule by default. hard:true requires workspace_admin. Cloud-only.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    rule_id: external_exports.string().uuid(),
-    hard: external_exports.boolean().optional(),
-    expected_version_id: external_exports.string().uuid().optional()
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    rule_id: external_exports.string().uuid().describe("Rule UUID to delete."),
+    hard: external_exports.boolean().optional().describe("False or omitted performs a soft delete. True permanently deletes and requires admin rights."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription)
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44625,14 +44634,16 @@ var writeSkillTool = {
   title: "Pathrule Write Skill",
   description: "Create a new skill at a workspace path. Content is the full SKILL.md body (frontmatter + markdown). For github_ref skills set source='github_ref' and github_url. Cloud-only: does NOT materialize the skill into .codex/skills, .claude/skills, .cursor/skills, etc. \u2014 Pathrule Desktop or CLI is required for on-disk skill materialization.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    node_path: external_exports.string().min(1),
-    name: external_exports.string().min(1).max(200),
-    description: external_exports.string().nullable(),
-    content: external_exports.string().min(1),
-    source: skillSourceSchema,
-    github_url: external_exports.string().url().nullable().optional(),
-    tags: external_exports.array(external_exports.string()).optional()
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    node_path: external_exports.string().min(1).describe("Workspace-relative path where the skill should be offered, e.g. / or /packages/app."),
+    name: external_exports.string().min(1).max(200).describe("Skill name, usually kebab-case."),
+    description: external_exports.string().nullable().describe("Short summary of when agents should use this skill. Use null only if unknown."),
+    content: external_exports.string().min(1).describe("Full SKILL.md content including frontmatter and markdown."),
+    source: skillSourceSchema.describe(
+      "Skill source type. Use github_ref only when github_url points to the canonical skill source."
+    ),
+    github_url: external_exports.string().url().nullable().optional().describe("Canonical GitHub URL for github_ref skills; null or omit for manual/template skills."),
+    tags: external_exports.array(external_exports.string()).optional().describe("Optional discovery tags such as frontend, database, or release.")
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44658,20 +44669,20 @@ var writeSkillTool = {
 var updateSkillTool = {
   name: "pathrule_update_skill",
   title: "Pathrule Update Skill",
-  description: "Update a skill's fields and/or path. Optimistic concurrency. Cloud-only.",
+  description: "Update an existing Pathrule skill's metadata, SKILL.md content, source reference, tags, or workspace path. Use pathrule_read_skill first when you need the current approved skill body, then send only changed fields in patch. Cloud-only: this updates the cloud skill record and does not install files into .codex/skills, .claude/skills, or editor folders.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    skill_id: external_exports.string().uuid(),
-    expected_version_id: external_exports.string().uuid().optional(),
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    skill_id: external_exports.string().uuid().describe("Skill UUID returned by pathrule_get_context, pathrule_goto, or pathrule_read_skill."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription),
     patch: external_exports.object({
-      name: external_exports.string().min(1).max(200).optional(),
-      description: external_exports.string().nullable().optional(),
-      content: external_exports.string().min(1).optional(),
-      source: external_exports.enum(["manual", "template", "github_ref"]).optional(),
-      github_url: external_exports.string().url().nullable().optional(),
-      tags: external_exports.array(external_exports.string()).optional()
+      name: external_exports.string().min(1).max(200).optional().describe("Replacement skill name."),
+      description: external_exports.string().nullable().optional().describe("Replacement usage summary. Use null to clear it."),
+      content: external_exports.string().min(1).optional().describe("Replacement full SKILL.md content including frontmatter and markdown."),
+      source: external_exports.enum(["manual", "template", "github_ref"]).optional().describe("Updated source type. Use github_ref only with a valid github_url."),
+      github_url: external_exports.string().url().nullable().optional().describe("Updated canonical GitHub URL for github_ref skills, or null to clear it."),
+      tags: external_exports.array(external_exports.string()).optional().describe("Replacement discovery tag list.")
     }),
-    move_to_path: external_exports.string().optional()
+    move_to_path: external_exports.string().optional().describe(moveToPathDescription)
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -44696,10 +44707,10 @@ var deleteSkillTool = {
   title: "Pathrule Delete Skill",
   description: "Soft-delete a skill by default. hard:true requires workspace_admin. Cloud-only.",
   inputSchema: {
-    workspace_id: external_exports.string().uuid(),
-    skill_id: external_exports.string().uuid(),
-    hard: external_exports.boolean().optional(),
-    expected_version_id: external_exports.string().uuid().optional()
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    skill_id: external_exports.string().uuid().describe("Skill UUID to delete."),
+    hard: external_exports.boolean().optional().describe("False or omitted performs a soft delete. True permanently deletes and requires admin rights."),
+    expected_version_id: external_exports.string().uuid().optional().describe(expectedVersionDescription)
   },
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
