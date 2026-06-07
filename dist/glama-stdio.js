@@ -21293,8 +21293,208 @@ async function assertSubscriptionActive(supabase, workspaceId) {
   }
 }
 
+// ../shared/src/deployment/license-token.ts
+var LICENSE_ISSUER = "https://license.pathrule.io";
+var LICENSE_AUDIENCE = "pathrule-selfhosted";
+var LICENSE_GRACE_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+var LicenseTokenError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+    this.name = "LicenseTokenError";
+  }
+  code;
+};
+var encoder = new TextEncoder();
+function base64UrlDecode(text) {
+  const padded = text.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(padded + "=".repeat((4 - padded.length % 4) % 4));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function decodeJsonSegment(segment) {
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(base64UrlDecode(segment)));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("not an object");
+    }
+    return parsed;
+  } catch {
+    throw new LicenseTokenError("malformed_token", "Token segment is not valid base64url JSON.");
+  }
+}
+function assertClaimShape(claims) {
+  const issues = [];
+  if (typeof claims.iss !== "string") issues.push("iss");
+  if (typeof claims.sub !== "string" || !claims.sub) issues.push("sub");
+  if (typeof claims.aud !== "string") issues.push("aud");
+  if (typeof claims.org_id !== "string" || !claims.org_id) issues.push("org_id");
+  if (claims.plan !== "enterprise") issues.push("plan");
+  if (claims.license_type !== "contract" && claims.license_type !== "poc")
+    issues.push("license_type");
+  if (typeof claims.seats !== "number" || !Number.isFinite(claims.seats) || claims.seats < 1)
+    issues.push("seats");
+  if (!Array.isArray(claims.enabled_features) || claims.enabled_features.some((f) => typeof f !== "string"))
+    issues.push("enabled_features");
+  if (!Array.isArray(claims.ai_mode_allowed) || claims.ai_mode_allowed.some((m) => m !== "proxy" && m !== "byok" && m !== "off"))
+    issues.push("ai_mode_allowed");
+  if (typeof claims.install_id !== "string" || !claims.install_id) issues.push("install_id");
+  if (typeof claims.iat !== "number") issues.push("iat");
+  if (typeof claims.exp !== "number") issues.push("exp");
+  if (issues.length > 0) {
+    throw new LicenseTokenError("invalid_claims", `Invalid claims: ${issues.join(", ")}`);
+  }
+}
+async function importPublicKey(jwk) {
+  return crypto.subtle.importKey(
+    "jwk",
+    { kty: jwk.kty, crv: jwk.crv, x: jwk.x },
+    { name: "Ed25519" },
+    false,
+    ["verify"]
+  );
+}
+async function verifyLicenseToken(token, options) {
+  const segments = token.split(".");
+  if (segments.length !== 3 || segments.some((segment) => segment.length === 0)) {
+    throw new LicenseTokenError("malformed_token", "Expected a 3-segment compact JWT.");
+  }
+  const [headerSegment, payloadSegment, signatureSegment] = segments;
+  const header = decodeJsonSegment(headerSegment);
+  if (header.alg !== "EdDSA") {
+    throw new LicenseTokenError(
+      "unsupported_algorithm",
+      `License tokens are EdDSA-signed (got "${String(header.alg)}").`
+    );
+  }
+  const kid = typeof header.kid === "string" ? header.kid : "";
+  const jwk = options.jwks.keys.find((key2) => key2.kid === kid);
+  if (!jwk) {
+    throw new LicenseTokenError(
+      "unknown_kid",
+      `No bundled public key matches kid "${kid}" \u2014 the bundle may be older than the signing key; upgrade the deployment.`
+    );
+  }
+  const key = await importPublicKey(jwk);
+  const valid = await crypto.subtle.verify(
+    { name: "Ed25519" },
+    key,
+    base64UrlDecode(signatureSegment),
+    encoder.encode(`${headerSegment}.${payloadSegment}`)
+  );
+  if (!valid) {
+    throw new LicenseTokenError("bad_signature", "License token signature is invalid.");
+  }
+  const rawClaims = decodeJsonSegment(payloadSegment);
+  assertClaimShape(rawClaims);
+  const claims = rawClaims;
+  if (claims.aud !== LICENSE_AUDIENCE) {
+    throw new LicenseTokenError("wrong_audience", `aud must be "${LICENSE_AUDIENCE}".`);
+  }
+  if (claims.iss !== LICENSE_ISSUER) {
+    throw new LicenseTokenError("wrong_issuer", `iss must be "${LICENSE_ISSUER}".`);
+  }
+  if (claims.install_id !== options.expectedInstallId) {
+    throw new LicenseTokenError(
+      "install_mismatch",
+      "Token was issued for a different deployment (install_id mismatch)."
+    );
+  }
+  const now = options.nowEpochSeconds ?? Math.floor(Date.now() / 1e3);
+  const graceEnd = claims.exp + LICENSE_GRACE_WINDOW_SECONDS;
+  const state = now <= claims.exp ? "valid" : now <= graceEnd ? "grace" : "expired";
+  return {
+    claims,
+    state,
+    expiresAt: new Date(claims.exp * 1e3),
+    graceUntil: new Date(graceEnd * 1e3)
+  };
+}
+
+// ../shared/src/deployment/license-gate.ts
+function createLicenseRequiredError(detail) {
+  const error2 = new Error(
+    `This deployment has no valid Pathrule license${detail ? ` (${detail})` : ""}. Run \`pathrule-admin license refresh\` or contact Pathrule support.`
+  );
+  error2.code = "license_required";
+  return error2;
+}
+function createLicenseReadOnlyError(graceUntil) {
+  const error2 = new Error(
+    `The Pathrule license expired (grace ended ${graceUntil.toISOString()}). The deployment is read-only: existing data stays available, writes are blocked until the license is renewed.`
+  );
+  error2.code = "license_read_only";
+  return error2;
+}
+async function readDeploymentLicense(supabase, options) {
+  const { data, error: error2 } = await supabase.from("deployment_license").select("token").maybeSingle();
+  if (error2) {
+    throw createLicenseRequiredError(`could not read deployment_license: ${error2.message}`);
+  }
+  const token = data?.token;
+  if (!token) {
+    throw createLicenseRequiredError("no license token stored yet");
+  }
+  try {
+    return await verifyLicenseToken(token, {
+      jwks: options.jwks,
+      expectedInstallId: options.installId,
+      nowEpochSeconds: options.nowEpochSeconds
+    });
+  } catch (error3) {
+    if (error3 instanceof LicenseTokenError) {
+      throw createLicenseRequiredError(error3.code);
+    }
+    throw error3;
+  }
+}
+async function assertLicenseWritable(supabase, options) {
+  const license = await readDeploymentLicense(supabase, options);
+  if (license.state === "expired") {
+    throw createLicenseReadOnlyError(license.graceUntil);
+  }
+  return license;
+}
+function licenseJwksFromEnv(env = process.env) {
+  const raw = env.PATHRULE_LICENSE_JWKS;
+  if (!raw) {
+    throw new Error(
+      "PATHRULE_LICENSE_JWKS is not set \u2014 the release bundle bakes this in; for development generate a keypair (generateLicenseSigningKey) and export its JWKS."
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("PATHRULE_LICENSE_JWKS is not valid JSON.");
+  }
+  const keys = parsed.keys;
+  if (!Array.isArray(keys) || keys.length === 0 || keys.some(
+    (key) => !key || typeof key.kid !== "string" || key.kty !== "OKP" || key.crv !== "Ed25519" || typeof key.x !== "string"
+  )) {
+    throw new Error(
+      "PATHRULE_LICENSE_JWKS must be { keys: [{ kid, kty:'OKP', crv:'Ed25519', x }] }."
+    );
+  }
+  return parsed;
+}
+
 // src/policy/subscription.ts
 async function enforceCloudConnectorSubscription(ctx) {
+  const env = ctx.env ?? process.env;
+  if (env.PATHRULE_EDITION === "selfhosted") {
+    const options = {
+      jwks: licenseJwksFromEnv(env),
+      installId: env.PATHRULE_INSTALL_ID ?? ""
+    };
+    if (ctx.toolWrites) {
+      await assertLicenseWritable(ctx.supabase, options);
+    } else {
+      await readDeploymentLicense(ctx.supabase, options);
+    }
+    return;
+  }
   await assertSubscriptionActive(ctx.supabase, ctx.workspaceId);
 }
 
@@ -21434,7 +21634,11 @@ async function runRemoteTool(tool, args, ctx) {
   }
   if (tool.workspace.subscriptionRequired && workspaceId) {
     try {
-      await enforceCloudConnectorSubscription({ supabase: ctx.supabase, workspaceId });
+      await enforceCloudConnectorSubscription({
+        supabase: ctx.supabase,
+        workspaceId,
+        toolWrites: tool.mode === "write_beta"
+      });
     } catch (error2) {
       await logToolResult(
         null,
@@ -21703,6 +21907,13 @@ function mapRpcError(rpcError) {
   }
 }
 
+// ../shared/src/tools/demo-guard.ts
+var DEMO_READONLY_MESSAGE = "This workspace is a read-only demo and cannot be modified. Create or open a real workspace to make changes.";
+async function isDemoWorkspaceDb(supabase, workspaceId) {
+  const { data } = await supabase.from("workspaces").select("is_demo").eq("id", workspaceId).maybeSingle();
+  return data?.is_demo === true;
+}
+
 // ../shared/src/tools/dedup.ts
 async function checkContentDedup(supabase, args) {
   const { data, error: error2 } = await supabase.rpc("pathrule_check_content_dedup", {
@@ -21733,159 +21944,40 @@ function isSkillSlugUniqueViolation(err) {
   return Boolean(err.message?.includes("skills_workspace_slug_unique"));
 }
 
-// ../shared/src/tools/nodes.ts
-async function ensureWorkspaceRootNode(supabase, workspaceId, workspaceName) {
-  const { data: existing, error: selectErr } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", "/").is("parent_id", null).maybeSingle();
-  if (selectErr) return { error: selectErr.message };
-  if (existing) return existing;
-  const { data, error: error2 } = await supabase.from("nodes").insert({
-    workspace_id: workspaceId,
-    parent_id: null,
-    name: workspaceName,
-    type: "folder",
-    relative_path: "/",
-    order_index: 0,
-    status: "active"
-  }).select("id, workspace_id, parent_id, name, type, relative_path").single();
-  if (error2 || !data) {
-    if (error2?.code === "23505") {
-      const { data: again } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", "/").is("parent_id", null).maybeSingle();
-      if (again) return again;
-    }
-    return { error: error2?.message ?? "Root node insert failed" };
-  }
-  return data;
-}
-function normalizeNodePath(raw) {
-  const trimmed = raw.trim();
-  if (trimmed === "" || trimmed === "/") return "/";
-  const withLead = trimmed.startsWith("/") ? trimmed : "/" + trimmed;
-  const collapsed = withLead.replace(/\/+/g, "/");
-  return collapsed === "/" ? "/" : collapsed.replace(/\/$/, "");
-}
-function pathFor(parentRelativePath, name) {
-  const prefix = parentRelativePath === "/" ? "" : parentRelativePath;
-  return prefix + "/" + name.trim();
-}
-function guessLeafType(relativePath) {
-  const segments = relativePath.split("/").filter((s) => s.length > 0);
-  const last = segments[segments.length - 1] ?? "";
-  return /\.[A-Za-z0-9]{1,8}$/.test(last) ? "file" : "folder";
-}
-async function selectByPath(supabase, workspaceId, relativePath) {
-  const { data, error: error2 } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", relativePath).maybeSingle();
-  if (error2) return { error: error2.message };
-  return data ?? null;
-}
-async function findOrCreateNodeForPath(supabase, workspaceId, rawRelativePath, leafType) {
-  const relativePath = normalizeNodePath(rawRelativePath);
-  if (relativePath === "/") {
-    const root2 = await selectByPath(supabase, workspaceId, "/");
-    if (root2 && !("error" in root2)) return root2;
-    return { error: "Workspace root node missing \u2014 call ensureWorkspaceRootNode first." };
-  }
-  const existing = await selectByPath(supabase, workspaceId, relativePath);
-  if (existing && !("error" in existing)) return existing;
-  if (existing && "error" in existing) return existing;
-  const root = await selectByPath(supabase, workspaceId, "/");
-  if (!root) {
-    return { error: "Workspace root node missing \u2014 call ensureWorkspaceRootNode first." };
-  }
-  if ("error" in root) return root;
-  const segments = relativePath.split("/").filter((s) => s.length > 0);
-  const resolvedLeafType = leafType ?? guessLeafType(relativePath);
-  let parent = root;
-  let cumulativePath = "";
-  for (let i = 0; i < segments.length; i += 1) {
-    const seg = segments[i];
-    cumulativePath += "/" + seg;
-    const isLeaf = i === segments.length - 1;
-    const type = isLeaf ? resolvedLeafType : "folder";
-    const existingHere = await selectByPath(supabase, workspaceId, cumulativePath);
-    if (existingHere && "error" in existingHere) return existingHere;
-    if (existingHere) {
-      parent = existingHere;
-      continue;
-    }
-    const { count } = await supabase.from("nodes").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("parent_id", parent.id);
-    const { data, error: error2 } = await supabase.from("nodes").insert({
-      workspace_id: workspaceId,
-      parent_id: parent.id,
-      name: seg,
-      type,
-      relative_path: pathFor(parent.relative_path, seg),
-      order_index: count ?? 0,
-      status: "active"
-    }).select("id, workspace_id, parent_id, name, type, relative_path").single();
-    if (error2 || !data) {
-      if (error2?.code === "23505") {
-        const again = await selectByPath(supabase, workspaceId, cumulativePath);
-        if (again && !("error" in again)) {
-          parent = again;
-          continue;
-        }
-      }
-      return { error: error2?.message ?? `Insert failed at ${cumulativePath}` };
-    }
-    parent = data;
-  }
-  return parent;
-}
-async function ensureNodeForPath(supabase, workspaceId, rawRelativePath, leafType) {
-  const relativePath = normalizeNodePath(rawRelativePath);
-  const rootCheck = await selectByPath(supabase, workspaceId, "/");
-  if (rootCheck && "error" in rootCheck) return rootCheck;
-  if (!rootCheck) {
-    const { data: ws, error: wsErr } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
-    if (wsErr) return { error: wsErr.message };
-    const wsName = ws?.name ?? "Workspace";
-    const ensured = await ensureWorkspaceRootNode(supabase, workspaceId, wsName);
-    if ("error" in ensured) return ensured;
-  }
-  return findOrCreateNodeForPath(supabase, workspaceId, relativePath, leafType);
-}
-
 // ../shared/src/tools/memories.ts
-function rowToMemory(row) {
-  return {
-    id: row.id,
-    workspaceId: row.workspace_id,
-    nodeId: row.node_id,
-    title: row.title,
-    content: row.content,
-    source: row.source,
-    semanticTags: row.semantic_tags ?? [],
-    versionId: row.version_id,
-    versionNumber: row.version_number,
-    createdBy: row.created_by,
-    lastEditedBy: row.last_edited_by,
-    lastEditedAt: row.last_edited_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
 async function listMemoriesHandler(ctx, args) {
-  const { data, error: error2 } = await ctx.supabase.from("memories").select("*").eq("node_id", args.node_id).eq("status", "active").order("created_at", { ascending: true });
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  return { ok: true, data: (data ?? []).map((r) => rowToMemory(r)) };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const node = await ctx.backend.getNode(args.node_id);
+    if (!node) return { ok: true, data: [] };
+    const memories = await ctx.backend.listMemories({
+      workspaceId: node.workspaceId,
+      nodeId: node.id
+    });
+    return { ok: true, data: memories };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 async function readMemoryHandler(ctx, args) {
-  const { data, error: error2 } = await ctx.supabase.from("memories").select("*, nodes(relative_path)").eq("id", args.memory_id).maybeSingle();
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  if (!data) {
-    return {
-      ok: false,
-      error: { code: "not_found", message: `Memory ${args.memory_id} not found` }
-    };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const row = data;
-  return {
-    ok: true,
-    data: {
-      ...rowToMemory(row),
-      nodeRelativePath: row.nodes?.relative_path ?? null
+  try {
+    const memory = await ctx.backend.readMemory(args.memory_id);
+    if (!memory) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `Memory ${args.memory_id} not found` }
+      };
     }
-  };
+    const node = memory.nodeId ? await ctx.backend.getNode(memory.nodeId) : null;
+    return { ok: true, data: { ...memory, nodeRelativePath: node?.relativePath ?? null } };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 function similarTitlesWarning(similar) {
   if (similar.length === 0) return null;
@@ -21902,164 +21994,147 @@ async function writeMemoryHandler(ctx, args) {
       error: { code: "invalid_args", message: "ctx.workspaceId is required for path-based writes" }
     };
   }
-  const node = await ensureNodeForPath(ctx.supabase, ctx.workspaceId, args.node_path);
-  if ("error" in node) {
-    return { ok: false, error: { code: "upstream_error", message: node.error } };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const candidate = args.title.trim();
-  const dedup = await checkContentDedup(ctx.supabase, {
-    workspaceId: node.workspace_id,
-    kind: "memory",
-    nodeId: node.id,
-    candidate
-  });
-  if (dedup.ok && dedup.data.duplicate && !args.allow_duplicate) {
-    return {
-      ok: false,
-      error: {
-        code: "duplicate",
-        message: `A memory titled "${dedup.data.duplicate.title}" already exists at ${args.node_path}. Use update_memory, pick a different title, or pass allow_duplicate: true to insert anyway.`,
-        detail: {
-          existing_id: dedup.data.duplicate.id,
-          existing_title: dedup.data.duplicate.title,
-          similar: dedup.ok ? dedup.data.similar : []
-        }
-      }
-    };
-  }
-  const { data, error: error2 } = await ctx.supabase.from("memories").insert({
-    workspace_id: node.workspace_id,
-    node_id: node.id,
-    title: candidate,
-    content: args.content,
-    source: args.source ?? "claude",
-    created_by: ctx.userId,
-    last_edited_by: ctx.userId
-  }).select("*").single();
-  if (error2 || !data)
-    return { ok: false, error: mapSupabaseError(error2 ?? { message: "insert failed" }) };
-  const warning = dedup.ok ? similarTitlesWarning(dedup.data.similar) : null;
-  return warning ? { ok: true, data: rowToMemory(data), warnings: [warning] } : { ok: true, data: rowToMemory(data) };
-}
-async function updateMemoryHandler(ctx, args) {
-  const { data: current, error: readErr } = await ctx.supabase.from("memories").select("version_id, version_number, workspace_id, node_id, title").eq("id", args.memory_id).maybeSingle();
-  if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-  if (!current)
-    return {
-      ok: false,
-      error: { code: "not_found", message: `Memory ${args.memory_id} not found` }
-    };
-  if (args.expected_version_id && current.version_id !== args.expected_version_id) {
-    return {
-      ok: false,
-      error: {
-        code: "conflict",
-        message: "Memory has been modified since you last read it.",
-        detail: { current_version_id: current.version_id }
-      }
-    };
-  }
-  const patch = {
-    content: args.content,
-    last_edited_by: ctx.userId,
-    last_edited_at: (/* @__PURE__ */ new Date()).toISOString(),
-    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-    version_id: crypto.randomUUID(),
-    version_number: current.version_number + 1
-  };
-  let targetNodeId = current.node_id;
-  if (args.move_to_path) {
-    const target = await ensureNodeForPath(
-      ctx.supabase,
-      current.workspace_id,
-      args.move_to_path
-    );
-    if ("error" in target) {
-      return { ok: false, error: { code: "upstream_error", message: target.error } };
+  try {
+    if (await ctx.backend.isDemoWorkspace(ctx.workspaceId)) {
+      return { ok: false, error: { code: "permission_denied", message: DEMO_READONLY_MESSAGE } };
     }
-    patch.node_id = target.id;
-    targetNodeId = target.id;
-  }
-  if (args.title) {
-    patch.title = args.title.trim();
-  }
-  const titleChanged = args.title !== void 0 && args.title.trim() !== current.title;
-  const nodeChanged = targetNodeId !== current.node_id;
-  if ((titleChanged || nodeChanged) && !args.allow_duplicate) {
-    const finalTitle = (args.title ?? current.title).trim();
-    const dedup = await checkContentDedup(ctx.supabase, {
-      workspaceId: current.workspace_id,
+    const node = await ctx.backend.ensureNodeForPath(ctx.workspaceId, args.node_path);
+    const candidate = args.title.trim();
+    const dedup = await ctx.backend.checkContentDedup({
+      workspaceId: node.workspace_id,
       kind: "memory",
-      nodeId: targetNodeId,
-      candidate: finalTitle,
-      excludeId: args.memory_id,
-      maxSimilar: 0
+      nodeId: node.id,
+      candidate
     });
-    if (dedup.ok && dedup.data.duplicate) {
+    if (dedup.duplicate && !args.allow_duplicate) {
       return {
         ok: false,
         error: {
           code: "duplicate",
-          message: `A memory titled "${dedup.data.duplicate.title}" already exists at this node. Pick a different title or pass allow_duplicate: true.`,
-          detail: { existing_id: dedup.data.duplicate.id, existing_title: dedup.data.duplicate.title }
+          message: `A memory titled "${dedup.duplicate.title}" already exists at ${args.node_path}. Use update_memory, pick a different title, or pass allow_duplicate: true to insert anyway.`,
+          detail: {
+            existing_id: dedup.duplicate.id,
+            existing_title: dedup.duplicate.title,
+            similar: dedup.similar
+          }
         }
       };
     }
+    const memory = await ctx.backend.writeMemory({
+      workspaceId: node.workspace_id,
+      nodeId: node.id,
+      title: candidate,
+      content: args.content,
+      source: args.source
+    });
+    const warning = similarTitlesWarning(dedup.similar);
+    return warning ? { ok: true, data: memory, warnings: [warning] } : { ok: true, data: memory };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  const { data, error: error2 } = await ctx.supabase.from("memories").update(patch).eq("id", args.memory_id).eq("version_number", current.version_number).select("*").single();
-  if (error2 || !data)
-    return { ok: false, error: mapSupabaseError(error2 ?? { message: "update failed" }) };
-  return { ok: true, data: rowToMemory(data) };
 }
-async function deleteMemoryHandler(ctx, args) {
-  if (args.hard) {
-    const { data: row, error: readErr } = await ctx.supabase.from("memories").select("id, workspace_id, node_id").eq("id", args.memory_id).maybeSingle();
-    if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-    if (!row)
+async function updateMemoryHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const current = await ctx.backend.readMemory(args.memory_id);
+    if (!current) {
       return {
         ok: false,
         error: { code: "not_found", message: `Memory ${args.memory_id} not found` }
       };
-    const { error: delErr } = await ctx.supabase.from("memories").delete().eq("id", args.memory_id);
-    if (delErr) return { ok: false, error: mapSupabaseError(delErr) };
-    return {
-      ok: true,
-      data: {
-        id: row.id,
-        workspaceId: row.workspace_id,
-        nodeId: row.node_id,
-        hard: true
-      }
-    };
-  }
-  const { data, error: error2 } = await ctx.supabase.rpc("delete_memory_rpc", {
-    p_memory_id: args.memory_id,
-    p_expected_version_id: args.expected_version_id ?? null
-  });
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  const result = data;
-  if (!result.ok) {
-    if (result.error === "conflict") {
+    }
+    if (args.expected_version_id && current.versionId !== args.expected_version_id) {
       return {
         ok: false,
         error: {
           code: "conflict",
           message: "Memory has been modified since you last read it.",
-          detail: { current_version_id: result.current_version_id }
+          detail: { current_version_id: current.versionId }
         }
       };
     }
-    return { ok: false, error: mapRpcError(result.error) };
-  }
-  return {
-    ok: true,
-    data: {
-      id: result.id,
-      workspaceId: result.workspace_id,
-      nodeId: result.node_id,
-      hard: false
+    let targetNodeId = current.nodeId;
+    if (args.move_to_path) {
+      const target = await ctx.backend.ensureNodeForPath(current.workspaceId, args.move_to_path);
+      targetNodeId = target.id;
     }
-  };
+    const titleChanged = args.title !== void 0 && args.title.trim() !== current.title;
+    const nodeChanged = targetNodeId !== current.nodeId;
+    if ((titleChanged || nodeChanged) && !args.allow_duplicate) {
+      const finalTitle = (args.title ?? current.title).trim();
+      const dedup = await ctx.backend.checkContentDedup({
+        workspaceId: current.workspaceId,
+        kind: "memory",
+        nodeId: targetNodeId,
+        candidate: finalTitle,
+        excludeId: args.memory_id,
+        maxSimilar: 0
+      });
+      if (dedup.duplicate) {
+        return {
+          ok: false,
+          error: {
+            code: "duplicate",
+            message: `A memory titled "${dedup.duplicate.title}" already exists at this node. Pick a different title or pass allow_duplicate: true.`,
+            detail: {
+              existing_id: dedup.duplicate.id,
+              existing_title: dedup.duplicate.title
+            }
+          }
+        };
+      }
+    }
+    const updated = await ctx.backend.updateMemory({
+      id: args.memory_id,
+      content: args.content,
+      title: args.title ? args.title.trim() : void 0,
+      nodeId: nodeChanged ? targetNodeId : void 0
+    });
+    return { ok: true, data: updated };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
+}
+async function deleteMemoryHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const res = await ctx.backend.deleteMemory({
+      id: args.memory_id,
+      hard: args.hard,
+      expectedVersionId: args.expected_version_id
+    });
+    if (res.status === "rejected") {
+      return { ok: false, error: mapRpcError(res.reason) };
+    }
+    if (res.status === "conflict") {
+      return {
+        ok: false,
+        error: {
+          code: "conflict",
+          message: "Memory has been modified since you last read it.",
+          detail: { current_version_id: res.currentVersionId }
+        }
+      };
+    }
+    return {
+      ok: true,
+      data: {
+        id: res.id,
+        workspaceId: res.workspaceId,
+        nodeId: res.nodeId ?? "",
+        hard: !!args.hard
+      }
+    };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 
 // ../shared/src/tools/rules.ts
@@ -22071,35 +22146,20 @@ function similarRulesWarning(similar) {
     detail: { similar }
   };
 }
-function rowToRule(row) {
-  return {
-    id: row.id,
-    workspaceId: row.workspace_id,
-    name: row.name,
-    content: row.content,
-    scopeType: row.scope_type,
-    priority: row.priority,
-    semanticTags: row.semantic_tags ?? [],
-    versionId: row.version_id,
-    versionNumber: row.version_number,
-    createdBy: row.created_by,
-    lastEditedBy: row.last_edited_by,
-    lastEditedAt: row.last_edited_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
 async function readRuleHandler(ctx, args) {
-  const { data, error: error2 } = await ctx.supabase.from("rules").select("*, node_rules(nodes(relative_path))").eq("id", args.rule_id).maybeSingle();
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  if (!data)
-    return { ok: false, error: { code: "not_found", message: `Rule ${args.rule_id} not found` } };
-  const row = data;
-  const firstPath = row.node_rules?.[0]?.nodes?.relative_path ?? null;
-  return {
-    ok: true,
-    data: { ...rowToRule(row), nodeRelativePath: firstPath }
-  };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const rule = await ctx.backend.readRule(args.rule_id);
+    if (!rule) {
+      return { ok: false, error: { code: "not_found", message: `Rule ${args.rule_id} not found` } };
+    }
+    const node = await ctx.backend.getNodeForRule(rule.id);
+    return { ok: true, data: { ...rule, nodeRelativePath: node?.relativePath ?? null } };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 async function writeRuleHandler(ctx, args) {
   if (!ctx.workspaceId) {
@@ -22111,207 +22171,154 @@ async function writeRuleHandler(ctx, args) {
       }
     };
   }
-  const node = await ensureNodeForPath(ctx.supabase, ctx.workspaceId, args.node_path);
-  if ("error" in node) {
-    return { ok: false, error: { code: "upstream_error", message: node.error } };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const candidate = args.name.trim();
-  const dedup = await checkContentDedup(ctx.supabase, {
-    workspaceId: node.workspace_id,
-    kind: "rule",
-    candidate
-  });
-  if (dedup.ok && dedup.data.duplicate && !args.allow_duplicate) {
-    return {
-      ok: false,
-      error: {
-        code: "duplicate",
-        message: `A rule named "${dedup.data.duplicate.title}" already exists in this workspace. Use update_rule, pick a different name, or pass allow_duplicate: true.`,
-        detail: {
-          existing_id: dedup.data.duplicate.id,
-          existing_name: dedup.data.duplicate.title,
-          similar: dedup.ok ? dedup.data.similar : []
-        }
-      }
-    };
-  }
-  const { data: created, error: createErr } = await ctx.supabase.from("rules").insert({
-    workspace_id: node.workspace_id,
-    name: candidate,
-    content: args.content,
-    scope_type: args.scope_type,
-    priority: args.priority,
-    created_by: ctx.userId,
-    last_edited_by: ctx.userId
-  }).select("*").single();
-  if (createErr || !created)
-    return { ok: false, error: mapSupabaseError(createErr ?? { message: "insert failed" }) };
-  const rule = rowToRule(created);
-  const { error: attachErr } = await ctx.supabase.from("node_rules").insert({ node_id: node.id, rule_id: rule.id });
-  if (attachErr) {
-    await ctx.supabase.from("rules").delete().eq("id", rule.id);
-    return {
-      ok: false,
-      error: { code: "upstream_error", message: `attach failed: ${attachErr.message}` }
-    };
-  }
-  const warning = dedup.ok ? similarRulesWarning(dedup.data.similar) : null;
-  return warning ? { ok: true, data: rule, warnings: [warning] } : { ok: true, data: rule };
-}
-async function updateRuleHandler(ctx, args) {
-  const { data: current, error: readErr } = await ctx.supabase.from("rules").select("version_id, version_number, workspace_id, name").eq("id", args.rule_id).maybeSingle();
-  if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-  if (!current)
-    return { ok: false, error: { code: "not_found", message: `Rule ${args.rule_id} not found` } };
-  if (args.expected_version_id && current.version_id !== args.expected_version_id) {
-    return {
-      ok: false,
-      error: {
-        code: "conflict",
-        message: "Rule has been modified since you last read it.",
-        detail: { current_version_id: current.version_id }
-      }
-    };
-  }
-  const patch = {
-    last_edited_by: ctx.userId,
-    last_edited_at: (/* @__PURE__ */ new Date()).toISOString(),
-    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-    version_id: crypto.randomUUID(),
-    version_number: current.version_number + 1
-  };
-  if (args.patch.name !== void 0) {
-    const candidate = args.patch.name.trim();
-    if (candidate !== current.name && !args.allow_duplicate) {
-      const dedup = await checkContentDedup(ctx.supabase, {
-        workspaceId: current.workspace_id,
-        kind: "rule",
-        candidate,
-        excludeId: args.rule_id,
-        maxSimilar: 0
-      });
-      if (dedup.ok && dedup.data.duplicate) {
-        return {
-          ok: false,
-          error: {
-            code: "duplicate",
-            message: `Another rule in this workspace already uses the name "${dedup.data.duplicate.title}". Pick a different name or pass allow_duplicate: true.`,
-            detail: { existing_id: dedup.data.duplicate.id, existing_name: dedup.data.duplicate.title }
-          }
-        };
-      }
+  try {
+    if (await ctx.backend.isDemoWorkspace(ctx.workspaceId)) {
+      return { ok: false, error: { code: "permission_denied", message: DEMO_READONLY_MESSAGE } };
     }
-    patch.name = candidate;
-  }
-  if (args.patch.content !== void 0) patch.content = args.patch.content;
-  if (args.patch.scope_type !== void 0) patch.scope_type = args.patch.scope_type;
-  if (args.patch.priority !== void 0) patch.priority = args.patch.priority;
-  const { data, error: error2 } = await ctx.supabase.from("rules").update(patch).eq("id", args.rule_id).eq("version_number", current.version_number).select("*").single();
-  if (error2 || !data)
-    return { ok: false, error: mapSupabaseError(error2 ?? { message: "update failed" }) };
-  if (args.move_to_path) {
-    const target = await ensureNodeForPath(
-      ctx.supabase,
-      current.workspace_id,
-      args.move_to_path
-    );
-    if ("error" in target) {
-      return { ok: false, error: { code: "upstream_error", message: target.error } };
-    }
-    await ctx.supabase.from("node_rules").delete().eq("rule_id", args.rule_id);
-    const { error: attachErr } = await ctx.supabase.from("node_rules").insert({ node_id: target.id, rule_id: args.rule_id });
-    if (attachErr) {
+    const node = await ctx.backend.ensureNodeForPath(ctx.workspaceId, args.node_path);
+    const candidate = args.name.trim();
+    const dedup = await ctx.backend.checkContentDedup({
+      workspaceId: node.workspace_id,
+      kind: "rule",
+      candidate
+    });
+    if (dedup.duplicate && !args.allow_duplicate) {
       return {
         ok: false,
-        error: { code: "upstream_error", message: `reattach failed: ${attachErr.message}` }
+        error: {
+          code: "duplicate",
+          message: `A rule named "${dedup.duplicate.title}" already exists in this workspace. Use update_rule, pick a different name, or pass allow_duplicate: true.`,
+          detail: {
+            existing_id: dedup.duplicate.id,
+            existing_name: dedup.duplicate.title,
+            similar: dedup.similar
+          }
+        }
       };
     }
+    const rule = await ctx.backend.writeRule({
+      workspaceId: node.workspace_id,
+      nodeId: node.id,
+      name: candidate,
+      content: args.content,
+      scopeType: args.scope_type,
+      priority: args.priority
+    });
+    const warning = similarRulesWarning(dedup.similar);
+    return warning ? { ok: true, data: rule, warnings: [warning] } : { ok: true, data: rule };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  return { ok: true, data: rowToRule(data) };
 }
-async function deleteRuleHandler(ctx, args) {
-  if (args.hard) {
-    const { data: row, error: readErr } = await ctx.supabase.from("rules").select("id, workspace_id").eq("id", args.rule_id).maybeSingle();
-    if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-    if (!row)
-      return { ok: false, error: { code: "not_found", message: `Rule ${args.rule_id} not found` } };
-    const { error: delErr } = await ctx.supabase.from("rules").delete().eq("id", args.rule_id);
-    if (delErr) return { ok: false, error: mapSupabaseError(delErr) };
-    return {
-      ok: true,
-      data: { id: row.id, workspaceId: row.workspace_id, hard: true }
-    };
+async function updateRuleHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const { data, error: error2 } = await ctx.supabase.rpc("delete_rule_rpc", {
-    p_rule_id: args.rule_id,
-    p_expected_version_id: args.expected_version_id ?? null
-  });
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  const result = data;
-  if (!result.ok) {
-    if (result.error === "conflict") {
+  try {
+    const current = await ctx.backend.readRule(args.rule_id);
+    if (!current) {
+      return { ok: false, error: { code: "not_found", message: `Rule ${args.rule_id} not found` } };
+    }
+    if (args.expected_version_id && current.versionId !== args.expected_version_id) {
       return {
         ok: false,
         error: {
           code: "conflict",
           message: "Rule has been modified since you last read it.",
-          detail: { current_version_id: result.current_version_id }
+          detail: { current_version_id: current.versionId }
         }
       };
     }
-    return { ok: false, error: mapRpcError(result.error) };
+    if (args.patch.name !== void 0) {
+      const candidate = args.patch.name.trim();
+      if (candidate !== current.name && !args.allow_duplicate) {
+        const dedup = await ctx.backend.checkContentDedup({
+          workspaceId: current.workspaceId,
+          kind: "rule",
+          candidate,
+          excludeId: args.rule_id,
+          maxSimilar: 0
+        });
+        if (dedup.duplicate) {
+          return {
+            ok: false,
+            error: {
+              code: "duplicate",
+              message: `Another rule in this workspace already uses the name "${dedup.duplicate.title}". Pick a different name or pass allow_duplicate: true.`,
+              detail: { existing_id: dedup.duplicate.id, existing_name: dedup.duplicate.title }
+            }
+          };
+        }
+      }
+    }
+    let targetNodeId;
+    if (args.move_to_path) {
+      const target = await ctx.backend.ensureNodeForPath(current.workspaceId, args.move_to_path);
+      targetNodeId = target.id;
+    }
+    const updated = await ctx.backend.updateRule({
+      id: args.rule_id,
+      name: args.patch.name !== void 0 ? args.patch.name.trim() : void 0,
+      content: args.patch.content,
+      scopeType: args.patch.scope_type,
+      priority: args.patch.priority,
+      nodeId: targetNodeId
+    });
+    return { ok: true, data: updated };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  return {
-    ok: true,
-    data: { id: result.id, workspaceId: result.workspace_id, hard: false }
-  };
+}
+async function deleteRuleHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const res = await ctx.backend.deleteRule({
+      id: args.rule_id,
+      hard: args.hard,
+      expectedVersionId: args.expected_version_id
+    });
+    if (res.status === "rejected") {
+      return { ok: false, error: mapRpcError(res.reason) };
+    }
+    if (res.status === "conflict") {
+      return {
+        ok: false,
+        error: {
+          code: "conflict",
+          message: "Rule has been modified since you last read it.",
+          detail: { current_version_id: res.currentVersionId }
+        }
+      };
+    }
+    return { ok: true, data: { id: res.id, workspaceId: res.workspaceId, hard: !!args.hard } };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 
 // ../shared/src/tools/skills.ts
-function rowToSkill(row) {
-  return {
-    id: row.id,
-    workspaceId: row.workspace_id,
-    name: row.name,
-    description: row.description,
-    content: row.content,
-    source: row.source,
-    githubUrl: row.github_url,
-    version: row.version,
-    tags: row.tags,
-    semanticTags: row.semantic_tags ?? [],
-    versionId: row.version_id,
-    versionNumber: row.version_number,
-    createdBy: row.created_by,
-    lastEditedBy: row.last_edited_by,
-    lastEditedAt: row.last_edited_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    contentFetchedAt: row.content_fetched_at
-  };
-}
 async function readSkillHandler(ctx, args) {
-  const { data, error: error2 } = await ctx.supabase.from("skills").select(
-    "*, node_skills(nodes!node_skills_node_id_fkey(relative_path)), skill_files(path, content, role)"
-  ).eq("id", args.skill_id).maybeSingle();
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  if (!data)
-    return { ok: false, error: { code: "not_found", message: `Skill ${args.skill_id} not found` } };
-  const row = data;
-  const firstPath = row.node_skills?.[0]?.nodes?.relative_path ?? null;
-  const skill = rowToSkill(row);
-  const primaryFile = row.skill_files?.find(
-    (file) => file.path === "SKILL.md" || file.role === "primary"
-  );
-  return {
-    ok: true,
-    data: {
-      ...skill,
-      content: primaryFile?.content ?? skill.content,
-      packagePrimaryMissing: !primaryFile,
-      nodeRelativePath: firstPath
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const skill = await ctx.backend.readSkill(args.skill_id);
+    if (!skill) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `Skill ${args.skill_id} not found` }
+      };
     }
-  };
+    const node = await ctx.backend.getNodeForSkill(skill.id);
+    return { ok: true, data: { ...skill, nodeRelativePath: node?.relativePath ?? null } };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 async function writeSkillHandler(ctx, args) {
   if (!ctx.workspaceId) {
@@ -22323,45 +22330,44 @@ async function writeSkillHandler(ctx, args) {
       }
     };
   }
-  const node = await ensureNodeForPath(ctx.supabase, ctx.workspaceId, args.node_path);
-  if ("error" in node) {
-    return { ok: false, error: { code: "upstream_error", message: node.error } };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const candidate = args.name.trim();
-  const dedup = await checkContentDedup(ctx.supabase, {
-    workspaceId: node.workspace_id,
-    kind: "skill",
-    candidate,
-    maxSimilar: 0
-  });
-  if (dedup.ok && dedup.data.duplicate) {
-    return {
-      ok: false,
-      error: {
-        code: "duplicate",
-        message: `A skill with this name already exists in this workspace: "${dedup.data.duplicate.title}". Use update_skill or pick a different name.`,
-        detail: { existing_id: dedup.data.duplicate.id, existing_name: dedup.data.duplicate.title }
-      }
-    };
-  }
-  const source = args.source ?? "manual";
-  const { data: created, error: createErr } = await ctx.supabase.from("skills").insert({
-    workspace_id: node.workspace_id,
-    name: candidate,
-    description: args.description,
-    content: args.content,
-    source,
-    github_url: args.github_url ?? null,
-    tags: args.tags ?? [],
-    created_by: ctx.userId,
-    last_edited_by: ctx.userId,
-    // The body passed in is freshly-authored or freshly-fetched; stamp
-    // content_fetched_at only for github_ref so the materializer's 24h
-    // staleness clock starts now and we don't re-fetch immediately.
-    content_fetched_at: source === "github_ref" ? (/* @__PURE__ */ new Date()).toISOString() : null
-  }).select("*").single();
-  if (createErr || !created) {
-    if (isSkillSlugUniqueViolation(createErr ?? {})) {
+  try {
+    if (await ctx.backend.isDemoWorkspace(ctx.workspaceId)) {
+      return { ok: false, error: { code: "permission_denied", message: DEMO_READONLY_MESSAGE } };
+    }
+    const node = await ctx.backend.ensureNodeForPath(ctx.workspaceId, args.node_path);
+    const candidate = args.name.trim();
+    const dedup = await ctx.backend.checkContentDedup({
+      workspaceId: node.workspace_id,
+      kind: "skill",
+      candidate,
+      maxSimilar: 0
+    });
+    if (dedup.duplicate) {
+      return {
+        ok: false,
+        error: {
+          code: "duplicate",
+          message: `A skill with this name already exists in this workspace: "${dedup.duplicate.title}". Use update_skill or pick a different name.`,
+          detail: { existing_id: dedup.duplicate.id, existing_name: dedup.duplicate.title }
+        }
+      };
+    }
+    const skill = await ctx.backend.writeSkill({
+      workspaceId: node.workspace_id,
+      nodeId: node.id,
+      name: candidate,
+      description: args.description,
+      content: args.content,
+      source: args.source,
+      githubUrl: args.github_url ?? null,
+      tags: args.tags
+    });
+    return { ok: true, data: skill };
+  } catch (err) {
+    if (isSkillSlugUniqueViolation(err)) {
       return {
         ok: false,
         error: {
@@ -22370,74 +22376,69 @@ async function writeSkillHandler(ctx, args) {
         }
       };
     }
-    return { ok: false, error: mapSupabaseError(createErr ?? { message: "insert failed" }) };
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  const skill = rowToSkill(created);
-  const { error: attachErr } = await ctx.supabase.from("node_skills").insert({ node_id: node.id, skill_id: skill.id, is_active: true });
-  if (attachErr) {
-    await ctx.supabase.from("skills").delete().eq("id", skill.id);
-    return {
-      ok: false,
-      error: { code: "upstream_error", message: `attach failed: ${attachErr.message}` }
-    };
-  }
-  return { ok: true, data: skill };
 }
 async function updateSkillHandler(ctx, args) {
-  const { data: current, error: readErr } = await ctx.supabase.from("skills").select("version_id, version_number, workspace_id, source").eq("id", args.skill_id).maybeSingle();
-  if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-  if (!current)
-    return { ok: false, error: { code: "not_found", message: `Skill ${args.skill_id} not found` } };
-  if (args.expected_version_id && current.version_id !== args.expected_version_id) {
-    return {
-      ok: false,
-      error: {
-        code: "conflict",
-        message: "Skill has been modified since you last read it.",
-        detail: { current_version_id: current.version_id }
-      }
-    };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const patch = {
-    last_edited_by: ctx.userId,
-    last_edited_at: (/* @__PURE__ */ new Date()).toISOString(),
-    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-    version_id: crypto.randomUUID(),
-    version_number: current.version_number + 1
-  };
-  if (args.patch.name !== void 0) {
-    const candidate = args.patch.name.trim();
-    const dedup = await checkContentDedup(ctx.supabase, {
-      workspaceId: current.workspace_id,
-      kind: "skill",
-      candidate,
-      excludeId: args.skill_id,
-      maxSimilar: 0
-    });
-    if (dedup.ok && dedup.data.duplicate) {
+  try {
+    const current = await ctx.backend.readSkill(args.skill_id);
+    if (!current) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `Skill ${args.skill_id} not found` }
+      };
+    }
+    if (args.expected_version_id && current.versionId !== args.expected_version_id) {
       return {
         ok: false,
         error: {
-          code: "duplicate",
-          message: `Another skill in this workspace already uses this name: "${dedup.data.duplicate.title}". Pick a different name.`,
-          detail: { existing_id: dedup.data.duplicate.id, existing_name: dedup.data.duplicate.title }
+          code: "conflict",
+          message: "Skill has been modified since you last read it.",
+          detail: { current_version_id: current.versionId }
         }
       };
     }
-    patch.name = candidate;
-  }
-  if (args.patch.description !== void 0) patch.description = args.patch.description;
-  if (args.patch.content !== void 0) patch.content = args.patch.content;
-  if (args.patch.source !== void 0) patch.source = args.patch.source;
-  if (args.patch.github_url !== void 0) patch.github_url = args.patch.github_url;
-  if (args.patch.tags !== void 0) patch.tags = args.patch.tags;
-  const effectiveSource = args.patch.source !== void 0 ? args.patch.source : current.source ?? null;
-  if (args.patch.content !== void 0 && effectiveSource === "github_ref") {
-    patch.content_fetched_at = (/* @__PURE__ */ new Date()).toISOString();
-  }
-  const { data, error: error2 } = await ctx.supabase.from("skills").update(patch).eq("id", args.skill_id).eq("version_number", current.version_number).select("*").single();
-  if (error2 || !data) {
-    if (isSkillSlugUniqueViolation(error2 ?? {})) {
+    if (args.patch.name !== void 0) {
+      const candidate = args.patch.name.trim();
+      const dedup = await ctx.backend.checkContentDedup({
+        workspaceId: current.workspaceId,
+        kind: "skill",
+        candidate,
+        excludeId: args.skill_id,
+        maxSimilar: 0
+      });
+      if (dedup.duplicate) {
+        return {
+          ok: false,
+          error: {
+            code: "duplicate",
+            message: `Another skill in this workspace already uses this name: "${dedup.duplicate.title}". Pick a different name.`,
+            detail: { existing_id: dedup.duplicate.id, existing_name: dedup.duplicate.title }
+          }
+        };
+      }
+    }
+    let targetNodeId;
+    if (args.move_to_path) {
+      const target = await ctx.backend.ensureNodeForPath(current.workspaceId, args.move_to_path);
+      targetNodeId = target.id;
+    }
+    const updated = await ctx.backend.updateSkill({
+      id: args.skill_id,
+      name: args.patch.name !== void 0 ? args.patch.name.trim() : void 0,
+      content: args.patch.content,
+      description: args.patch.description,
+      source: args.patch.source,
+      githubUrl: args.patch.github_url,
+      tags: args.patch.tags,
+      nodeId: targetNodeId
+    });
+    return { ok: true, data: updated };
+  } catch (err) {
+    if (isSkillSlugUniqueViolation(err)) {
       return {
         ok: false,
         error: {
@@ -22446,67 +22447,36 @@ async function updateSkillHandler(ctx, args) {
         }
       };
     }
-    return { ok: false, error: mapSupabaseError(error2 ?? { message: "update failed" }) };
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  if (args.move_to_path) {
-    const target = await ensureNodeForPath(
-      ctx.supabase,
-      current.workspace_id,
-      args.move_to_path
-    );
-    if ("error" in target) {
-      return { ok: false, error: { code: "upstream_error", message: target.error } };
-    }
-    await ctx.supabase.from("node_skills").delete().eq("skill_id", args.skill_id);
-    const { error: attachErr } = await ctx.supabase.from("node_skills").insert({ node_id: target.id, skill_id: args.skill_id, is_active: true });
-    if (attachErr) {
-      return {
-        ok: false,
-        error: { code: "upstream_error", message: `reattach failed: ${attachErr.message}` }
-      };
-    }
-  }
-  return { ok: true, data: rowToSkill(data) };
 }
 async function deleteSkillHandler(ctx, args) {
-  if (args.hard) {
-    const { data: row, error: readErr } = await ctx.supabase.from("skills").select("id, workspace_id").eq("id", args.skill_id).maybeSingle();
-    if (readErr) return { ok: false, error: mapSupabaseError(readErr) };
-    if (!row)
-      return {
-        ok: false,
-        error: { code: "not_found", message: `Skill ${args.skill_id} not found` }
-      };
-    const { error: delErr } = await ctx.supabase.from("skills").delete().eq("id", args.skill_id);
-    if (delErr) return { ok: false, error: mapSupabaseError(delErr) };
-    return {
-      ok: true,
-      data: { id: row.id, workspaceId: row.workspace_id, hard: true }
-    };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const { data, error: error2 } = await ctx.supabase.rpc("delete_skill_rpc", {
-    p_skill_id: args.skill_id,
-    p_expected_version_id: args.expected_version_id ?? null
-  });
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  const result = data;
-  if (!result.ok) {
-    if (result.error === "conflict") {
+  try {
+    const res = await ctx.backend.deleteSkill({
+      id: args.skill_id,
+      hard: args.hard,
+      expectedVersionId: args.expected_version_id
+    });
+    if (res.status === "rejected") {
+      return { ok: false, error: mapRpcError(res.reason) };
+    }
+    if (res.status === "conflict") {
       return {
         ok: false,
         error: {
           code: "conflict",
           message: "Skill has been modified since you last read it.",
-          detail: { current_version_id: result.current_version_id }
+          detail: { current_version_id: res.currentVersionId }
         }
       };
     }
-    return { ok: false, error: mapRpcError(result.error) };
+    return { ok: true, data: { id: res.id, workspaceId: res.workspaceId, hard: !!args.hard } };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  return {
-    ok: true,
-    data: { id: result.id, workspaceId: result.workspace_id, hard: false }
-  };
 }
 
 // ../shared/src/skills/invocation.ts
@@ -22686,132 +22656,56 @@ function semanticTagsOrInfer(semanticTags, input) {
   return normalized.length > 0 ? normalized : inferSemanticTags(input);
 }
 
-// ../shared/src/tools/tree.ts
-function rowToTreeNode(row) {
-  return {
-    id: row.id,
-    workspaceId: row.workspace_id,
-    parentId: row.parent_id,
-    name: row.name,
-    type: row.type,
-    relativePath: row.relative_path,
-    orderIndex: row.order_index,
-    status: row.status,
-    orphanedAt: row.orphaned_at,
-    originalPath: row.original_path,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
-async function getTreeHandler(ctx, args) {
-  const { data, error: error2 } = await ctx.supabase.from("nodes").select("*").eq("workspace_id", args.workspace_id).order("order_index");
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  return { ok: true, data: (data ?? []).map((r) => rowToTreeNode(r)) };
-}
-async function getNodeHandler(ctx, args) {
-  const [nodeRes, memRes, ruleRes, skillRes] = await Promise.all([
-    ctx.supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("id", args.node_id).maybeSingle(),
-    ctx.supabase.from("memories").select("id").eq("node_id", args.node_id).eq("status", "active"),
-    ctx.supabase.from("node_rules").select("rule_id").eq("node_id", args.node_id),
-    ctx.supabase.from("node_skills").select("skill_id").eq("node_id", args.node_id).eq("is_active", true)
-  ]);
-  if (nodeRes.error) return { ok: false, error: mapSupabaseError(nodeRes.error) };
-  if (!nodeRes.data)
-    return { ok: false, error: { code: "not_found", message: `Node ${args.node_id} not found` } };
-  if (memRes.error) return { ok: false, error: mapSupabaseError(memRes.error) };
-  if (ruleRes.error) return { ok: false, error: mapSupabaseError(ruleRes.error) };
-  if (skillRes.error) return { ok: false, error: mapSupabaseError(skillRes.error) };
-  return {
-    ok: true,
-    data: {
-      id: nodeRes.data.id,
-      workspace_id: nodeRes.data.workspace_id,
-      parent_id: nodeRes.data.parent_id,
-      name: nodeRes.data.name,
-      type: nodeRes.data.type,
-      relative_path: nodeRes.data.relative_path,
-      memory_ids: (memRes.data ?? []).map((r) => r.id),
-      rule_ids: (ruleRes.data ?? []).map((r) => r.rule_id),
-      skill_ids: (skillRes.data ?? []).map((r) => r.skill_id)
-    }
-  };
-}
-function getPrimarySkillContent(row) {
-  const files = Array.isArray(row.skill_files) ? row.skill_files : row.skill_files ? [row.skill_files] : [];
-  const primary = files.find((file) => file.path === "SKILL.md") ?? files.find((file) => file.role === "primary");
-  return primary?.content ?? row.content ?? "";
-}
-async function getWorkspaceOverviewHandler(ctx, args) {
-  const [nodesRes, memRes, ruleRes, skillRes] = await Promise.all([
-    ctx.supabase.from("nodes").select("id, relative_path").eq("workspace_id", args.workspace_id).eq("status", "active"),
-    ctx.supabase.from("memories").select("id, title, node_id, semantic_tags").eq("workspace_id", args.workspace_id).eq("status", "active").order("created_at", { ascending: true }),
-    ctx.supabase.from("node_rules").select("node_id, rules(id, name, content, scope_type, priority, semantic_tags)"),
-    ctx.supabase.from("node_skills").select("node_id, is_active, skills(id, name, description, source, tags, semantic_tags)").eq("is_active", true)
-  ]);
-  if (nodesRes.error) return { ok: false, error: mapSupabaseError(nodesRes.error) };
-  if (memRes.error) return { ok: false, error: mapSupabaseError(memRes.error) };
-  if (ruleRes.error) return { ok: false, error: mapSupabaseError(ruleRes.error) };
-  if (skillRes.error) return { ok: false, error: mapSupabaseError(skillRes.error) };
+// ../shared/src/tools/overview.ts
+function buildWorkspaceOverview(input) {
   const pathByNode = /* @__PURE__ */ new Map();
-  for (const n of nodesRes.data ?? []) {
-    pathByNode.set(n.id, n.relative_path);
-  }
+  for (const n of input.nodes) pathByNode.set(n.id, n.relativePath);
   const bucketByNode = /* @__PURE__ */ new Map();
-  function bucket(nodeId) {
+  const bucket = (nodeId) => {
     let b = bucketByNode.get(nodeId);
     if (!b) {
       b = { memories: [], rules: [], skills: [] };
       bucketByNode.set(nodeId, b);
     }
     return b;
-  }
-  for (const m of memRes.data ?? []) {
-    bucket(m.node_id).memories.push({
+  };
+  for (const m of input.memories) {
+    bucket(m.nodeId).memories.push({
       id: m.id,
       title: m.title,
-      semantic_tags: semanticTagsOrInfer(m.semantic_tags, {
+      semantic_tags: semanticTagsOrInfer(m.semanticTags, {
         text: m.title,
-        path: pathByNode.get(m.node_id)
+        path: pathByNode.get(m.nodeId)
       })
     });
   }
-  for (const row of ruleRes.data ?? []) {
-    const raw = row.rules;
-    const one = Array.isArray(raw) ? raw[0] : raw;
-    if (!one) continue;
-    const r = one;
-    const nodeId = row.node_id;
-    bucket(nodeId).rules.push({
+  for (const r of input.rules) {
+    bucket(r.nodeId).rules.push({
       id: r.id,
       name: r.name,
-      scope_type: r.scope_type,
+      scope_type: r.scopeType,
       priority: r.priority,
-      semantic_tags: semanticTagsOrInfer(r.semantic_tags, {
+      semantic_tags: semanticTagsOrInfer(r.semanticTags, {
         text: `${r.name} ${r.content ?? ""}`,
-        path: pathByNode.get(nodeId)
+        path: pathByNode.get(r.nodeId)
       })
     });
   }
-  for (const row of skillRes.data ?? []) {
-    const raw = row.skills;
-    const one = Array.isArray(raw) ? raw[0] : raw;
-    if (!one) continue;
-    const s = one;
-    const nodeId = row.node_id;
-    bucket(nodeId).skills.push({
+  for (const s of input.skills) {
+    bucket(s.nodeId).skills.push({
       id: s.id,
       name: s.name,
       source: s.source,
-      semantic_tags: semanticTagsOrInfer(s.semantic_tags, {
+      semantic_tags: semanticTagsOrInfer(s.semanticTags, {
         text: `${s.name} ${s.description ?? ""}`,
-        path: pathByNode.get(nodeId),
+        path: pathByNode.get(s.nodeId),
         existingTags: s.tags
       })
     });
   }
   const out = [];
   for (const [nodeId, b] of bucketByNode.entries()) {
-    if (args.exclude_node_id && nodeId === args.exclude_node_id) continue;
+    if (input.excludeNodeId && nodeId === input.excludeNodeId) continue;
     const path = pathByNode.get(nodeId);
     if (!path) continue;
     if (b.memories.length === 0 && b.rules.length === 0 && b.skills.length === 0) continue;
@@ -22824,7 +22718,46 @@ async function getWorkspaceOverviewHandler(ctx, args) {
     });
   }
   out.sort((a, b) => a.relative_path.localeCompare(b.relative_path));
-  return { ok: true, data: out };
+  return out;
+}
+
+// ../shared/src/tools/tree.ts
+async function getTreeHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    return { ok: true, data: await ctx.backend.getTree(args.workspace_id) };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
+}
+async function getNodeHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const d = await ctx.backend.getNodeDetail(args.node_id);
+    if (!d) {
+      return { ok: false, error: { code: "not_found", message: `Node ${args.node_id} not found` } };
+    }
+    return {
+      ok: true,
+      data: {
+        id: d.id,
+        workspace_id: d.workspaceId,
+        parent_id: d.parentId,
+        name: d.name,
+        type: d.type,
+        relative_path: d.relativePath,
+        memory_ids: d.memoryIds,
+        rule_ids: d.ruleIds,
+        skill_ids: d.skillIds
+      }
+    };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 function firstSentencePreview(md, max = 160) {
   const stripped = md.replace(/`[^`]*`/g, "").replace(/#+\s*/g, "").replace(/[*_~]+/g, "").trim();
@@ -22832,19 +22765,16 @@ function firstSentencePreview(md, max = 160) {
   const slice = dot > 0 && dot < max ? stripped.slice(0, dot + 1) : stripped.slice(0, max);
   return slice.length < stripped.length ? `${slice}\u2026` : slice;
 }
-async function resolveInvokedSkillsForContext(supabase, workspaceId, userIntent) {
+function matchInvokedSkills(skills, userIntent) {
   const markers = extractSkillInvocationMarkers(userIntent ?? "");
   if (markers.length === 0) {
     return { invokedSkills: [], missingInvokedSkills: [] };
   }
-  const { data, error: error2 } = await supabase.from("skills").select("id, name, description, content, source, github_url, skill_files(path, content, role)").eq("workspace_id", workspaceId).is("deleted_at", null);
-  if (error2) throw new Error(`skill invocation lookup failed: ${error2.message}`);
   const byName = /* @__PURE__ */ new Map();
-  for (const row of data ?? []) {
-    const raw = row;
-    if (!raw.name) continue;
-    const key = normalizeSkillInvocationName(raw.name);
-    byName.set(key, [...byName.get(key) ?? [], row]);
+  for (const skill of skills) {
+    if (!skill.name) continue;
+    const key = normalizeSkillInvocationName(skill.name);
+    byName.set(key, [...byName.get(key) ?? [], skill]);
   }
   const invokedSkills = [];
   const missingInvokedSkills = [];
@@ -22858,115 +22788,210 @@ async function resolveInvokedSkillsForContext(supabase, workspaceId, userIntent)
       missingInvokedSkills.push({ name: marker.name, reason: "duplicate" });
       continue;
     }
-    const row = matches[0];
+    const skill = matches[0];
     invokedSkills.push({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      content: getPrimarySkillContent(row),
-      source: row.source,
-      githubUrl: row.github_url,
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      content: skill.content,
+      source: skill.source,
+      githubUrl: skill.githubUrl,
       nodeRelativePath: null
     });
   }
   return { invokedSkills, missingInvokedSkills };
 }
 async function getContextHandler(ctx, args) {
-  const skillInvocation = await resolveInvokedSkillsForContext(
-    ctx.supabase,
-    args.workspace_id,
-    args.user_intent
-  );
-  const { data: node, error: nodeErr } = await ctx.supabase.from("nodes").select("id, name, relative_path").eq("workspace_id", args.workspace_id).eq("relative_path", args.relative_path).maybeSingle();
-  if (nodeErr) return { ok: false, error: mapSupabaseError(nodeErr) };
-  if (!node) {
-    const overview = await getWorkspaceOverviewHandler(ctx, {
-      workspace_id: args.workspace_id
-    });
-    return {
-      ok: true,
-      data: {
-        resolved_workspace_path: args.relative_path || "/",
-        node: null,
-        memories: [],
-        rules: [],
-        skills: [],
-        workspace_overview: overview.ok ? overview.data : [],
-        invoked_skills: skillInvocation.invokedSkills.length > 0 ? skillInvocation.invokedSkills : void 0,
-        missing_invoked_skills: skillInvocation.missingInvokedSkills.length > 0 ? skillInvocation.missingInvokedSkills : void 0
-      }
-    };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const nodeId = node.id;
-  const [memRes, ruleRes, skillRes, overviewRes] = await Promise.all([
-    ctx.supabase.from("memories").select("id, title, content, semantic_tags").eq("node_id", nodeId).eq("status", "active").order("created_at", { ascending: true }),
-    ctx.supabase.from("node_rules").select("rules(id, name, content, scope_type, priority, semantic_tags)").eq("node_id", nodeId),
-    ctx.supabase.from("node_skills").select("skills(id, name, description, source, tags, semantic_tags)").eq("node_id", nodeId).eq("is_active", true),
-    getWorkspaceOverviewHandler(ctx, {
-      workspace_id: args.workspace_id,
-      exclude_node_id: nodeId
-    })
-  ]);
-  if (memRes.error) return { ok: false, error: mapSupabaseError(memRes.error) };
-  if (ruleRes.error) return { ok: false, error: mapSupabaseError(ruleRes.error) };
-  if (skillRes.error) return { ok: false, error: mapSupabaseError(skillRes.error) };
-  const memories = (memRes.data ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    preview: firstSentencePreview(r.content ?? ""),
-    semantic_tags: semanticTagsOrInfer(r.semantic_tags, {
-      text: `${r.title} ${(r.content ?? "").slice(0, 1e3)}`,
-      path: node.relative_path
-    })
-  }));
-  const rules = [];
-  for (const row of ruleRes.data ?? []) {
-    const raw = row.rules;
-    const one = Array.isArray(raw) ? raw[0] : raw;
-    if (!one) continue;
-    const r = one;
-    rules.push({
+  try {
+    const markers = extractSkillInvocationMarkers(args.user_intent ?? "");
+    const invocationSkills = markers.length > 0 ? await ctx.backend.listSkillsForInvocation(args.workspace_id) : [];
+    const skillInvocation = matchInvokedSkills(invocationSkills, args.user_intent);
+    const invokedSkills = skillInvocation.invokedSkills.length > 0 ? skillInvocation.invokedSkills : void 0;
+    const missingInvokedSkills = skillInvocation.missingInvokedSkills.length > 0 ? skillInvocation.missingInvokedSkills : void 0;
+    const node = await ctx.backend.findNodeByPath(args.workspace_id, args.relative_path);
+    if (!node) {
+      const overview2 = await ctx.backend.workspaceOverview(args.workspace_id);
+      return {
+        ok: true,
+        data: {
+          resolved_workspace_path: args.relative_path || "/",
+          node: null,
+          memories: [],
+          rules: [],
+          skills: [],
+          workspace_overview: overview2,
+          invoked_skills: invokedSkills,
+          missing_invoked_skills: missingInvokedSkills
+        }
+      };
+    }
+    const [content, overview] = await Promise.all([
+      ctx.backend.getNodeContent(node.id),
+      ctx.backend.workspaceOverview(args.workspace_id, node.id)
+    ]);
+    const memories = content.memories.map((m) => ({
+      id: m.id,
+      title: m.title,
+      preview: firstSentencePreview(m.content),
+      semantic_tags: semanticTagsOrInfer(m.semanticTags, {
+        text: `${m.title} ${m.content.slice(0, 1e3)}`,
+        path: node.relativePath
+      })
+    }));
+    const rules = content.rules.map((r) => ({
       id: r.id,
       name: r.name,
-      scope_type: r.scope_type,
+      scope_type: r.scopeType,
       priority: r.priority,
-      semantic_tags: semanticTagsOrInfer(r.semantic_tags, {
-        text: `${r.name} ${r.content ?? ""}`,
-        path: node.relative_path
+      semantic_tags: semanticTagsOrInfer(r.semanticTags, {
+        text: `${r.name} ${r.content}`,
+        path: node.relativePath
       })
-    });
-  }
-  const skills = [];
-  for (const row of skillRes.data ?? []) {
-    const raw = row.skills;
-    const one = Array.isArray(raw) ? raw[0] : raw;
-    if (!one) continue;
-    const s = one;
-    skills.push({
+    }));
+    const skills = content.skills.map((s) => ({
       id: s.id,
       name: s.name,
       description: s.description,
       source: s.source,
-      semantic_tags: semanticTagsOrInfer(s.semantic_tags, {
+      semantic_tags: semanticTagsOrInfer(s.semanticTags, {
         text: `${s.name} ${s.description ?? ""}`,
-        path: node.relative_path,
+        path: node.relativePath,
         existingTags: s.tags
       })
-    });
+    }));
+    return {
+      ok: true,
+      data: {
+        resolved_workspace_path: args.relative_path || node.relativePath,
+        node: { id: node.id, name: node.name, relative_path: node.relativePath },
+        memories,
+        rules,
+        skills,
+        workspace_overview: overview,
+        invoked_skills: invokedSkills,
+        missing_invoked_skills: missingInvokedSkills
+      }
+    };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
   }
-  return {
-    ok: true,
-    data: {
-      resolved_workspace_path: args.relative_path || node.relative_path,
-      node: { id: nodeId, name: node.name, relative_path: node.relative_path },
-      memories,
-      rules,
-      skills,
-      workspace_overview: overviewRes.ok ? overviewRes.data : [],
-      invoked_skills: skillInvocation.invokedSkills.length > 0 ? skillInvocation.invokedSkills : void 0,
-      missing_invoked_skills: skillInvocation.missingInvokedSkills.length > 0 ? skillInvocation.missingInvokedSkills : void 0
+}
+
+// ../shared/src/tools/node-path.ts
+function normalizeNodePath(raw) {
+  const trimmed = raw.trim();
+  if (trimmed === "" || trimmed === "/") return "/";
+  const withLead = trimmed.startsWith("/") ? trimmed : "/" + trimmed;
+  const collapsed = withLead.replace(/\/+/g, "/");
+  return collapsed === "/" ? "/" : collapsed.replace(/\/$/, "");
+}
+function guessLeafType(relativePath) {
+  const segments = relativePath.split("/").filter((s) => s.length > 0);
+  const last = segments[segments.length - 1] ?? "";
+  return /\.[A-Za-z0-9]{1,8}$/.test(last) ? "file" : "folder";
+}
+
+// ../shared/src/tools/nodes.ts
+async function ensureWorkspaceRootNode(supabase, workspaceId, workspaceName) {
+  const { data: existing, error: selectErr } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", "/").is("parent_id", null).maybeSingle();
+  if (selectErr) return { error: selectErr.message };
+  if (existing) return existing;
+  const { data, error: error2 } = await supabase.from("nodes").insert({
+    workspace_id: workspaceId,
+    parent_id: null,
+    name: workspaceName,
+    type: "folder",
+    relative_path: "/",
+    order_index: 0,
+    status: "active"
+  }).select("id, workspace_id, parent_id, name, type, relative_path").single();
+  if (error2 || !data) {
+    if (error2?.code === "23505") {
+      const { data: again } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", "/").is("parent_id", null).maybeSingle();
+      if (again) return again;
     }
-  };
+    return { error: error2?.message ?? "Root node insert failed" };
+  }
+  return data;
+}
+function pathFor(parentRelativePath, name) {
+  const prefix = parentRelativePath === "/" ? "" : parentRelativePath;
+  return prefix + "/" + name.trim();
+}
+async function selectByPath(supabase, workspaceId, relativePath) {
+  const { data, error: error2 } = await supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("workspace_id", workspaceId).eq("relative_path", relativePath).maybeSingle();
+  if (error2) return { error: error2.message };
+  return data ?? null;
+}
+async function findOrCreateNodeForPath(supabase, workspaceId, rawRelativePath, leafType) {
+  const relativePath = normalizeNodePath(rawRelativePath);
+  if (relativePath === "/") {
+    const root2 = await selectByPath(supabase, workspaceId, "/");
+    if (root2 && !("error" in root2)) return root2;
+    return { error: "Workspace root node missing \u2014 call ensureWorkspaceRootNode first." };
+  }
+  const existing = await selectByPath(supabase, workspaceId, relativePath);
+  if (existing && !("error" in existing)) return existing;
+  if (existing && "error" in existing) return existing;
+  const root = await selectByPath(supabase, workspaceId, "/");
+  if (!root) {
+    return { error: "Workspace root node missing \u2014 call ensureWorkspaceRootNode first." };
+  }
+  if ("error" in root) return root;
+  const segments = relativePath.split("/").filter((s) => s.length > 0);
+  const resolvedLeafType = leafType ?? guessLeafType(relativePath);
+  let parent = root;
+  let cumulativePath = "";
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i];
+    cumulativePath += "/" + seg;
+    const isLeaf = i === segments.length - 1;
+    const type = isLeaf ? resolvedLeafType : "folder";
+    const existingHere = await selectByPath(supabase, workspaceId, cumulativePath);
+    if (existingHere && "error" in existingHere) return existingHere;
+    if (existingHere) {
+      parent = existingHere;
+      continue;
+    }
+    const { count } = await supabase.from("nodes").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("parent_id", parent.id);
+    const { data, error: error2 } = await supabase.from("nodes").insert({
+      workspace_id: workspaceId,
+      parent_id: parent.id,
+      name: seg,
+      type,
+      relative_path: pathFor(parent.relative_path, seg),
+      order_index: count ?? 0,
+      status: "active"
+    }).select("id, workspace_id, parent_id, name, type, relative_path").single();
+    if (error2 || !data) {
+      if (error2?.code === "23505") {
+        const again = await selectByPath(supabase, workspaceId, cumulativePath);
+        if (again && !("error" in again)) {
+          parent = again;
+          continue;
+        }
+      }
+      return { error: error2?.message ?? `Insert failed at ${cumulativePath}` };
+    }
+    parent = data;
+  }
+  return parent;
+}
+async function ensureNodeForPath(supabase, workspaceId, rawRelativePath, leafType) {
+  const relativePath = normalizeNodePath(rawRelativePath);
+  const rootCheck = await selectByPath(supabase, workspaceId, "/");
+  if (rootCheck && "error" in rootCheck) return rootCheck;
+  if (!rootCheck) {
+    const { data: ws, error: wsErr } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
+    if (wsErr) return { error: wsErr.message };
+    const wsName = ws?.name ?? "Workspace";
+    const ensured = await ensureWorkspaceRootNode(supabase, workspaceId, wsName);
+    if ("error" in ensured) return ensured;
+  }
+  return findOrCreateNodeForPath(supabase, workspaceId, relativePath, leafType);
 }
 
 // ../shared/src/tools/activity-log.ts
@@ -22979,14 +23004,7 @@ var VALID_DOMAINS = [
   "test",
   "docs"
 ];
-var VALID_ACTIONS = [
-  "create",
-  "update",
-  "fix",
-  "refactor",
-  "delete",
-  "style"
-];
+var VALID_ACTIONS = ["create", "update", "fix", "refactor", "delete", "style"];
 var VALID_SCOPES = [
   "component",
   "page",
@@ -23015,86 +23033,45 @@ function normalizeActivityFriction(input) {
   };
 }
 async function writeActivityLog(ctx, input) {
-  const subjects = [...new Set(
-    input.subjects.map((s) => s.toLowerCase().trim()).filter(Boolean)
-  )].slice(0, 5);
-  const friction = normalizeActivityFriction(input.friction);
-  const { data, error: error2 } = await ctx.supabase.from("activity_logs").insert({
-    workspace_id: input.workspaceId,
-    user_id: ctx.userId,
-    node_path: input.nodePath || "/",
+  if (!ctx.backend) throw new Error("No backend configured.");
+  if (await ctx.backend.isDemoWorkspace(input.workspaceId)) {
+    throw new Error(DEMO_READONLY_MESSAGE);
+  }
+  const rec = await ctx.backend.logActivity({
+    workspaceId: input.workspaceId,
+    nodePath: input.nodePath,
     domain: input.domain,
     action: input.action,
     scope: input.scope,
-    subjects,
-    task_summary: input.taskSummary,
-    files_touched: input.filesTouched,
-    ai_client: input.aiClient ?? "claude-code",
-    session_id: input.sessionId ?? null,
-    ...friction
-  }).select().single();
-  if (error2) throw error2;
-  const row = data;
-  const applied = (input.appliedMemoryIds ?? []).map((id) => id?.trim()).filter((id) => Boolean(id));
-  if (applied.length > 0 && input.sessionId) {
-    try {
-      await ctx.supabase.rpc("pathrule_record_applied_memories", {
-        p_workspace_id: input.workspaceId,
-        p_session_id: input.sessionId,
-        p_applied_memory_ids: applied,
-        p_activity_id: row.id
-      });
-    } catch {
-    }
-  }
-  return row;
-}
-
-// ../shared/src/notifications/emit.ts
-async function emitNotification(args) {
-  if (args.recipientUserIds.length === 0) {
-    return { ok: true, skipped: "empty_recipients" };
-  }
-  const { error: error2 } = await args.supabase.rpc("emit_notification", {
-    p_event_type: args.eventType,
-    p_workspace_id: args.workspaceId,
-    p_actor_user_id: args.actorUserId,
-    p_payload: args.payload,
-    p_recipient_user_ids: args.recipientUserIds
+    subjects: input.subjects,
+    taskSummary: input.taskSummary,
+    filesTouched: input.filesTouched,
+    aiClient: input.aiClient,
+    sessionId: input.sessionId,
+    friction: input.friction,
+    appliedMemoryIds: input.appliedMemoryIds
   });
-  if (error2) {
-    console.warn(
-      `[notifications:emit] ${args.eventType} failed:`,
-      error2.message
-    );
-    return { ok: false, error: error2.message };
-  }
-  return { ok: true };
-}
-async function resolveWorkspaceAdmins(supabase, workspaceId, excludeUserId = null) {
-  const { data: ws } = await supabase.from("workspaces").select("organization_id").eq("id", workspaceId).maybeSingle();
-  if (!ws) return [];
-  const { data, error: error2 } = await supabase.from("organization_members").select("user_id, role").eq("organization_id", ws.organization_id).in("role", ["owner", "admin"]);
-  if (error2 || !data) return [];
-  const ids = /* @__PURE__ */ new Set();
-  for (const row of data) {
-    if (excludeUserId != null && row.user_id === excludeUserId) continue;
-    ids.add(row.user_id);
-  }
-  return Array.from(ids);
-}
-
-// ../shared/src/tools/refreshes.ts
-async function lookupSubjectCreatorAndTitle(supabase, subjectType, subjectId) {
-  const table = subjectType === "memory" ? "memories" : "rules";
-  const titleCol = subjectType === "memory" ? "title" : "name";
-  const { data } = await supabase.from(table).select(`created_by, ${titleCol}`).eq("id", subjectId).maybeSingle();
-  if (!data) return { creatorId: null, title: "" };
   return {
-    creatorId: data.created_by ?? null,
-    title: data[titleCol] ?? ""
+    id: rec.id,
+    workspace_id: rec.workspaceId,
+    node_path: rec.nodePath,
+    domain: rec.domain,
+    action: rec.action,
+    scope: rec.scope,
+    subjects: rec.subjects,
+    task_summary: rec.taskSummary,
+    files_touched: rec.filesTouched,
+    ai_client: rec.aiClient,
+    detail_level: rec.detailLevel ?? "standard",
+    status: rec.status ?? "active",
+    created_at: rec.createdAt,
+    tool_call_count: rec.toolCallCount,
+    tool_failure_count: rec.toolFailureCount,
+    tool_failure_codes: rec.toolFailureCodes
   };
 }
+
+// ../shared/src/tools/refresh-types.ts
 function rowToRefresh(row) {
   return {
     id: row.id,
@@ -23114,120 +23091,62 @@ function rowToRefresh(row) {
     brief: row.brief ?? {}
   };
 }
+
+// ../shared/src/tools/refreshes.ts
 async function listPendingRefreshesHandler(ctx, args) {
-  const statuses = args.include_in_progress ? ["pending", "in_progress"] : ["pending"];
-  const { data, error: error2 } = await ctx.supabase.from("suggestion_refreshes").select("id, subject_type, subject_id, formula_id, status, created_at, brief").eq("workspace_id", args.workspace_id).in("status", statuses).order("created_at", { ascending: true });
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  const rows = data ?? [];
-  const summaries = rows.map((r) => {
-    const brief = r.brief ?? {};
-    return {
-      id: r.id,
-      subjectType: r.subject_type,
-      subjectId: r.subject_id,
-      subjectTitle: brief.subject?.title ?? "(unknown)",
-      nodePath: brief.subject?.nodePath ?? "/",
-      formulaId: r.formula_id,
-      humanReason: brief.signal?.humanReason ?? r.formula_id,
-      status: r.status,
-      createdAt: r.created_at,
-      hasProposedPatch: !!brief.proposedPatch?.newBody
-    };
-  });
-  return { ok: true, data: summaries };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  try {
+    const data = await ctx.backend.listPendingRefreshes(
+      args.workspace_id,
+      args.include_in_progress
+    );
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: mapSupabaseError(err) };
+  }
 }
 async function getRefreshBriefHandler(ctx, args) {
-  const { data: row, error: error2 } = await ctx.supabase.from("suggestion_refreshes").select("*").eq("id", args.refresh_id).maybeSingle();
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  if (!row) {
-    return { ok: false, error: { code: "not_found", message: `Refresh ${args.refresh_id} not found` } };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const current = rowToRefresh(row);
-  if (current.status === "pending") {
-    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-    const { data: updated, error: updErr } = await ctx.supabase.from("suggestion_refreshes").update({
-      status: "in_progress",
-      claimed_at: nowIso,
-      claimed_by_ai: args.claimed_by ?? null
-    }).eq("id", args.refresh_id).eq("status", "pending").select("*").maybeSingle();
-    if (updErr) return { ok: false, error: mapSupabaseError(updErr) };
-    if (updated) return { ok: true, data: rowToRefresh(updated) };
+  try {
+    const data = await ctx.backend.getRefreshBrief(args.refresh_id, args.claimed_by);
+    return { ok: true, data };
+  } catch (err) {
+    const e = err;
+    if (e.message?.includes("not found")) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `Refresh ${args.refresh_id} not found` }
+      };
+    }
+    return { ok: false, error: mapSupabaseError(e) };
   }
-  return { ok: true, data: current };
 }
 async function resolveRefreshHandler(ctx, args) {
-  const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-  const { data, error: error2 } = await ctx.supabase.from("suggestion_refreshes").update({
-    status: args.status,
-    resolved_at: nowIso,
-    resolved_note: args.note ?? null,
-    ...args.claimed_by ? { claimed_by_ai: args.claimed_by } : {}
-  }).eq("id", args.refresh_id).select("*").maybeSingle();
-  if (error2) return { ok: false, error: mapSupabaseError(error2) };
-  if (!data) {
-    return { ok: false, error: { code: "not_found", message: `Refresh ${args.refresh_id} not found` } };
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
   }
-  const row = data;
-  if (row.suggestion_id) {
-    await ctx.supabase.from("suggestions").update({ resolved_at: nowIso }).eq("id", row.suggestion_id).is("resolved_at", null);
-  }
-  const days = args.status === "applied" ? 30 : 365;
-  const { data: userResp } = await ctx.supabase.auth.getUser();
-  const userId = userResp?.user?.id;
-  if (userId) {
-    await ctx.supabase.from("suggestion_dismissals").insert({
-      workspace_id: row.workspace_id,
-      subject_type: row.subject_type,
-      subject_id: row.subject_id,
-      formula_id: row.formula_id,
-      action: "keep",
-      dismiss_count: 1,
-      next_recheck_at: new Date(Date.now() + days * 864e5).toISOString(),
-      user_id: userId
-    });
-  }
-  if (args.status === "applied" || args.status === "rejected") {
-    try {
-      const eventType = args.status === "applied" ? "suggestion.applied" : "suggestion.rejected";
-      const subjectType = row.subject_type;
-      const subjectId = row.subject_id;
-      const workspaceId = row.workspace_id;
-      const { creatorId, title } = await lookupSubjectCreatorAndTitle(
-        ctx.supabase,
-        subjectType,
-        subjectId
-      );
-      const admins = await resolveWorkspaceAdmins(
-        ctx.supabase,
-        workspaceId,
-        ctx.userId
-      );
-      const recipientSet = /* @__PURE__ */ new Set();
-      if (creatorId && creatorId !== ctx.userId) recipientSet.add(creatorId);
-      for (const a of admins) recipientSet.add(a);
-      const payload = {
-        subject_type: subjectType,
-        subject_title: title
+  try {
+    const data = await ctx.backend.resolveRefresh(
+      args.refresh_id,
+      args.status,
+      args.note,
+      args.claimed_by
+    );
+    return { ok: true, data };
+  } catch (err) {
+    const e = err;
+    if (e.message?.includes("not found")) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `Refresh ${args.refresh_id} not found` }
       };
-      if (args.status === "rejected" && args.note) {
-        payload.reason = args.note;
-      }
-      const r = await emitNotification({
-        supabase: ctx.supabase,
-        eventType,
-        workspaceId,
-        actorUserId: ctx.userId,
-        payload,
-        recipientUserIds: Array.from(recipientSet)
-      });
-      if (!r.ok) {
-        console.warn(`[notifications:emit] suggestion resolution failed: ${r.error}`);
-      }
-    } catch (err) {
-      console.warn("[notifications:emit] suggestion resolution threw:", err);
     }
+    return { ok: false, error: mapSupabaseError(e) };
   }
-  return { ok: true, data: rowToRefresh(row) };
 }
 
 // ../shared/src/claude-md-project.ts
@@ -23314,12 +23233,1128 @@ var CODEX_TOML_BLOCK = [
   ""
 ].join("\n");
 
+// ../shared/src/intelligence/co-change.ts
+var MAX_COUPLED_NODES = 15;
+async function findCoupledNodes(supabase, workspaceId, seedNodeIds, seedPaths, options = { changeLogCount: 100 }) {
+  if (seedNodeIds.length === 0 && seedPaths.length === 0) return [];
+  const gitDecay = options.changeLogCount < 5 ? 1 : options.changeLogCount <= 50 ? 0.5 : 0.3;
+  const results = [];
+  if (seedNodeIds.length > 0) {
+    const { data: nodeEdgesA } = await supabase.from("co_change_weights").select("node_a, node_b, path_a, path_b, weight, source").eq("workspace_id", workspaceId).in("node_a", seedNodeIds);
+    const { data: nodeEdgesB } = await supabase.from("co_change_weights").select("node_a, node_b, path_a, path_b, weight, source").eq("workspace_id", workspaceId).in("node_b", seedNodeIds);
+    if (nodeEdgesA) results.push(...nodeEdgesA);
+    if (nodeEdgesB) results.push(...nodeEdgesB);
+  }
+  if (seedPaths.length > 0) {
+    const { data: pathEdgesA } = await supabase.from("co_change_weights").select("node_a, node_b, path_a, path_b, weight, source").eq("workspace_id", workspaceId).in("path_a", seedPaths);
+    const { data: pathEdgesB } = await supabase.from("co_change_weights").select("node_a, node_b, path_a, path_b, weight, source").eq("workspace_id", workspaceId).in("path_b", seedPaths);
+    if (pathEdgesA) results.push(...pathEdgesA);
+    if (pathEdgesB) results.push(...pathEdgesB);
+  }
+  if (results.length === 0) return [];
+  const seedNodeSet = new Set(seedNodeIds);
+  const seedPathSet = new Set(seedPaths);
+  const neighborWeights = /* @__PURE__ */ new Map();
+  for (const edge of results) {
+    const effectiveWeight = edge.source === "git" ? edge.weight * gitDecay : edge.weight;
+    const pairs = [];
+    if (edge.node_a && !seedNodeSet.has(edge.node_a)) {
+      pairs.push({ nodeId: edge.node_a, path: edge.path_a });
+    }
+    if (edge.node_b && !seedNodeSet.has(edge.node_b)) {
+      pairs.push({ nodeId: edge.node_b, path: edge.path_b });
+    }
+    if (edge.path_a && !seedPathSet.has(edge.path_a) && !edge.node_a) {
+      pairs.push({ nodeId: null, path: edge.path_a });
+    }
+    if (edge.path_b && !seedPathSet.has(edge.path_b) && !edge.node_b) {
+      pairs.push({ nodeId: null, path: edge.path_b });
+    }
+    for (const neighbor of pairs) {
+      const key = neighbor.nodeId ?? neighbor.path ?? "";
+      if (!key) continue;
+      const existing = neighborWeights.get(key);
+      if (!existing || effectiveWeight > existing.weight) {
+        neighborWeights.set(key, {
+          weight: effectiveWeight,
+          nodeId: neighbor.nodeId,
+          path: neighbor.path ?? key
+        });
+      }
+    }
+  }
+  const sorted = [...neighborWeights.values()].sort((a, b) => b.weight - a.weight).slice(0, MAX_COUPLED_NODES);
+  const nodeIdsToResolve = sorted.map((s) => s.nodeId).filter(Boolean);
+  const nodeMap = /* @__PURE__ */ new Map();
+  if (nodeIdsToResolve.length > 0) {
+    const { data: nodes } = await supabase.from("nodes").select("id, name, relative_path").in("id", nodeIdsToResolve);
+    for (const n of nodes ?? []) {
+      nodeMap.set(n.id, { name: n.name, relative_path: n.relative_path });
+    }
+  }
+  return sorted.map((s) => {
+    const node = s.nodeId ? nodeMap.get(s.nodeId) : null;
+    return {
+      node_id: s.nodeId ?? "",
+      path: node?.relative_path ?? s.path,
+      name: node?.name ?? s.path.split("/").pop() ?? s.path,
+      memory_titles: [],
+      rule_names: [],
+      skill_names: [],
+      match_source: "co_change",
+      relevance: Math.min(1, s.weight / 10)
+      // Normalize: weight 10+ → relevance 1.0
+    };
+  });
+}
+
+// ../shared/src/intelligence/memory-context-paths.ts
+async function recordMemoryContextPaths(supabase, memoryId, workspaceId) {
+  const { data: logs } = await supabase.from("change_log").select("entity_id, entity_type, node_id").eq("workspace_id", workspaceId).gte("created_at", new Date(Date.now() - 30 * 60 * 1e3).toISOString()).not("node_id", "is", null);
+  if (!logs || logs.length === 0) return;
+  const nodeIds = [...new Set(logs.map((l) => l.node_id).filter(Boolean))];
+  if (nodeIds.length === 0) return;
+  const { data: nodes } = await supabase.from("nodes").select("id, relative_path").in("id", nodeIds);
+  if (!nodes || nodes.length === 0) return;
+  const paths = [...new Set(nodes.map((n) => n.relative_path))];
+  if (paths.length === 0) return;
+  const rows = paths.map((path) => ({ memory_id: memoryId, path }));
+  await supabase.from("memory_context_paths").upsert(rows, { onConflict: "memory_id,path" });
+}
+
 // ../shared/src/intelligence/recent-session.ts
 var SESSION_WINDOW_MS = 2 * 60 * 60 * 1e3;
+
+// ../shared/src/intelligence/hot-paths.ts
+var HOT_PATHS_WINDOW_DAYS = 7;
+var HOT_PATHS_LIMIT = 5;
+async function getHotPaths(supabase, workspaceId) {
+  const since = new Date(Date.now() - HOT_PATHS_WINDOW_DAYS * 24 * 60 * 60 * 1e3).toISOString();
+  const { data: logs } = await supabase.from("change_log").select("node_id").eq("workspace_id", workspaceId).gte("created_at", since).not("node_id", "is", null);
+  if (!logs || logs.length === 0) return [];
+  const counts = /* @__PURE__ */ new Map();
+  for (const log of logs) {
+    if (!log.node_id) continue;
+    counts.set(log.node_id, (counts.get(log.node_id) ?? 0) + 1);
+  }
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, HOT_PATHS_LIMIT);
+  if (sorted.length === 0) return [];
+  const nodeIds = sorted.map(([id]) => id);
+  const { data: nodes } = await supabase.from("nodes").select("id, relative_path").in("id", nodeIds);
+  if (!nodes) return [];
+  const pathMap = /* @__PURE__ */ new Map();
+  for (const n of nodes) pathMap.set(n.id, n.relative_path);
+  return sorted.map(([nodeId, count]) => {
+    const path = pathMap.get(nodeId);
+    if (!path) return null;
+    return { path, change_count: count };
+  }).filter((h) => h !== null);
+}
+
+// ../shared/src/skills/agent-targets.ts
+var AGENT_TARGETS = {
+  "claude-code": {
+    id: "claude-code",
+    label: "Claude Code",
+    skillsDir: ".claude/skills",
+    detectFile: ".claude",
+    supported: true
+  },
+  cursor: {
+    id: "cursor",
+    label: "Cursor",
+    skillsDir: ".cursor/skills",
+    detectFile: ".cursor",
+    supported: true
+  },
+  windsurf: {
+    id: "windsurf",
+    label: "Windsurf",
+    skillsDir: ".windsurf/skills",
+    detectFile: ".windsurf",
+    supported: true
+  },
+  codex: {
+    id: "codex",
+    label: "Codex",
+    skillsDir: ".codex/skills",
+    detectFile: ".codex",
+    supported: true
+  },
+  copilot: {
+    id: "copilot",
+    label: "GitHub Copilot",
+    skillsDir: ".github/skills",
+    detectFile: ".github/copilot-instructions.md",
+    supported: true,
+    skillsSatisfiedBy: ["claude-code"]
+  }
+};
 
 // ../shared/src/skills/package-types.ts
 var SKILL_PACKAGE_MAX_TOTAL_BYTES = 1024 * 1024;
 var SKILL_PACKAGE_MAX_FILE_BYTES = 256 * 1024;
+
+// ../shared/src/notifications/emit.ts
+async function emitNotification(args) {
+  if (args.recipientUserIds.length === 0) {
+    return { ok: true, skipped: "empty_recipients" };
+  }
+  const { error: error2 } = await args.supabase.rpc("emit_notification", {
+    p_event_type: args.eventType,
+    p_workspace_id: args.workspaceId,
+    p_actor_user_id: args.actorUserId,
+    p_payload: args.payload,
+    p_recipient_user_ids: args.recipientUserIds
+  });
+  if (error2) {
+    console.warn(`[notifications:emit] ${args.eventType} failed:`, error2.message);
+    return { ok: false, error: error2.message };
+  }
+  return { ok: true };
+}
+async function resolveWorkspaceAdmins(supabase, workspaceId, excludeUserId = null) {
+  const { data: ws } = await supabase.from("workspaces").select("organization_id").eq("id", workspaceId).maybeSingle();
+  if (!ws) return [];
+  const { data, error: error2 } = await supabase.from("organization_members").select("user_id, role").eq("organization_id", ws.organization_id).in("role", ["owner", "admin"]);
+  if (error2 || !data) return [];
+  const ids = /* @__PURE__ */ new Set();
+  for (const row of data) {
+    if (excludeUserId != null && row.user_id === excludeUserId) continue;
+    ids.add(row.user_id);
+  }
+  return Array.from(ids);
+}
+
+// ../cloud-backend/src/cloud-backend.ts
+var WORK_EPISODE_REFRESH_WINDOW_MS = 30 * 24 * 60 * 60 * 1e3;
+var WORK_EPISODE_REFRESH_MIN_INTERVAL_MS = 6e4;
+var lastWorkEpisodeRefreshAt = /* @__PURE__ */ new Map();
+function shouldRefreshWorkEpisodes(workspaceId) {
+  const now = Date.now();
+  const last = lastWorkEpisodeRefreshAt.get(workspaceId) ?? 0;
+  if (now - last < WORK_EPISODE_REFRESH_MIN_INTERVAL_MS) return false;
+  lastWorkEpisodeRefreshAt.set(workspaceId, now);
+  return true;
+}
+var CloudBackend = class {
+  supabase;
+  userId;
+  _routeIntent;
+  _semanticCandidates;
+  _resolveWorkspaceFromCwd;
+  _closestNode;
+  constructor(session) {
+    this.supabase = session.supabase;
+    this.userId = session.userId;
+    this._routeIntent = session.routeIntent;
+    this._semanticCandidates = session.semanticCandidates;
+    this._resolveWorkspaceFromCwd = session.resolveWorkspaceFromCwd;
+    this._closestNode = session.closestNode;
+  }
+  // ── lifecycle ──────────────────────────────────────────────────────────
+  async sessionIsCurrent() {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_session_is_current");
+    if (error2) return false;
+    return data === true;
+  }
+  // ── memory CRUD ──────────────────────────────────────────────────────────
+  toMemory(r) {
+    return {
+      id: r.id,
+      workspaceId: r.workspace_id,
+      nodeId: r.node_id,
+      title: r.title,
+      content: r.content,
+      source: r.source,
+      versionId: r.version_id,
+      versionNumber: r.version_number,
+      createdBy: r.created_by,
+      lastEditedBy: r.last_edited_by,
+      lastEditedAt: r.last_edited_at,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    };
+  }
+  async readMemory(id) {
+    const { data, error: error2 } = await this.supabase.from("memories").select("*").eq("id", id).maybeSingle();
+    if (error2) throw error2;
+    return data ? this.toMemory(data) : null;
+  }
+  async writeMemory(input) {
+    const { data, error: error2 } = await this.supabase.from("memories").insert({
+      workspace_id: input.workspaceId,
+      node_id: input.nodeId ?? null,
+      title: input.title,
+      content: input.content,
+      source: input.source ?? "claude",
+      created_by: this.userId,
+      last_edited_by: this.userId
+    }).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("memory insert failed");
+    return this.toMemory(data);
+  }
+  async updateMemory(input) {
+    const existing = await this.readMemory(input.id);
+    if (!existing) throw new Error(`memory ${input.id} not found`);
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const { data, error: error2 } = await this.supabase.from("memories").update({
+      title: input.title ?? existing.title,
+      content: input.content ?? existing.content,
+      node_id: input.nodeId ?? existing.nodeId,
+      last_edited_by: this.userId,
+      last_edited_at: nowIso,
+      updated_at: nowIso,
+      version_id: crypto.randomUUID(),
+      version_number: existing.versionNumber + 1
+    }).eq("id", input.id).eq("version_number", existing.versionNumber).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("memory update failed");
+    return this.toMemory(data);
+  }
+  async deleteMemory(input) {
+    if (input.hard) {
+      const { data: row, error: readErr } = await this.supabase.from("memories").select("id, workspace_id, node_id").eq("id", input.id).maybeSingle();
+      if (readErr) throw readErr;
+      if (!row) return { status: "rejected", reason: "not_found" };
+      const { error: delErr } = await this.supabase.from("memories").delete().eq("id", input.id);
+      if (delErr) throw delErr;
+      const r = row;
+      return { status: "deleted", id: r.id, workspaceId: r.workspace_id, nodeId: r.node_id };
+    }
+    const { data, error: error2 } = await this.supabase.rpc("delete_memory_rpc", {
+      p_memory_id: input.id,
+      p_expected_version_id: input.expectedVersionId ?? null
+    });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) {
+      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    }
+    return {
+      status: "deleted",
+      id: result.id,
+      workspaceId: result.workspace_id,
+      nodeId: result.node_id
+    };
+  }
+  async restoreMemory(id) {
+    const { data, error: error2 } = await this.supabase.rpc("restore_memory_rpc", { p_memory_id: id });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) return { status: "rejected", reason: result.error };
+    return {
+      status: "restored",
+      id: result.id,
+      workspaceId: result.workspace_id,
+      nodeId: result.node_id
+    };
+  }
+  async listMemories(query) {
+    let q = this.supabase.from("memories").select("*").eq("workspace_id", query.workspaceId).eq("status", query.status ?? "active");
+    if (query.nodeId !== void 0) q = q.eq("node_id", query.nodeId);
+    const { data, error: error2 } = await q.order("created_at", { ascending: true });
+    if (error2) throw error2;
+    return (data ?? []).map((r) => this.toMemory(r));
+  }
+  // ── rule CRUD ──────────────────────────────────────────────────────────────
+  toRule(r) {
+    return {
+      id: r.id,
+      workspaceId: r.workspace_id,
+      name: r.name,
+      content: r.content,
+      scopeType: r.scope_type,
+      priority: r.priority,
+      versionId: r.version_id,
+      versionNumber: r.version_number,
+      createdBy: r.created_by,
+      lastEditedBy: r.last_edited_by,
+      lastEditedAt: r.last_edited_at,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    };
+  }
+  async readRule(id) {
+    const { data, error: error2 } = await this.supabase.from("rules").select("*").eq("id", id).maybeSingle();
+    if (error2) throw error2;
+    return data ? this.toRule(data) : null;
+  }
+  async writeRule(input) {
+    const { data, error: error2 } = await this.supabase.from("rules").insert({
+      workspace_id: input.workspaceId,
+      name: input.name,
+      content: input.content,
+      scope_type: input.scopeType,
+      priority: input.priority ?? "medium",
+      created_by: this.userId,
+      last_edited_by: this.userId
+    }).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("rule insert failed");
+    const rule = this.toRule(data);
+    if (input.nodeId) {
+      const { error: attachErr } = await this.supabase.from("node_rules").insert({ node_id: input.nodeId, rule_id: rule.id });
+      if (attachErr) {
+        await this.supabase.from("rules").delete().eq("id", rule.id);
+        throw new Error(`attach failed: ${attachErr.message}`);
+      }
+    }
+    return rule;
+  }
+  async updateRule(input) {
+    const existing = await this.readRule(input.id);
+    if (!existing) throw new Error(`rule ${input.id} not found`);
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const { data, error: error2 } = await this.supabase.from("rules").update({
+      name: input.name ?? existing.name,
+      content: input.content ?? existing.content,
+      scope_type: input.scopeType ?? existing.scopeType,
+      priority: input.priority ?? existing.priority,
+      last_edited_by: this.userId,
+      last_edited_at: nowIso,
+      updated_at: nowIso,
+      version_id: crypto.randomUUID(),
+      version_number: existing.versionNumber + 1
+    }).eq("id", input.id).eq("version_number", existing.versionNumber).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("rule update failed");
+    if (input.nodeId) {
+      await this.supabase.from("node_rules").delete().eq("rule_id", input.id);
+      const { error: attachErr } = await this.supabase.from("node_rules").insert({ node_id: input.nodeId, rule_id: input.id });
+      if (attachErr) throw new Error(`reattach failed: ${attachErr.message}`);
+    }
+    return this.toRule(data);
+  }
+  async deleteRule(input) {
+    if (input.hard) {
+      const { data: row, error: readErr } = await this.supabase.from("rules").select("id, workspace_id").eq("id", input.id).maybeSingle();
+      if (readErr) throw readErr;
+      if (!row) return { status: "rejected", reason: "not_found" };
+      const { error: delErr } = await this.supabase.from("rules").delete().eq("id", input.id);
+      if (delErr) throw delErr;
+      const r = row;
+      return { status: "deleted", id: r.id, workspaceId: r.workspace_id, nodeId: null };
+    }
+    const { data, error: error2 } = await this.supabase.rpc("delete_rule_rpc", {
+      p_rule_id: input.id,
+      p_expected_version_id: input.expectedVersionId ?? null
+    });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) {
+      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    }
+    return { status: "deleted", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+  }
+  async restoreRule(id) {
+    const { data, error: error2 } = await this.supabase.rpc("restore_rule_rpc", { p_rule_id: id });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) return { status: "rejected", reason: result.error };
+    return { status: "restored", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+  }
+  async listRules(query) {
+    const { data, error: error2 } = await this.supabase.from("rules").select("*").eq("workspace_id", query.workspaceId).eq("status", query.status ?? "active");
+    if (error2) throw error2;
+    return (data ?? []).map((r) => this.toRule(r));
+  }
+  // ── skill CRUD ───────────────────────────────────────────────────────────────
+  toSkill(r) {
+    return {
+      id: r.id,
+      workspaceId: r.workspace_id,
+      name: r.name,
+      description: r.description,
+      content: r.content,
+      source: r.source,
+      githubUrl: r.github_url,
+      version: r.version,
+      tags: r.tags ?? [],
+      versionId: r.version_id,
+      versionNumber: r.version_number,
+      createdBy: r.created_by,
+      lastEditedBy: r.last_edited_by,
+      lastEditedAt: r.last_edited_at,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      contentFetchedAt: r.content_fetched_at
+    };
+  }
+  async readSkill(id) {
+    const { data, error: error2 } = await this.supabase.from("skills").select("*, skill_files(path, content, role)").eq("id", id).maybeSingle();
+    if (error2) throw error2;
+    if (!data) return null;
+    const skill = this.toSkill(data);
+    const files = data.skill_files;
+    const primary = files?.find((f) => f.path === "SKILL.md" || f.role === "primary");
+    return primary ? { ...skill, content: primary.content } : skill;
+  }
+  async getNodeForSkill(skillId) {
+    const { data, error: error2 } = await this.supabase.from("node_skills").select("node_id").eq("skill_id", skillId).limit(1).maybeSingle();
+    if (error2) throw error2;
+    if (!data) return null;
+    return this.getNode(data.node_id);
+  }
+  async ensureNodeForPath(workspaceId, path, leafType) {
+    const node = await ensureNodeForPath(this.supabase, workspaceId, path, leafType);
+    if ("error" in node) throw new Error(node.error);
+    return node;
+  }
+  // ── write guards / dedup ─────────────────────────────────────────────────
+  isDemoWorkspace(workspaceId) {
+    return isDemoWorkspaceDb(this.supabase, workspaceId);
+  }
+  async checkContentDedup(args) {
+    const res = await checkContentDedup(this.supabase, args);
+    return res.ok ? res.data : { duplicate: null, similar: [] };
+  }
+  async writeSkill(input) {
+    const source = input.source ?? "manual";
+    const { data, error: error2 } = await this.supabase.from("skills").insert({
+      workspace_id: input.workspaceId,
+      name: input.name,
+      description: input.description ?? null,
+      content: input.content,
+      source,
+      github_url: input.githubUrl ?? null,
+      tags: input.tags ?? [],
+      created_by: this.userId,
+      last_edited_by: this.userId,
+      content_fetched_at: source === "github_ref" ? (/* @__PURE__ */ new Date()).toISOString() : null
+    }).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("skill insert failed");
+    const skill = this.toSkill(data);
+    if (input.nodeId) {
+      const { error: attachErr } = await this.supabase.from("node_skills").insert({ node_id: input.nodeId, skill_id: skill.id, is_active: true });
+      if (attachErr) {
+        await this.supabase.from("skills").delete().eq("id", skill.id);
+        throw new Error(`attach failed: ${attachErr.message}`);
+      }
+    }
+    return skill;
+  }
+  async updateSkill(input) {
+    const existing = await this.readSkill(input.id);
+    if (!existing) throw new Error(`skill ${input.id} not found`);
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const patch = {
+      last_edited_by: this.userId,
+      last_edited_at: nowIso,
+      updated_at: nowIso,
+      version_id: crypto.randomUUID(),
+      version_number: existing.versionNumber + 1
+    };
+    if (input.name !== void 0) patch.name = input.name;
+    if (input.content !== void 0) patch.content = input.content;
+    if (input.description !== void 0) patch.description = input.description;
+    if (input.source !== void 0) patch.source = input.source;
+    if (input.githubUrl !== void 0) patch.github_url = input.githubUrl;
+    if (input.tags !== void 0) patch.tags = input.tags;
+    const effectiveSource = input.source ?? existing.source;
+    if (input.content !== void 0 && effectiveSource === "github_ref") {
+      patch.content_fetched_at = nowIso;
+    }
+    const { data, error: error2 } = await this.supabase.from("skills").update(patch).eq("id", input.id).eq("version_number", existing.versionNumber).select("*").single();
+    if (error2 || !data) throw error2 ?? new Error("skill update failed");
+    if (input.nodeId) {
+      await this.supabase.from("node_skills").delete().eq("skill_id", input.id);
+      const { error: attachErr } = await this.supabase.from("node_skills").insert({ node_id: input.nodeId, skill_id: input.id, is_active: true });
+      if (attachErr) throw new Error(`reattach failed: ${attachErr.message}`);
+    }
+    return this.toSkill(data);
+  }
+  async deleteSkill(input) {
+    if (input.hard) {
+      const { data: row, error: readErr } = await this.supabase.from("skills").select("id, workspace_id").eq("id", input.id).maybeSingle();
+      if (readErr) throw readErr;
+      if (!row) return { status: "rejected", reason: "not_found" };
+      const { error: delErr } = await this.supabase.from("skills").delete().eq("id", input.id);
+      if (delErr) throw delErr;
+      const r = row;
+      return { status: "deleted", id: r.id, workspaceId: r.workspace_id, nodeId: null };
+    }
+    const { data, error: error2 } = await this.supabase.rpc("delete_skill_rpc", {
+      p_skill_id: input.id,
+      p_expected_version_id: input.expectedVersionId ?? null
+    });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) {
+      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    }
+    return { status: "deleted", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+  }
+  async restoreSkill(id) {
+    const { data, error: error2 } = await this.supabase.rpc("restore_skill_rpc", { p_skill_id: id });
+    if (error2) throw error2;
+    const result = data;
+    if (!result.ok) return { status: "rejected", reason: result.error };
+    return { status: "restored", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+  }
+  async listSkills(query) {
+    const { data, error: error2 } = await this.supabase.from("skills").select("*").eq("workspace_id", query.workspaceId).eq("status", query.status ?? "active");
+    if (error2) throw error2;
+    return (data ?? []).map((r) => this.toSkill(r));
+  }
+  // ── tree ─────────────────────────────────────────────────────────────────────
+  toTreeNode(row) {
+    return {
+      id: row["id"],
+      workspaceId: row["workspace_id"],
+      parentId: row["parent_id"] ?? null,
+      name: row["name"],
+      type: row["type"],
+      relativePath: row["relative_path"],
+      orderIndex: row["order_index"],
+      status: row["status"],
+      orphanedAt: row["orphaned_at"] ?? null,
+      originalPath: row["original_path"] ?? null,
+      createdAt: row["created_at"],
+      updatedAt: row["updated_at"]
+    };
+  }
+  async getTree(workspaceId) {
+    const { data, error: error2 } = await this.supabase.from("nodes").select("*").eq("workspace_id", workspaceId).order("order_index", { ascending: true });
+    if (error2) throw error2;
+    return (data ?? []).map((r) => this.toTreeNode(r));
+  }
+  async getNode(nodeId) {
+    const { data, error: error2 } = await this.supabase.from("nodes").select("*").eq("id", nodeId).maybeSingle();
+    if (error2) throw error2;
+    return data ? this.toTreeNode(data) : null;
+  }
+  async getNodeDetail(nodeId) {
+    const [nodeRes, memRes, ruleRes, skillRes] = await Promise.all([
+      this.supabase.from("nodes").select("id, workspace_id, parent_id, name, type, relative_path").eq("id", nodeId).maybeSingle(),
+      this.supabase.from("memories").select("id").eq("node_id", nodeId).eq("status", "active"),
+      this.supabase.from("node_rules").select("rule_id").eq("node_id", nodeId),
+      this.supabase.from("node_skills").select("skill_id").eq("node_id", nodeId).eq("is_active", true)
+    ]);
+    if (nodeRes.error) throw nodeRes.error;
+    if (!nodeRes.data) return null;
+    if (memRes.error) throw memRes.error;
+    if (ruleRes.error) throw ruleRes.error;
+    if (skillRes.error) throw skillRes.error;
+    const n = nodeRes.data;
+    return {
+      id: n["id"],
+      workspaceId: n["workspace_id"],
+      parentId: n["parent_id"] ?? null,
+      name: n["name"],
+      type: n["type"],
+      relativePath: n["relative_path"],
+      memoryIds: (memRes.data ?? []).map((r) => r.id),
+      ruleIds: (ruleRes.data ?? []).map((r) => r.rule_id),
+      skillIds: (skillRes.data ?? []).map((r) => r.skill_id)
+    };
+  }
+  async workspaceOverview(workspaceId, excludeNodeId) {
+    const [nodesRes, memRes, ruleRes, skillRes] = await Promise.all([
+      this.supabase.from("nodes").select("id, relative_path").eq("workspace_id", workspaceId).eq("status", "active"),
+      this.supabase.from("memories").select("id, title, node_id, semantic_tags").eq("workspace_id", workspaceId).eq("status", "active").order("created_at", { ascending: true }),
+      this.supabase.from("node_rules").select("node_id, rules(id, name, content, scope_type, priority, semantic_tags)"),
+      this.supabase.from("node_skills").select("node_id, is_active, skills(id, name, description, source, tags, semantic_tags)").eq("is_active", true)
+    ]);
+    if (nodesRes.error) throw nodesRes.error;
+    if (memRes.error) throw memRes.error;
+    if (ruleRes.error) throw ruleRes.error;
+    if (skillRes.error) throw skillRes.error;
+    const memories = (memRes.data ?? []).map((m) => ({
+      id: m.id,
+      title: m.title,
+      nodeId: m.node_id,
+      semanticTags: m.semantic_tags
+    }));
+    const rules = (ruleRes.data ?? []).map((row) => {
+      const raw = row.rules;
+      const one = Array.isArray(raw) ? raw[0] : raw;
+      if (!one) return null;
+      return {
+        nodeId: row.node_id,
+        id: one.id,
+        name: one.name,
+        content: one.content,
+        scopeType: one.scope_type,
+        priority: one.priority,
+        semanticTags: one.semantic_tags
+      };
+    }).filter((r) => r !== null);
+    const skills = (skillRes.data ?? []).map((row) => {
+      const raw = row.skills;
+      const one = Array.isArray(raw) ? raw[0] : raw;
+      if (!one) return null;
+      return {
+        nodeId: row.node_id,
+        id: one.id,
+        name: one.name,
+        description: one.description,
+        source: one.source,
+        tags: one.tags,
+        semanticTags: one.semantic_tags
+      };
+    }).filter((s) => s !== null);
+    return buildWorkspaceOverview({
+      nodes: (nodesRes.data ?? []).map((n) => ({
+        id: n.id,
+        relativePath: n.relative_path
+      })),
+      memories,
+      rules,
+      skills,
+      excludeNodeId
+    });
+  }
+  async findNodeByPath(workspaceId, relativePath) {
+    const { data, error: error2 } = await this.supabase.from("nodes").select("id, name, relative_path").eq("workspace_id", workspaceId).eq("relative_path", relativePath).maybeSingle();
+    if (error2) throw error2;
+    if (!data) return null;
+    const n = data;
+    return { id: n.id, name: n.name, relativePath: n.relative_path };
+  }
+  async getNodeContent(nodeId) {
+    const [memRes, ruleRes, skillRes] = await Promise.all([
+      this.supabase.from("memories").select("id, title, content, semantic_tags").eq("node_id", nodeId).eq("status", "active").order("created_at", { ascending: true }),
+      this.supabase.from("node_rules").select("rules(id, name, content, scope_type, priority, semantic_tags)").eq("node_id", nodeId),
+      this.supabase.from("node_skills").select("skills(id, name, description, source, tags, semantic_tags)").eq("node_id", nodeId).eq("is_active", true)
+    ]);
+    if (memRes.error) throw memRes.error;
+    if (ruleRes.error) throw ruleRes.error;
+    if (skillRes.error) throw skillRes.error;
+    const memories = (memRes.data ?? []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      content: r.content ?? "",
+      semanticTags: r.semantic_tags
+    }));
+    const rules = (ruleRes.data ?? []).map((row) => {
+      const raw = row.rules;
+      const one = Array.isArray(raw) ? raw[0] : raw;
+      if (!one) return null;
+      return {
+        id: one.id,
+        name: one.name,
+        content: one.content ?? "",
+        scopeType: one.scope_type,
+        priority: one.priority,
+        semanticTags: one.semantic_tags
+      };
+    }).filter((r) => r !== null);
+    const skills = (skillRes.data ?? []).map((row) => {
+      const raw = row.skills;
+      const one = Array.isArray(raw) ? raw[0] : raw;
+      if (!one) return null;
+      return {
+        id: one.id,
+        name: one.name,
+        description: one.description,
+        source: one.source,
+        tags: one.tags,
+        semanticTags: one.semantic_tags
+      };
+    }).filter((s) => s !== null);
+    return { memories, rules, skills };
+  }
+  async listSkillsForInvocation(workspaceId) {
+    const { data, error: error2 } = await this.supabase.from("skills").select(
+      "id, name, description, content, source, github_url, skill_files(path, content, role)"
+    ).eq("workspace_id", workspaceId).is("deleted_at", null);
+    if (error2) throw error2;
+    return (data ?? []).map((row) => {
+      const r = row;
+      const primary = r.skill_files?.find((f) => f.path === "SKILL.md" || f.role === "primary");
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        content: primary?.content ?? r.content ?? "",
+        source: r.source,
+        githubUrl: r.github_url
+      };
+    });
+  }
+  async getNodeForRule(ruleId) {
+    const { data, error: error2 } = await this.supabase.from("node_rules").select("node_id").eq("rule_id", ruleId).limit(1).maybeSingle();
+    if (error2) throw error2;
+    if (!data) return null;
+    return this.getNode(data.node_id);
+  }
+  // ── context formulas ───────────────────────────────────────────────────────
+  // Wrap the Postgres "formula" RPCs (mcp-server/src/intelligence-rpc.ts). LocalBackend
+  // ports these to SQLite in Phase 3; here they delegate to the existing server-side RPCs.
+  async subtreeMemoryIndex(scope, limit) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_subtree_memory_index", {
+      p_workspace_id: scope.workspaceId,
+      p_root_path: scope.relativePath || "/",
+      p_limit: limit
+    });
+    if (error2) throw error2;
+    const obj = data ?? {};
+    const entries = (obj.entries ?? []).filter(
+      (e) => e && typeof e.id === "string" && typeof e.title === "string" && typeof e.node_path === "string"
+    ).map((e) => ({ id: e.id, title: e.title, node_path: e.node_path }));
+    return {
+      entries,
+      truncated: obj.truncated === true,
+      total: typeof obj.total === "number" ? obj.total : entries.length
+    };
+  }
+  // M52 Phase 3.3 — verbatim wrap of mcp-server intelligence-rpc.ts:projectMapSearch.
+  // Returns the full { nodes: NodeBrief[], topScore } the get_context deep-briefing
+  // consumes; LocalBackend reproduces the ranking in TS.
+  async projectMapSearch(workspaceId, query, limit = 15) {
+    if (!query || query.trim().length === 0) return { nodes: [], topScore: 0 };
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_project_map_search", {
+      p_workspace_id: workspaceId,
+      p_query: query,
+      p_limit: limit
+    });
+    if (error2) throw error2;
+    const obj = data ?? {
+      nodes: [],
+      topScore: 0
+    };
+    return {
+      nodes: Array.isArray(obj.nodes) ? obj.nodes : [],
+      topScore: typeof obj.topScore === "number" ? obj.topScore : 0
+    };
+  }
+  // M52 Phase 3.4a — verbatim wrap of shared/intelligence/hot-paths.ts:getHotPaths
+  // (top-5 most-changed paths in the last 7 days from change_log).
+  getHotPaths(workspaceId) {
+    return getHotPaths(this.supabase, workspaceId);
+  }
+  // M52 Phase 3.4b — verbatim wrap of shared/intelligence/memory-context-paths.ts
+  // (snapshot recent change_log node paths onto the new memory).
+  recordMemoryContextPaths(memoryId, workspaceId) {
+    return recordMemoryContextPaths(this.supabase, memoryId, workspaceId);
+  }
+  // M52 Phase 3.4b — verbatim wrap of mcp-server intelligence-rpc.ts:findPriorSolutions
+  // (pathrule_rank_prior_solutions: memories whose context paths overlap matchedPaths).
+  async rankPriorSolutions(workspaceId, matchedPaths, limit = 5) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_rank_prior_solutions", {
+      p_workspace_id: workspaceId,
+      p_matched_paths: matchedPaths,
+      p_limit: limit
+    });
+    if (error2) throw error2;
+    return data ?? [];
+  }
+  // M52 Phase 3.4c — verbatim wrap of shared/intelligence/co-change.ts:findCoupledNodes
+  // (2-hop walk over co_change_weights; changeLogCount tunes the git/runtime blend).
+  findCoupledNodes(workspaceId, seedNodeIds, seedPaths, changeLogCount) {
+    return findCoupledNodes(this.supabase, workspaceId, seedNodeIds, seedPaths, {
+      changeLogCount
+    });
+  }
+  // M52 Phase 3.5 — verbatim from mcp-server intelligence-rpc.ts:refreshWorkEpisodes
+  // (throttled materialization via pathrule_refresh_work_episodes).
+  async refreshWorkEpisodes(workspaceId, since) {
+    if (!since && !shouldRefreshWorkEpisodes(workspaceId)) {
+      return { ok: true, episodes_upserted: 0 };
+    }
+    const refreshSince = since ?? new Date(Date.now() - WORK_EPISODE_REFRESH_WINDOW_MS).toISOString();
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_refresh_work_episodes", {
+      p_workspace_id: workspaceId,
+      p_since: refreshSince
+    });
+    if (error2) throw error2;
+    return data ?? {
+      ok: false,
+      episodes_upserted: 0
+    };
+  }
+  // M52 Phase 3.5 — verbatim from mcp-server intelligence-rpc.ts:searchWorkEpisodes.
+  async searchWorkEpisodes(workspaceId, query, mode, limit) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_search_work_episodes", {
+      p_workspace_id: workspaceId,
+      p_query: query,
+      p_mode: mode,
+      p_limit: limit
+    });
+    if (error2) throw error2;
+    return data ?? [];
+  }
+  // M52 Phase 3.6 — verbatim from mcp-server intelligence-rpc.ts:assembleBriefing.
+  // The RPC computes prior_solutions internally from primaryPaths and composes the briefing.
+  async assembleBriefing(input) {
+    const primaryPaths = input.primaryPaths && input.primaryPaths.length > 0 ? input.primaryPaths : input.primaryNodes.map((n) => n.path).filter(Boolean);
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_assemble_briefing", {
+      p_workspace_id: input.workspaceId,
+      p_intent: input.intent ?? "",
+      p_primary_paths: primaryPaths,
+      p_primary_nodes: input.primaryNodes,
+      p_coupled_nodes: input.coupledNodes,
+      p_hot_paths: input.hotPaths,
+      p_recent_session: input.recentSession ?? null,
+      p_recent_activities: input.recentActivities ?? [],
+      p_stack_signals: input.stackSignals ?? {}
+    });
+    if (error2) throw error2;
+    return data;
+  }
+  // M52 Phase 3.7 — verbatim wrap of the M47 pathrule_relevant_memories_for_path RPC
+  // (node-owner ∪ context-link union; node-owner wins duplicates).
+  async relevantMemoriesForPath(workspaceId, path, limit = 16) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_relevant_memories_for_path", {
+      p_workspace_id: workspaceId,
+      p_path: path,
+      p_limit: limit
+    });
+    if (error2) throw error2;
+    return data ?? [];
+  }
+  // M52 Phase 3.7b — verbatim wrap of pathrule_build_hook_index_payload (full server-side
+  // hook-index assembly + refresh counts + promoted_rules_signature + experiments).
+  async buildHookIndexPayload(workspaceId) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_build_hook_index_payload", {
+      p_workspace_id: workspaceId
+    });
+    if (error2) throw error2;
+    return data ?? null;
+  }
+  // ── activity ───────────────────────────────────────────────────────────────────
+  async logActivity(input) {
+    const subjects = [
+      ...new Set((input.subjects ?? []).map((s) => s.toLowerCase().trim()).filter(Boolean))
+    ].slice(0, 5);
+    const friction = normalizeActivityFriction(
+      input.friction ? {
+        toolCallCount: input.friction.toolCallCount,
+        toolFailureCount: input.friction.toolFailureCount,
+        toolFailureCodes: input.friction.toolFailureCodes
+      } : void 0
+    );
+    const { data, error: error2 } = await this.supabase.from("activity_logs").insert({
+      workspace_id: input.workspaceId,
+      user_id: this.userId,
+      node_path: input.nodePath || "/",
+      domain: input.domain,
+      action: input.action,
+      scope: input.scope,
+      subjects,
+      task_summary: input.taskSummary,
+      files_touched: input.filesTouched ?? { total: 0, by_area: {} },
+      ai_client: input.aiClient ?? "claude-code",
+      session_id: input.sessionId ?? null,
+      ...friction
+    }).select().single();
+    if (error2) throw error2;
+    const row = data;
+    const applied = (input.appliedMemoryIds ?? []).map((id) => id?.trim()).filter((id) => Boolean(id));
+    if (applied.length > 0 && input.sessionId) {
+      try {
+        await this.supabase.rpc("pathrule_record_applied_memories", {
+          p_workspace_id: input.workspaceId,
+          p_session_id: input.sessionId,
+          p_applied_memory_ids: applied,
+          p_activity_id: row["id"]
+        });
+      } catch {
+      }
+    }
+    return {
+      id: row["id"],
+      workspaceId: row["workspace_id"],
+      nodePath: row["node_path"] ?? "/",
+      domain: row["domain"],
+      action: row["action"],
+      scope: row["scope"],
+      subjects: row["subjects"] ?? [],
+      taskSummary: row["task_summary"] ?? "",
+      filesTouched: row["files_touched"] ?? {
+        total: 0,
+        by_area: {}
+      },
+      aiClient: row["ai_client"] ?? "claude-code",
+      detailLevel: row["detail_level"] ?? void 0,
+      status: row["status"] ?? void 0,
+      createdAt: row["created_at"],
+      toolCallCount: row["tool_call_count"] ?? void 0,
+      toolFailureCount: row["tool_failure_count"] ?? void 0,
+      toolFailureCodes: row["tool_failure_codes"] ?? void 0
+    };
+  }
+  async recentActivities(scope, limit) {
+    const { data, error: error2 } = await this.supabase.from("activity_logs").select("id, node_path, domain, action, task_summary, created_at").eq("workspace_id", scope.workspaceId).order("created_at", { ascending: false }).limit(limit);
+    if (error2) throw error2;
+    return (data ?? []).map((r) => {
+      const row = r;
+      return {
+        id: row["id"],
+        nodePath: row["node_path"] ?? null,
+        domain: row["domain"] ?? null,
+        action: row["action"] ?? null,
+        taskSummary: row["task_summary"] ?? null,
+        createdAt: row["created_at"]
+      };
+    });
+  }
+  // M52 Local MCP runtime — the get_context router/briefing recent-activity shape.
+  // VERBATIM move of mcp-server's old `fetchRecentActivities`: filters workspace_id
+  // AND user_id, selects the 6 router fields incl. files_touched, lenient (returns []
+  // on error). Distinct from `recentActivities` above (no user filter, no files_touched).
+  async recentActivitiesForRouter(workspaceId, limit, userId) {
+    try {
+      let query = this.supabase.from("activity_logs").select("domain, action, task_summary, created_at, node_path, files_touched").eq("workspace_id", workspaceId);
+      if (userId) query = query.eq("user_id", userId);
+      const { data } = await query.order("created_at", { ascending: false }).limit(limit);
+      return data ?? [];
+    } catch {
+      return [];
+    }
+  }
+  // ── refresh queue ────────────────────────────────────────────────────────────────
+  // The full cloud orchestration (suggestion_refreshes + rich brief + claim-on-read +
+  // suggestion mirror + dismissal window + creator/admin notifications) lives here, moved
+  // verbatim from shared/tools/refreshes.ts (M52 1d.3g). The shared handlers are now thin
+  // delegators; LocalBackend implements the same contract minus the cloud-only side-effects.
+  async listPendingRefreshes(workspaceId, includeInProgress) {
+    const statuses = includeInProgress ? ["pending", "in_progress"] : ["pending"];
+    const { data, error: error2 } = await this.supabase.from("suggestion_refreshes").select("id, subject_type, subject_id, formula_id, status, created_at, brief").eq("workspace_id", workspaceId).in("status", statuses).order("created_at", { ascending: true });
+    if (error2) throw error2;
+    const rows = data ?? [];
+    return rows.map((r) => {
+      const brief = r.brief ?? {};
+      return {
+        id: r.id,
+        subjectType: r.subject_type,
+        subjectId: r.subject_id,
+        subjectTitle: brief.subject?.title ?? "(unknown)",
+        nodePath: brief.subject?.nodePath ?? "/",
+        formulaId: r.formula_id,
+        humanReason: brief.signal?.humanReason ?? r.formula_id,
+        status: r.status,
+        createdAt: r.created_at,
+        hasProposedPatch: !!brief.proposedPatch?.newBody
+      };
+    });
+  }
+  async getRefreshBrief(refreshId, claimedBy) {
+    const { data: row, error: error2 } = await this.supabase.from("suggestion_refreshes").select("*").eq("id", refreshId).maybeSingle();
+    if (error2) throw error2;
+    if (!row) throw new Error(`refresh ${refreshId} not found`);
+    const current = rowToRefresh(row);
+    if (current.status === "pending") {
+      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      const { data: updated, error: updErr } = await this.supabase.from("suggestion_refreshes").update({ status: "in_progress", claimed_at: nowIso, claimed_by_ai: claimedBy ?? null }).eq("id", refreshId).eq("status", "pending").select("*").maybeSingle();
+      if (updErr) throw updErr;
+      if (updated) return rowToRefresh(updated);
+    }
+    return current;
+  }
+  async resolveRefresh(refreshId, status, note, claimedBy) {
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const { data, error: error2 } = await this.supabase.from("suggestion_refreshes").update({
+      status,
+      resolved_at: nowIso,
+      resolved_note: note ?? null,
+      ...claimedBy ? { claimed_by_ai: claimedBy } : {}
+    }).eq("id", refreshId).select("*").maybeSingle();
+    if (error2) throw error2;
+    if (!data) throw new Error(`refresh ${refreshId} not found`);
+    const row = data;
+    if (row.suggestion_id) {
+      await this.supabase.from("suggestions").update({ resolved_at: nowIso }).eq("id", row.suggestion_id).is("resolved_at", null);
+    }
+    const days = status === "applied" ? 30 : 365;
+    if (this.userId) {
+      await this.supabase.from("suggestion_dismissals").insert({
+        workspace_id: row.workspace_id,
+        subject_type: row.subject_type,
+        subject_id: row.subject_id,
+        formula_id: row.formula_id,
+        action: "keep",
+        dismiss_count: 1,
+        next_recheck_at: new Date(Date.now() + days * 864e5).toISOString(),
+        user_id: this.userId
+      });
+    }
+    try {
+      const eventType = status === "applied" ? "suggestion.applied" : "suggestion.rejected";
+      const subjectType = row.subject_type;
+      const { creatorId, title } = await this.lookupSubjectCreatorAndTitle(
+        subjectType,
+        row.subject_id
+      );
+      const admins = await resolveWorkspaceAdmins(this.supabase, row.workspace_id, this.userId);
+      const recipientSet = /* @__PURE__ */ new Set();
+      if (creatorId && creatorId !== this.userId) recipientSet.add(creatorId);
+      for (const a of admins) recipientSet.add(a);
+      const payload = { subject_type: subjectType, subject_title: title };
+      if (status === "rejected" && note) payload.reason = note;
+      const r = await emitNotification({
+        supabase: this.supabase,
+        eventType,
+        workspaceId: row.workspace_id,
+        actorUserId: this.userId,
+        payload,
+        recipientUserIds: Array.from(recipientSet)
+      });
+      if (!r.ok) console.warn(`[notifications:emit] suggestion resolution failed: ${r.error}`);
+    } catch (err) {
+      console.warn("[notifications:emit] suggestion resolution threw:", err);
+    }
+    return rowToRefresh(row);
+  }
+  async lookupSubjectCreatorAndTitle(subjectType, subjectId) {
+    const table = subjectType === "memory" ? "memories" : "rules";
+    const titleCol = subjectType === "memory" ? "title" : "name";
+    const { data } = await this.supabase.from(table).select(`created_by, ${titleCol}`).eq("id", subjectId).maybeSingle();
+    if (!data) return { creatorId: null, title: "" };
+    const rec = data;
+    return {
+      creatorId: rec.created_by ?? null,
+      title: rec[titleCol] ?? ""
+    };
+  }
+  async requestRefresh(input) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_request_refresh", {
+      p_subject_type: input.subjectType,
+      p_subject_id: input.subjectId,
+      p_reason: input.reason,
+      p_kind: input.kind ?? "drift"
+    });
+    if (error2) throw error2;
+    const refreshId = data ?? null;
+    if (!refreshId) throw new Error("pathrule_request_refresh returned no id");
+    const { data: row, error: lookupErr } = await this.supabase.from("suggestion_refreshes").select("created_at, claimed_at").eq("id", refreshId).maybeSingle();
+    if (lookupErr) throw lookupErr;
+    const created = row?.created_at ? new Date(row.created_at).getTime() : 0;
+    const alreadyPending = created > 0 && Date.now() - created > 2e3;
+    return { refreshId, alreadyPending };
+  }
+  // ── capabilities ───────────────────────────────────────────────────────────
+  capabilities() {
+    return {
+      aiMerge: true,
+      aiGenerate: true,
+      staleness: true,
+      realtime: true,
+      semantic: true,
+      routerLLM: true
+    };
+  }
+  // ── workspace resolution (M52 Step 6) — injected verbatim, like routeIntent ──
+  async resolveWorkspaceFromCwd(cwd) {
+    return this._resolveWorkspaceFromCwd ? this._resolveWorkspaceFromCwd(cwd) : null;
+  }
+  async closestNode(workspaceId, relativePath) {
+    return this._closestNode ? this._closestNode(workspaceId, relativePath) : null;
+  }
+  // ── optional capabilities (M52) ──────────────────────────────────────────────
+  // routeIntent (ai-route) is wired by INJECTION: the composition root that owns the
+  // edge client (mcp-server's resolveContext) passes its `routeUserIntent` closure into
+  // the constructor. We delegate verbatim — same edge fn, same cache/timeout/auth, zero
+  // behaviour drift — without cloud-backend importing mcp-server. When no closure is
+  // injected (claude-md renderers), the capability is dormant and we return null.
+  // semanticCandidates (M27) follows the same injection pattern: resolveContext passes a
+  // closure wrapping mcp-server's `runSemanticCandidates` (supabase captured), so the cloud
+  // edge/embedding path stays verbatim. Dormant (null) for non-routing roots.
+  async routeIntent(input) {
+    return this._routeIntent ? this._routeIntent(input) : null;
+  }
+  async semanticCandidates(query) {
+    return this._semanticCandidates ? this._semanticCandidates(query) : null;
+  }
+};
 
 // src/tools/refresh-activity.ts
 var TASK_SUMMARY_TARGET_CHARS = 300;
@@ -23327,6 +24362,8 @@ var TASK_SUMMARY_HARD_MAX_CHARS = 500;
 function toToolContext(ctx, workspaceId) {
   return {
     supabase: ctx.supabase,
+    // M52 — same authenticated client; handlers migrate onto ctx.backend in Phase 1d.
+    backend: new CloudBackend({ supabase: ctx.supabase, userId: ctx.userId }),
     userId: ctx.userId,
     workspaceId,
     clientId: null
@@ -23596,6 +24633,8 @@ var MAX_SUBTREE_MEMORY_LIMIT = 500;
 function toToolContext2(ctx, workspaceId) {
   return {
     supabase: ctx.supabase,
+    // M52 — same authenticated client; handlers migrate onto ctx.backend in Phase 1d.
+    backend: new CloudBackend({ supabase: ctx.supabase, userId: ctx.userId }),
     userId: ctx.userId,
     workspaceId,
     clientId: null
@@ -23918,6 +24957,7 @@ var readTools = [
 ];
 
 // src/tools/setup-tools.ts
+var AGENT_TARGET_IDS = Object.keys(AGENT_TARGETS);
 function formatThrown3(error2) {
   if (error2 && typeof error2 === "object" && "code" in error2 && "message" in error2) {
     const obj = error2;
@@ -24042,7 +25082,7 @@ var createWorkspaceTool = {
     git_remote_url: external_exports.string().url().nullable().optional().describe(
       "Optional git remote URL (HTTPS or SSH form). Stored for reference and surface matching; never used to access the user's machine."
     ),
-    active_agent_targets: external_exports.array(external_exports.enum(["claude-code", "cursor", "windsurf", "codex"])).optional().describe(
+    active_agent_targets: external_exports.array(external_exports.enum(AGENT_TARGET_IDS)).optional().describe(
       "AI clients this workspace will be used from. Affects Desktop/CLI companion file rendering when those surfaces attach. Defaults to ['claude-code']."
     )
   },
@@ -24425,6 +25465,8 @@ var snapshotTools = [takeSnapshotTool, listSnapshotsTool, readSnapshotTool];
 function toToolContext3(ctx, workspaceId) {
   return {
     supabase: ctx.supabase,
+    // M52 — same authenticated client; handlers migrate onto ctx.backend in Phase 1d.
+    backend: new CloudBackend({ supabase: ctx.supabase, userId: ctx.userId }),
     userId: ctx.userId,
     workspaceId,
     clientId: null
