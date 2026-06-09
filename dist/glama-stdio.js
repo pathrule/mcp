@@ -25534,6 +25534,38 @@ function joinPatternPaths(base, rel) {
   if (rel === "/") return trimmed || "/";
   return trimmed + (rel.startsWith("/") ? rel : `/${rel}`);
 }
+function patternProvenanceTag(slug) {
+  return `pattern:${slug}`;
+}
+function previewPattern(slug, node_path) {
+  const pattern = getPattern(slug);
+  if (!pattern) {
+    return {
+      ok: false,
+      error: {
+        code: "not_found",
+        message: `No pattern named "${slug}". Browse pathrule.io/patterns for valid slugs.`
+      }
+    };
+  }
+  return {
+    ok: true,
+    data: {
+      slug: pattern.slug,
+      name: pattern.name,
+      version: pattern.version,
+      problem: pattern.problem,
+      audience: pattern.audience,
+      appliesTo: pattern.appliesTo,
+      pieces: pattern.pieces.map((p) => ({
+        kind: p.kind,
+        title: p.title,
+        summary: p.summary,
+        path: joinPatternPaths(node_path, p.nodePath)
+      }))
+    }
+  };
+}
 async function importPatternHandler(ctx, args) {
   const pattern = getPattern(args.slug);
   if (!pattern) {
@@ -25567,20 +25599,29 @@ async function importPatternHandler(ctx, args) {
       description: piece.summary ?? null,
       content: piece.body,
       source: "manual",
-      tags: piece.skillTags
+      // Provenance tag so imported skills are findable as a group.
+      tags: [...piece.skillTags ?? [], patternProvenanceTag(pattern.slug)]
     });
     if (result.ok) {
       if (piece.kind === "memory") imported.memories += 1;
       else if (piece.kind === "rule") imported.rules += 1;
       else imported.skills += 1;
-      details.push({ kind: piece.kind, title: piece.title, path: node_path, status: "imported" });
+      details.push({
+        kind: piece.kind,
+        title: piece.title,
+        path: node_path,
+        status: "imported",
+        id: result.data.id
+      });
     } else if (result.error.code === "duplicate") {
       skipped += 1;
+      const existingId = result.error.detail && typeof result.error.detail === "object" ? result.error.detail.existing_id : void 0;
       details.push({
         kind: piece.kind,
         title: piece.title,
         path: node_path,
         status: "skipped",
+        id: existingId,
         reason: "already present"
       });
     } else {
@@ -25599,16 +25640,89 @@ async function importPatternHandler(ctx, args) {
       slug: pattern.slug,
       name: pattern.name,
       version: pattern.version,
+      appliesTo: pattern.appliesTo,
       imported,
       skipped,
       details
     }
   };
 }
+async function removePatternHandler(ctx, args) {
+  if (!ctx.backend) {
+    return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  }
+  if (!ctx.workspaceId) {
+    return { ok: false, error: { code: "invalid_args", message: "ctx.workspaceId is required." } };
+  }
+  const pattern = getPattern(args.slug);
+  if (!pattern) {
+    return {
+      ok: false,
+      error: {
+        code: "not_found",
+        message: `No pattern named "${args.slug}". Browse pathrule.io/patterns for valid slugs.`
+      }
+    };
+  }
+  const removed = { memories: 0, rules: 0, skills: 0 };
+  let notFound = 0;
+  const details = [];
+  const norm = (s) => s.trim().toLowerCase();
+  for (const piece of pattern.pieces) {
+    const node_path = joinPatternPaths(args.node_path, piece.nodePath);
+    try {
+      const node = await ctx.backend.findNodeByPath(ctx.workspaceId, node_path);
+      if (!node) {
+        notFound += 1;
+        details.push({ kind: piece.kind, title: piece.title, path: node_path, status: "not_found" });
+        continue;
+      }
+      const content = await ctx.backend.getNodeContent(node.id);
+      const target = piece.kind === "memory" ? content.memories.find((m) => norm(m.title) === norm(piece.title)) : piece.kind === "rule" ? content.rules.find((r) => norm(r.name) === norm(piece.title)) : content.skills.find((s) => norm(s.name) === norm(piece.title));
+      if (!target) {
+        notFound += 1;
+        details.push({ kind: piece.kind, title: piece.title, path: node_path, status: "not_found" });
+        continue;
+      }
+      const del = piece.kind === "memory" ? await deleteMemoryHandler(ctx, { memory_id: target.id }) : piece.kind === "rule" ? await deleteRuleHandler(ctx, { rule_id: target.id }) : await deleteSkillHandler(ctx, { skill_id: target.id });
+      if (del.ok) {
+        if (piece.kind === "memory") removed.memories += 1;
+        else if (piece.kind === "rule") removed.rules += 1;
+        else removed.skills += 1;
+        details.push({ kind: piece.kind, title: piece.title, path: node_path, status: "removed" });
+      } else {
+        details.push({
+          kind: piece.kind,
+          title: piece.title,
+          path: node_path,
+          status: "failed",
+          reason: del.error.message
+        });
+      }
+    } catch (err) {
+      details.push({
+        kind: piece.kind,
+        title: piece.title,
+        path: node_path,
+        status: "failed",
+        reason: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+  return {
+    ok: true,
+    data: { slug: pattern.slug, name: pattern.name, removed, not_found: notFound, details }
+  };
+}
 function formatPatternImportMessage(data) {
   const total = data.imported.memories + data.imported.rules + data.imported.skills;
   const failed = data.details.filter((d) => d.status === "failed").length;
   return `Imported "${data.name}": ${total} item${total === 1 ? "" : "s"} (${data.imported.rules} rules, ${data.imported.memories} memories, ${data.imported.skills} skills)${data.skipped ? `, ${data.skipped} already present` : ""}${failed ? `, ${failed} failed` : ""}. Open Pathrule to review.`;
+}
+function formatPatternRemoveMessage(data) {
+  const total = data.removed.memories + data.removed.rules + data.removed.skills;
+  const failed = data.details.filter((d) => d.status === "failed").length;
+  return `Removed "${data.name}": ${total} item${total === 1 ? "" : "s"} (${data.removed.rules} rules, ${data.removed.memories} memories, ${data.removed.skills} skills)${data.not_found ? `, ${data.not_found} not found (already gone or under a different path)` : ""}${failed ? `, ${failed} failed` : ""}.`;
 }
 
 // ../shared/src/skills/invocation.ts
@@ -26372,7 +26486,7 @@ var PATHRULE_PROTOCOL = {
   before: [
     "Pathrule is the first knowledge layer for this workspace. Hooks auto-inject path-scoped memory/rule titles + session digest on every tool call and user prompt (M12). Trust that context before falling back to files, git, or general knowledge.",
     "`::skill-name` is a hard gate: use the exact injected skill; if missing, stop and resolve it through Pathrule/MCP before file edits.",
-    "`::pathrule:package:<slug>` is a PATTERN import, NOT a skill. When the user pastes one, call pathrule_import_pattern(workspace_id, slug) \u2014 the bare <slug> after `package:` \u2014 to add that bundle (memories + rules + skills) to the workspace, then relay the returned human_message. Never run the find-skills protocol for it. Works the same in the cloud and local editions.",
+    "`::pathrule:package:<slug>` is a PATTERN import, NOT a skill \u2014 never run find-skills for it. To import: (1) call pathrule_import_pattern(workspace_id, slug, dry_run:true) to see the pattern's appliesTo (stacks/packages/paths) + pieces WITHOUT writing; (2) judge fit against THIS workspace and choose the node_path base that matches the user's actual tree (e.g. /apps/mobile) \u2014 if the pattern does not fit (its stack/packages aren't in the project), STOP and ask the user whether and where to add it; (3) call again with that node_path to write, then relay the returned human_message. Undo a whole bundle with pathrule_remove_pattern(workspace_id, slug, node_path) using the same base. Same behaviour in the cloud and local editions.",
     "Do NOT reflexively call pathrule_get_context before every small known-path code task. DO call pathrule_get_context(cwd, user_intent, omit_protocol: true) before any grep/read/fallback when hook context is missing, ambiguous, stale, or the user asks for discovery, inventory, architecture, recent activity, or list/show/find/where/which style questions (including Turkish: listele, g\xF6ster, bul, nerede, hangi, neler).",
     "Hook silence on a topic does not mean Pathrule has no relevant memory/rule. For discovery/inventory/architecture questions, call pathrule_get_context first; fall back to files, git, or general knowledge only after Pathrule returns nothing relevant. It's a single unified tool (M13): the router classifies intent and returns a depth-appropriate response - minimal for ui_tweak/new_feature on a known path, focused for bug_fix/refactor, deep for debug/discovery.",
     "For discovery/inventory questions, treat `subtree_memory_index`, `discovery_signal`, and `semantic_candidates` as Pathrule evidence before filesystem fallback. Semantic candidates are not answers or rules: call pathrule_read_memory(id) and inspect the body before citing or following one.",
@@ -28995,11 +29109,12 @@ var deleteSkillTool = {
 var importPatternTool = {
   name: "pathrule_import_pattern",
   title: "Pathrule Import Pattern",
-  description: "Import an official Pathrule pattern (a bundle of memories, rules, and skills, each pre-scoped to a path) into the workspace. Call this when the user pastes a `::pathrule:package:<slug>` token; pass the bare <slug> (e.g. 'nextjs-app-router'). Each piece is written path-first (missing nodes auto-create); pieces whose content already exists are skipped, so re-import is idempotent. After calling, relay the returned human_message. This is a pattern import, NOT a skill \u2014 do not run the find-skills protocol.",
+  description: "Import an official Pathrule pattern (a bundle of memories, rules, and skills) into the workspace when the user pastes a `::pathrule:package:<slug>` token. WORKFLOW: (1) First call with `dry_run: true` to see the pattern's `appliesTo` (stacks/packages/paths) and pieces WITHOUT writing. (2) Judge fit against THIS workspace. If it does NOT fit (e.g. an Expo pattern but the project has no Expo), STOP and ask the user whether and where to add it. (3) Choose the `node_path` base matching the user's structure (e.g. /apps/mobile); the pattern's paths re-root under it. (4) Call again without dry_run to write. Path-first + idempotent. Imported skills are tagged `pattern:<slug>`; the response lists each created id. Relay the returned human_message. Use pathrule_remove_pattern to undo. This is a pattern import, NOT a skill \u2014 do not run the find-skills protocol.",
   inputSchema: {
     workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
     slug: external_exports.string().regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase slug, e.g. nextjs-app-router").describe("Pattern slug \u2014 the part after 'package:' in ::pathrule:package:<slug>."),
-    node_path: external_exports.string().optional().describe("Optional base path to re-root the whole bundle under. Omit to use the pattern's own paths."),
+    node_path: external_exports.string().optional().describe("Base path to re-root the whole bundle under, chosen to match this workspace. Omit only when the pattern's own paths already fit."),
+    dry_run: external_exports.boolean().optional().describe("True returns the pattern's appliesTo + pieces WITHOUT writing. Use first to decide fit + base path."),
     verbose: external_exports.boolean().optional().describe("Set true for per-piece import detail. Default false (compact summary).")
   },
   requiredScopes: ["pathrule:write"],
@@ -29008,6 +29123,10 @@ var importPatternTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
+      if (args.dry_run) {
+        const preview = previewPattern(args.slug, args.node_path);
+        return preview.ok ? { ok: true, dry_run: true, ...preview.data } : formatToolError3(preview.error);
+      }
       const result = await importPatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
         slug: args.slug,
         node_path: args.node_path
@@ -29015,16 +29134,43 @@ var importPatternTool = {
       if (!result.ok) return formatToolError3(result.error);
       const data = result.data;
       const human_message = formatPatternImportMessage(data);
-      return args.verbose ? {
+      return args.verbose ? { ok: true, ...data, human_message } : {
         ok: true,
         slug: data.slug,
-        name: data.name,
-        version: data.version,
         imported: data.imported,
         skipped: data.skipped,
-        details: data.details,
+        applies_to: data.appliesTo,
         human_message
-      } : { ok: true, slug: data.slug, imported: data.imported, skipped: data.skipped, human_message };
+      };
+    } catch (error2) {
+      return formatThrown5(error2);
+    }
+  }
+};
+var removePatternTool = {
+  name: "pathrule_remove_pattern",
+  title: "Pathrule Remove Pattern",
+  description: "Remove a previously-imported Pathrule pattern bundle in one call \u2014 the reverse of pathrule_import_pattern. The pattern definition is the manifest, so this finds and deletes the memories/rules/skills whose titles match the pattern's pieces. Pass the SAME `node_path` base used at import (omit if the pattern's own paths were used). Pieces not found are reported, not errors (idempotent). Relay the returned human_message.",
+  inputSchema: {
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    slug: external_exports.string().regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase slug, e.g. nextjs-app-router").describe("Pattern slug \u2014 the part after 'package:' in ::pathrule:package:<slug>."),
+    node_path: external_exports.string().optional().describe("The base path the bundle was imported under. Must match the import to locate the pieces."),
+    verbose: external_exports.boolean().optional().describe("Set true for per-piece detail. Default false (compact summary).")
+  },
+  requiredScopes: ["pathrule:write"],
+  mode: "write_beta",
+  workspace: { required: true, subscriptionRequired: true },
+  response: { includeLocalRuntimeCta: false },
+  handler: async (args, ctx) => {
+    try {
+      const result = await removePatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+        slug: args.slug,
+        node_path: args.node_path
+      });
+      if (!result.ok) return formatToolError3(result.error);
+      const data = result.data;
+      const human_message = formatPatternRemoveMessage(data);
+      return args.verbose ? { ok: true, ...data, human_message } : { ok: true, slug: data.slug, removed: data.removed, not_found: data.not_found, human_message };
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -29040,7 +29186,8 @@ var writeTools = [
   writeSkillTool,
   updateSkillTool,
   deleteSkillTool,
-  importPatternTool
+  importPatternTool,
+  removePatternTool
 ];
 
 // src/mcp/remote-tools.ts
