@@ -22479,9 +22479,3143 @@ async function deleteSkillHandler(ctx, args) {
   }
 }
 
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/astro.js
+var astro = {
+  "slug": "astro",
+  "version": "1.0.0",
+  "name": "Astro",
+  "tagline": "Ship content-first sites that send almost no JavaScript by default.",
+  "description": "A pattern bundle for Astro 5 projects built around islands architecture, the Content Layer API, and server islands. It keeps agents disciplined about partial hydration, schema-validated content, and the static-first render model so pages stay fast and predictable. Use it for content-driven sites, marketing pages, docs, and blogs that mix static output with a few interactive islands.",
+  "category": "Framework",
+  "icon": "rocket",
+  "color": "bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Astro pattern for AI coding agents | Pathrule",
+  "metaDescription": "Pathrule's Astro pattern teaches AI coding agents islands architecture, the Content Layer API, server islands, and disciplined partial hydration for fast sites.",
+  "problem": "Agents reach for client-side hydration and unvalidated content by default, bloating Astro pages with JavaScript and runtime errors.",
+  "audience": "Teams building content-driven Astro sites: marketing pages, docs, blogs, and commerce fronts.",
+  "prevents": [
+    "Slapping client:load on every interactive component and shipping needless JavaScript",
+    "Reading content with raw fs or import.meta.glob instead of schema-validated content collections",
+    "Blocking the whole page on a slow personalized request instead of deferring it to a server island"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/src/components",
+      "/src/content",
+      "/src/pages"
+    ],
+    "stacks": [
+      "astro",
+      "typescript",
+      "islands-architecture",
+      "ssr",
+      "content-driven"
+    ],
+    "packages": [
+      "astro",
+      "@astrojs/react",
+      "@astrojs/mdx",
+      "@astrojs/sitemap",
+      "zod"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/components",
+      "title": "Hydrate islands intentionally, never by reflex",
+      "summary": "Every framework component stays static HTML unless a client:* directive proves it must be interactive.",
+      "body": "Astro renders UI framework components to static HTML by default and ships zero JavaScript for them. A `client:*` directive is a performance contract, not boilerplate. Default to no directive and add the lightest one only when interaction is actually required.\n\n- Reserve `client:load` for above-the-fold controls that must be interactive immediately. Use `client:visible` for below-the-fold widgets and `client:idle` for low-priority ones.\n- Treat `client:only` as a last resort. It skips server rendering, hurts SEO, and removes the static HTML fallback.\n- Split large interactive components so only the truly dynamic part hydrates, keeping the rest as static `.astro` markup.\n- Pass a `rootMargin` to `client:visible` for heavy components to hydrate them just before they scroll into view and reduce layout shift.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/content",
+      "title": "Define every collection with a loader and a Zod schema",
+      "summary": "Content lives in the Content Layer API with a loader and validated schema, never raw file reads.",
+      "body": "In Astro 5 content collections use the Content Layer API. Each collection is declared in `src/content.config.ts` with an explicit `loader` and a Zod `schema`, so frontmatter is validated at build time and queries are fully typed.\n\n- Use the built-in `glob()` or `file()` loader for local Markdown, MDX, JSON, and YAML. Use a custom or community loader for CMS, API, or database sources.\n- Always give the collection a `schema` so `getCollection()` and `getEntry()` return typed, validated data and bad frontmatter fails the build.\n- Query content only through `getCollection()` / `getEntry()`. Do not read files with `fs` or `import.meta.glob`.\n- For very large stores, set `retainBody: false` on the loader to shrink the deployed data store and avoid size limits.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/pages",
+      "title": "Rendering modes: static by default, server islands for the dynamic bits",
+      "summary": "Keep pages prerendered and isolate personalized content into server:defer islands.",
+      "body": 'Astro pages are statically prerendered by default. Keep them that way so the shell can be cached aggressively, and push only the dynamic parts to the edges.\n\n- Mark personalized or per-request fragments (avatar, cart, recommendations) with `server:defer` so they render in their own request without blocking the cached page.\n- Provide a `slot="fallback"` for each server island so users see meaningful placeholder markup until the island resolves.\n- Reach for full on-demand SSR (`export const prerender = false`) only when an entire route is dynamic. Prefer server islands on otherwise-static pages.\n- Server islands need an SSR adapter configured, even when most of the site is static.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "View Transitions and navigation polish without a framework",
+      "summary": "Use the native View Transitions API via the ClientRouter for smooth navigation.",
+      "body": "Astro supports the native View Transitions API for animated, app-like navigation without adding a client-side framework. Add the `<ClientRouter />` component to a shared layout head to enable it site-wide.\n\n- Persist stateful elements across navigations with `transition:persist` (for example a video player or audio element).\n- Name matched elements with `transition:name` so Astro animates them between pages, and tune motion with `transition:animate`.\n- The router enhances real navigations progressively. Pages still work as full document loads when the API is unavailable, so do not depend on it for correctness.\n- Keep transitions subtle and respect `prefers-reduced-motion`; heavy animations undercut the speed Astro is chosen for."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "astro-review",
+      "summary": "Pre-merge checklist for Astro 5 pages, islands, and content collections.",
+      "body": '---\nname: astro-review\ndescription: Review checklist for Astro 5 work covering hydration directives, the Content Layer API, server islands, rendering mode, and view transitions before merging.\n---\n\n# Astro review\n\n- [ ] Framework components render static HTML by default; every `client:*` directive is justified and uses the lightest option (`visible`/`idle` over `load`).\n- [ ] No stray `client:only` that drops server rendering and the static fallback.\n- [ ] Content is read through `getCollection()` / `getEntry()`, never raw `fs` or `import.meta.glob`.\n- [ ] Each collection in `src/content.config.ts` has an explicit `loader` and a Zod `schema`.\n- [ ] Pages stay prerendered by default; `prerender = false` is used only for fully dynamic routes.\n- [ ] Personalized fragments use `server:defer` with a `slot="fallback"`, and an SSR adapter is configured.\n- [ ] Large content stores set `retainBody: false` when bodies are not needed at runtime.\n- [ ] View Transitions go through `<ClientRouter />`; `transition:persist` and `transition:name` are applied where state or motion continuity matters.\n- [ ] Animations respect `prefers-reduced-motion`.\n- [ ] No unnecessary JavaScript shipped; the page works with scripts disabled where it reasonably should.\n',
+      "skillTags": [
+        "astro",
+        "islands",
+        "content-collections",
+        "ssr",
+        "performance",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/expo-react-native.js
+var expoReactNative = {
+  "slug": "expo-react-native",
+  "version": "1.0.0",
+  "name": "Expo (React Native)",
+  "tagline": "Ship Expo apps with file-based routing, EAS Build, and safe OTA updates.",
+  "description": "A guardrail bundle for modern Expo (SDK 56+) React Native projects on the New Architecture. It keeps Expo Router navigation typed and predictable, treats the app config as the single source of native truth via Continuous Native Generation, and prevents the classic OTA crash where a JavaScript update references native code that isn't in the installed binary. Built for teams shipping with EAS Build and EAS Update.",
+  "category": "Framework",
+  "icon": "smartphone",
+  "color": "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Expo (React Native) AI Coding Pattern for Cursor & Claude",
+  "metaDescription": "Pathrule pattern that teaches AI agents Expo SDK 56 conventions: typed Expo Router, EAS Build via CNG, and runtimeVersion-safe OTA updates so generated code ships without crashing.",
+  "problem": "AI agents edit native files directly and push OTA updates that reference native modules missing from the installed binary, crashing production apps.",
+  "audience": "Teams building cross-platform Expo apps with EAS Build and EAS Update.",
+  "prevents": [
+    "Hand-editing ios/ and android/ folders that prebuild regenerates and wipes",
+    "Pushing an EAS Update with native changes without bumping runtimeVersion, crashing live users",
+    "Importing from react-navigation directly and bypassing Expo Router typed routes"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/app",
+      "/src",
+      "/modules",
+      "/"
+    ],
+    "stacks": [
+      "expo",
+      "react-native",
+      "expo-router",
+      "eas",
+      "typescript"
+    ],
+    "packages": [
+      "expo",
+      "expo-router",
+      "expo-updates",
+      "expo-dev-client",
+      "react-native"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Treat ios/ and android/ as generated output",
+      "summary": "Never hand-edit native folders in a CNG project; change app config and config plugins instead.",
+      "body": "This is a Continuous Native Generation (CNG) project, so the `ios/` and `android/` directories are regenerated from `app.json`/`app.config.ts` and `package.json` by `npx expo prebuild`. Editing them by hand creates changes that are silently wiped on the next prebuild.\n\n- Express native config (permissions, plist/manifest entries, schemes, icons, splash) through the `expo` app config and config plugins, not by patching native files.\n- For library-specific native side effects, add or use an Expo config plugin instead of editing `AppDelegate` or `MainApplication` directly.\n- Keep `ios/` and `android/` out of version control when prebuild is the source of truth; if they are committed, treat them as build artifacts and never the place to make a change.\n- Verify a change survives by running `npx expo prebuild --clean` before relying on it.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/app",
+      "title": "Use Expo Router typed navigation, not React Navigation imports",
+      "summary": "Route through the file system and the typed Link/router API; avoid raw react-navigation calls.",
+      "body": 'Files under `app/` are the routing layer. Each file is a route and navigation must go through Expo Router\'s typed API so broken links fail at compile time, not at runtime.\n\n- Navigate with `<Link href="...">` and `useRouter()` from `expo-router`; do not import navigators or `useNavigation` from `@react-navigation/*` directly.\n- Keep typed routes enabled (`experiments.typedRoutes` / the SDK 56 default) and let the generated `.expo/types` drive `href` autocompletion.\n- Prefer `useLocalSearchParams()` over `useGlobalSearchParams()`. The global hook re-renders on every navigation event and causes cascading updates across the tree.\n- Organize routes with route groups like `(tabs)` and `(auth)` to structure the tree without changing the URL, and use `_layout.tsx` for shared shells.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "runtimeVersion gates OTA vs binary builds",
+      "summary": "OTA ships only JS; native changes require a new binary and a bumped runtimeVersion.",
+      "body": "EAS Update delivers only the JavaScript bundle and assets, never native code. An update is only served to a binary whose `runtimeVersion` matches the one the update was published against, so the contract is: native change means new binary, JS-only change means OTA.\n\n- Bump `runtimeVersion` whenever you add or change native code (new native dependency, prebuild config change, SDK upgrade) so old binaries do not receive a JS bundle that references modules they lack.\n- Never bump `runtimeVersion` for a JS-only fix; that would orphan existing installs from the update.\n- Prefer the `fingerprint` runtime version policy so the value is computed deterministically from native inputs instead of bumped by hand.\n- Pushing native-dependent JS over OTA to a mismatched binary is the classic production crash this stack guards against. See `/app` for navigation rules and `/modules` for native module conventions.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Roll out EAS Updates gradually and test on a branch first",
+      "summary": "Publish to a preview branch, then roll out by percentage and watch error rates before going to all users.",
+      "body": "A bad OTA can break every install at once, so updates ship through a staged pipeline rather than straight to production.\n\n- Publish to a non-production channel first with `eas update --branch preview` and smoke-test on a dev/preview build before promoting.\n- Use percentage rollouts: release to a small slice of users, watch the update's error rate on the EAS dashboard, and cancel or roll back if it spikes.\n- Map channels to environments (for example `production`, `preview`, `staging`) and point each build profile at the right channel in `eas.json`.\n- SDK 55+ bundle diffing only ships the delta between bundles, so frequent small updates are cheap; lean on small, reversible updates over large risky ones.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "expo-react-native-review",
+      "summary": "Pre-merge checklist for Expo SDK 56 apps covering CNG, typed routing, EAS Build, and OTA safety.",
+      "body": "---\nname: expo-react-native-review\ndescription: Review checklist for Expo (React Native) changes on SDK 56 and the New Architecture. Run before merging any change that touches app config, native modules, Expo Router routes, or EAS Build/Update configuration.\n---\n\n# Expo (React Native) review\n\n- [ ] No hand edits to `ios/` or `android/`; native changes go through `app.config` and config plugins (CNG).\n- [ ] `npx expo prebuild --clean` still produces the intended native project.\n- [ ] All navigation uses `expo-router` (`Link`, `useRouter`); no direct `@react-navigation/*` navigation calls.\n- [ ] Typed routes are enabled and generated route types are committed/ignored consistently; `href` values resolve.\n- [ ] `useLocalSearchParams` is used instead of `useGlobalSearchParams` unless a global subscription is truly needed.\n- [ ] Route groups and `_layout.tsx` keep the `app/` tree organized without leaking group names into URLs.\n- [ ] New native dependencies or prebuild changes bumped `runtimeVersion` (or use the `fingerprint` policy).\n- [ ] JS-only fixes did NOT change `runtimeVersion`, so existing installs still receive the update.\n- [ ] The update was published to a preview branch and smoke-tested before any production promotion.\n- [ ] Production rollout is staged by percentage with an error-rate watch and a rollback path.\n- [ ] Project targets a current SDK (56+) on the New Architecture; no New Architecture opt-out is assumed.\n- [ ] `eas.json` build profiles map to the correct update channels per environment.\n",
+      "skillTags": [
+        "expo",
+        "react-native",
+        "expo-router",
+        "eas-update",
+        "cng",
+        "code-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/nextjs-app-router.js
+var nextjsAppRouter = {
+  slug: "nextjs-app-router",
+  version: "1.0.0",
+  name: "Next.js App Router",
+  tagline: "Battle-tested conventions for a Next.js App Router codebase, scoped to the paths they belong to.",
+  description: "Rules, memories, and a review skill for teams building on the Next.js App Router. Each piece is pre-scoped so your AI assistant applies it only where it is relevant: server and client boundaries, caching, and secret safety in the app directory, plus a route review checklist at the root.",
+  category: "Framework",
+  icon: "layout-panel-left",
+  color: "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  installs: 0,
+  updatedAt: "2026-06-09",
+  changelog: [{ version: "1.0.0", date: "2026-06-09", note: "First release." }],
+  metaTitle: "Next.js App Router patterns for AI coding agents",
+  metaDescription: "A ready-to-use Pathrule pattern for Next.js App Router projects: server-component defaults, caching policy, secret safety, and a route review skill, scoped to the right paths.",
+  problem: "App Router teams keep relitigating the same server/client and caching decisions, and AI assistants guess them differently every time.",
+  audience: "teams building product UI and routes on the Next.js App Router",
+  prevents: [
+    "Marking everything 'use client' and shipping a mostly-client app",
+    "Leaking server-only env or modules into the client bundle",
+    "Uncached dynamic rendering with no documented reason"
+  ],
+  appliesTo: {
+    paths: ["/app", "/apps/web", "/src/app"],
+    stacks: ["nextjs", "react"],
+    packages: ["next"]
+  },
+  pieces: [
+    {
+      kind: "rule",
+      nodePath: "/app",
+      title: "Server Components by default",
+      summary: "Add 'use client' only when a component truly needs interactivity.",
+      body: "Components under the `app` directory are Server Components by default.\n\n- Add `'use client'` only for components that use state, effects, refs, or browser APIs.\n- Fetch data in Server Components and pass plain, serializable props down.\n- Push the client boundary as far down the tree as possible so most of the page stays server-rendered.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "advisory"
+    },
+    {
+      kind: "rule",
+      nodePath: "/app",
+      title: "Never leak server secrets to the client",
+      summary: "Server-only env and modules must not be imported by client components.",
+      body: "Only `NEXT_PUBLIC_` variables may reach the client bundle.\n\n- Never import a server-only module, database client, or secret-bearing config from a `'use client'` file.\n- Use the `server-only` package so the build fails if a server module is imported client-side.\n- Keep API keys and tokens in Server Components, Route Handlers, or Server Actions.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "strict"
+    },
+    {
+      kind: "memory",
+      nodePath: "/app",
+      title: "Route segment config conventions",
+      summary: "Where we set revalidate, dynamic, and runtime, and why.",
+      body: "Caching is set at the segment level, not scattered per fetch.\n\n- Use `export const revalidate` when the whole segment shares a freshness need.\n- Default runtime is `nodejs`.\n- Any `export const dynamic = 'force-dynamic'` carries a one-line comment explaining why the segment cannot be cached.\n- Prefer fetch-level cache options for mixed-freshness pages."
+    },
+    {
+      kind: "memory",
+      nodePath: "/app",
+      title: "Data fetching and caching policy",
+      summary: "Fetch on the server, cache deliberately, revalidate by tag.",
+      body: "Fetch on the server, cache deliberately, revalidate by tag.\n\n- Fetch in Server Components or Route Handlers, never in client effects.\n- Set explicit `cache` and `next.revalidate` options on `fetch`.\n- Use `revalidateTag` for targeted invalidation after mutations.\n- Start independent requests in parallel to avoid waterfalls."
+    },
+    {
+      kind: "skill",
+      nodePath: "/",
+      title: "nextjs-route-review",
+      summary: "Checklist for reviewing a new App Router route.",
+      body: "---\nname: nextjs-route-review\ndescription: Review a new Next.js App Router route for correctness, caching, and safety.\n---\n\n# Next.js route review\n\nRun this before merging a new route or layout.\n\n- [ ] Server vs client boundary is minimal and correct ('use client' only where needed)\n- [ ] No server-only module or secret is reachable from a client component\n- [ ] Caching and revalidate are intentional and documented\n- [ ] loading.tsx and error.tsx exist where the route fetches data\n- [ ] generateMetadata or static metadata is exported for SEO\n- [ ] Dynamic params are validated and not trusted blindly\n- [ ] Mutations use Server Actions or Route Handlers, and revalidate the right tags\n",
+      skillTags: ["nextjs", "review"]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/nuxt.js
+var nuxt = {
+  "slug": "nuxt",
+  "version": "1.0.0",
+  "name": "Nuxt",
+  "tagline": "Ship Nuxt 4 apps with correct data fetching, server routes, and SSR-safe code.",
+  "description": "An opinionated bundle for Nuxt 4 on Vue 3 that keeps agents on the current API surface. It covers when to use useFetch, useAsyncData, and $fetch, how to write Nitro server routes, and how to keep secrets and client-only code out of the universal render.",
+  "category": "Framework",
+  "icon": "hexagon",
+  "color": "bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Nuxt 4 AI Coding Pattern: Data Fetching and SSR Rules",
+  "metaDescription": "Pathrule pattern for Nuxt 4 and Vue 3. Teaches AI agents correct useFetch and useAsyncData usage, Nitro server routes, runtimeConfig secrets, and SSR-safe code.",
+  "problem": "AI agents reach for stale Nuxt 2 and 3 habits, misuse the data-fetching composables, and leak secrets or break hydration in the universal render.",
+  "audience": "Teams building full-stack Nuxt 4 apps on Vue 3 with Nitro",
+  "prevents": [
+    "Calling raw $fetch for initial page data, causing double fetches and hydration mismatches",
+    "Reading server-only secrets through runtimeConfig.public or env vars on the client",
+    "Touching window, document, or localStorage during SSR without a client guard"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/app",
+      "/server",
+      "/app/pages",
+      "/app/composables"
+    ],
+    "stacks": [
+      "nuxt",
+      "nuxt4",
+      "vue",
+      "vue3",
+      "nitro",
+      "typescript",
+      "ssr"
+    ],
+    "packages": [
+      "nuxt",
+      "vue",
+      "nitropack",
+      "h3",
+      "ofetch"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/app",
+      "title": "Use useFetch and useAsyncData for render data, not raw $fetch",
+      "summary": "Fetch initial component data through the SSR-aware composables so it survives hydration.",
+      "body": "Use `useFetch` and `useAsyncData` for any data that feeds the initial render. They transfer the server payload to the client and dedupe, while raw `$fetch` re-runs on hydration.\n\n- Use `useFetch(url)` for plain endpoint calls. It keys on the URL automatically and infers types from `server/api`.\n- Use `useAsyncData(key, fn)` when you wrap an SDK, combine endpoints, or shape the payload. Always pass an explicit unique `key`.\n- Reserve bare `$fetch` for client-side event handlers (submit, click), never for initial data.\n- Do not pass `$fetch` directly as the `useFetch` handler. It breaks caching and dedup.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/server",
+      "title": "Define Nitro routes with defineEventHandler, one handler per file",
+      "summary": "Write server/api handlers the Nitro way and keep secrets server-side.",
+      "body": "Files in `server/api` are auto-prefixed with `/api`; files in `server/routes` map at the root. Export one `defineEventHandler` per file.\n\n- Encode the method in the filename (`users.get.ts`, `users.post.ts`) instead of branching on `event.method`.\n- Read inputs with `getQuery`, `getRouterParam`, and `await readBody(event)` from `h3`; never parse the raw request yourself.\n- Throw `createError({ statusCode, statusMessage })` for failures so Nitro returns a proper error response.\n- Access secrets via `useRuntimeConfig(event)`, passing `event` so env overrides apply at runtime.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Nuxt 4 SSR-safe and auto-import conventions",
+      "summary": "What runs where, plus how auto-imports change how you write components.",
+      "body": "Nuxt 4 renders universally by default, so component setup runs on both server and client. Guard browser-only access.\n\n- Wrap `window`, `document`, `localStorage`, and similar in `if (import.meta.client)` or `onMounted`, which only runs on the client.\n- Use `import.meta.server` / `import.meta.client` for branch logic; the legacy `process.server` / `process.client` flags are gone.\n- Composables, components, and `utils`/`composables` exports are auto-imported. Do not add manual imports for them; `$fetch` is the global auto-imported alias for `ofetch`.\n- In Nuxt 4 the `data` from `useFetch`/`useAsyncData` is a `shallowRef`. Replace the value to trigger reactivity rather than mutating nested fields in place."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Nuxt 4 directory layout and runtimeConfig",
+      "summary": "Where source lives in Nuxt 4 and how to split public vs private config.",
+      "body": "Nuxt 4 moved app source under `app/` (`app/pages`, `app/components`, `app/composables`) while `server/`, `modules/`, `layers/`, and `shared/` stay at the project root.\n\n- Put API handlers in `server/api`, shared cross-runtime helpers in `shared/`, and Vue UI under `app/`.\n- Define secrets in `runtimeConfig` (server-only) and browser-safe values in `runtimeConfig.public`. Never put tokens in `public`.\n- Override config at runtime with `NUXT_*` env vars (for example `NUXT_API_SECRET`, `NUXT_PUBLIC_SITE_URL`).\n- Read config with `useRuntimeConfig()` in components and `useRuntimeConfig(event)` in server handlers."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "nuxt-review",
+      "summary": "Pre-merge checklist for Nuxt 4 data fetching, server routes, and SSR safety.",
+      "body": "---\nname: nuxt-review\ndescription: Review a Nuxt 4 change for correct data fetching, Nitro server routes, runtimeConfig secret handling, and SSR-safe code before merging.\n---\n\n# Nuxt 4 review\n\n- [ ] Initial render data uses `useFetch` or `useAsyncData`, not raw `$fetch`.\n- [ ] Every `useAsyncData` call passes an explicit, unique `key`.\n- [ ] `$fetch` is only used in client event handlers, never for initial data.\n- [ ] `lazy: true` / `server: false` choices match the data's SEO and blocking needs.\n- [ ] Server handlers use `defineEventHandler` with method-suffixed filenames.\n- [ ] Inputs read via `getQuery`, `getRouterParam`, `readBody`; errors via `createError`.\n- [ ] Secrets live in `runtimeConfig` (server-only), never `runtimeConfig.public`.\n- [ ] `useRuntimeConfig(event)` is used inside server handlers.\n- [ ] Browser-only APIs are guarded with `import.meta.client` or `onMounted`.\n- [ ] No manual imports added for auto-imported composables, components, or utils.\n",
+      "skillTags": [
+        "nuxt",
+        "vue",
+        "nitro",
+        "ssr",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/react-router.js
+var reactRouter = {
+  "slug": "react-router",
+  "version": "1.0.0",
+  "name": "React Router 7",
+  "tagline": "Build full-stack React apps with framework mode loaders, actions, and generated route types.",
+  "description": "React Router 7 merges Remix into a single multi-strategy router with a full framework mode for SSR, data loading, and mutations. This pattern keeps your data flow on loaders and actions, your routes type-safe through codegen, and your navigation fast with single-fetch and prefetching. It is tuned for the 7.17+ API surface and the framework-mode conventions teams ship in 2026.",
+  "category": "Framework",
+  "icon": "route",
+  "color": "bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "React Router 7 pattern for AI coding agents",
+  "metaDescription": "Teach your AI agent React Router 7 framework mode: loaders, actions, generated route types, single-fetch, and prefetch. Rules, memories, and a review skill.",
+  "problem": "Agents write React Router 7 like v6 SPAs, fetching in effects and ignoring loaders, actions, and generated route types.",
+  "audience": "Teams building full-stack React apps on React Router 7 framework mode",
+  "prevents": [
+    "Fetching data in useEffect instead of route loaders",
+    "Hand-typing route params and loaderData instead of using generated Route types",
+    "Mutating data with fetch in event handlers instead of route actions"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/app",
+      "/app/routes",
+      "/src"
+    ],
+    "stacks": [
+      "React",
+      "React Router 7",
+      "TypeScript",
+      "Vite",
+      "SSR"
+    ],
+    "packages": [
+      "react-router",
+      "@react-router/dev",
+      "@react-router/node"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/app/routes",
+      "title": "Load and mutate through loaders and actions",
+      "summary": "Route data comes from loaders; mutations go through actions, never useEffect or ad-hoc fetch.",
+      "body": "In framework mode, route data and mutations live on the route module, not in component effects.\n\n- Read data with `loader` (server) or `clientLoader` (browser); never fetch in `useEffect` for route data.\n- Mutate with `action` / `clientAction` submitted via `<Form>` or `useSubmit`, not `fetch` in click handlers.\n- After an action resolves, all page loaders revalidate automatically. Do not manually refetch.\n- Put server-only secrets and DB calls in `loader`/`action`; they are stripped from the client bundle.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/app/routes",
+      "title": "Use generated Route types, not hand-written ones",
+      "summary": "Import the per-route Route namespace for params, loaderData, and actionData typing.",
+      "body": "React Router codegen emits a typed `Route` namespace per route file; use it instead of casting.\n\n- Import with `import type { Route } from './+types/route-name'` and type args as `Route.LoaderArgs`, `Route.ActionArgs`, `Route.ComponentProps`.\n- Read `params`, `loaderData`, and `actionData` from those typed props rather than `useParams()` casts.\n- Keep `react-router typegen` (or `dev`) running so `.react-router/types/` stays current; do not edit generated files.\n- Define routes in `app/routes.ts` with the config helpers so codegen and the type map stay in sync.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Framework mode data flow and single-fetch",
+      "summary": "How loaders, actions, revalidation, and single-fetch fit together in RR7 framework mode.",
+      "body": "Framework mode (the Remix-merged full-stack setup) drives the data lifecycle from route modules.\n\n- One navigation triggers a single HTTP request (single-fetch) that resolves every matched route's loader together; avoid waterfalling per-component fetches.\n- `clientLoader` can hydrate the initial SSR render by exporting `clientLoader.hydrate = true`; otherwise it runs on client navigations.\n- Streaming defer happens by returning promises from a loader and resolving them with `<Await>` / `useAsyncValue` so the shell renders immediately.\n- Stable on `react-router` 7.17.x; the legacy `react-router-dom` package is folded into `react-router`."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app/routes",
+      "title": "Prefetch, navigation, and progressive enhancement",
+      "summary": "Link prefetch modes, Form-based mutations, and graceful no-JS behavior.",
+      "body": 'Navigation and forms are built to work before and after hydration.\n\n- Set `<Link prefetch="intent">` for hover/focus prefetch, `"viewport"` for in-view, `"render"` for eager; prefetch uses `<link rel="prefetch">` tags.\n- Use `<Form method="post">` so submissions work without JS; `useNavigation()` / `useFetcher()` give pending UI once hydrated.\n- `useFetcher` handles non-navigation mutations (likes, inline edits) without changing the URL and still revalidates affected loaders.\n- Throw `redirect()` or `data()` from loaders/actions for control flow instead of imperatively navigating in effects.'
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "react-router-review",
+      "summary": "Pre-merge checklist for React Router 7 framework mode routes, loaders, and actions.",
+      "body": "---\nname: react-router-review\ndescription: Review a React Router 7 framework-mode route before merging. Use when adding or changing route modules, loaders, actions, or app/routes.ts.\n---\n\n# React Router 7 review\n\n- [ ] Route data is read via `loader` / `clientLoader`, not `useEffect` fetches\n- [ ] Mutations go through `action` / `clientAction` submitted with `<Form>` or `useFetcher`, not raw `fetch` in handlers\n- [ ] Args and props use generated `Route.LoaderArgs` / `Route.ActionArgs` / `Route.ComponentProps` from `./+types/...`\n- [ ] `params`, `loaderData`, `actionData` come from typed props, not `useParams()` casts\n- [ ] Server-only code (secrets, DB) stays inside `loader`/`action` and out of the client bundle\n- [ ] Route is registered in `app/routes.ts` and codegen (`.react-router/types/`) is up to date\n- [ ] Redirects use `redirect()` thrown from loaders/actions, not imperative navigation in effects\n- [ ] `<Link>` uses an appropriate `prefetch` mode for hot navigations\n- [ ] Slow data is deferred with promises + `<Await>` instead of blocking the whole route\n- [ ] Errors are handled with an exported `ErrorBoundary` / `meta` where needed\n",
+      "skillTags": [
+        "react-router",
+        "framework-mode",
+        "loaders",
+        "code-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/sveltekit.js
+var sveltekit = {
+  "slug": "sveltekit",
+  "version": "1.0.0",
+  "name": "SvelteKit",
+  "tagline": "Keep server secrets, load data, and mutations correct across SvelteKit 2 and Svelte 5.",
+  "description": "A pattern bundle for SvelteKit 2 apps built on Svelte 5 runes. It encodes where data loading belongs, how to keep secrets server-side, and how form actions and remote functions stay type-safe and progressively enhanced. Use it so AI agents stop leaking private values into the client bundle and stop reaching for stores when runes are the right tool.",
+  "category": "Framework",
+  "icon": "flame",
+  "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "SvelteKit pattern for AI coding agents | Pathrule",
+  "metaDescription": "Pathrule rules, memories, and a review skill that keep AI coding agents correct on SvelteKit 2 and Svelte 5 runes: load functions, form actions, secrets, and remote functions.",
+  "problem": "AI agents leak private values into the client bundle and pick the wrong data-loading or reactivity primitive in SvelteKit.",
+  "audience": "Teams shipping full-stack apps on SvelteKit 2 with Svelte 5",
+  "prevents": [
+    "Importing $env/static/private or $env/dynamic/private into universal load or client code, leaking secrets into the bundle",
+    "Putting database queries and auth in +page.ts universal load instead of +page.server.ts",
+    "Reaching for writable stores where Svelte 5 runes ($state, $derived) are the correct primitive"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/routes",
+      "/src/lib",
+      "/src/lib/server",
+      "/src/hooks.server.ts"
+    ],
+    "stacks": [
+      "sveltekit",
+      "svelte5",
+      "typescript",
+      "vite",
+      "ssr"
+    ],
+    "packages": [
+      "@sveltejs/kit",
+      "svelte",
+      "@sveltejs/adapter-auto",
+      "vite"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/routes",
+      "title": "Server-only data and secrets live in +page.server.ts",
+      "summary": "Put auth, DB access, and private env in server load; keep universal load for public, serializable data.",
+      "body": "Any data that needs secrets, cookies, a database, or private APIs belongs in a server load function, not a universal one.\n\n- Use `+page.server.ts` / `+layout.server.ts` for `load` that touches `$env/static/private`, `$env/dynamic/private`, `cookies`, or `locals`.\n- Reserve `+page.ts` / `+layout.ts` (universal) for public external APIs and non-serializable returns like component constructors.\n- Never import anything from `$lib/server` or a `$env/.../private` module into universal load or client code. Vite will refuse to build it, and that signal means the logic is in the wrong file.\n- When both load functions exist on a route, the server load runs first and its result reaches the universal load via `data`. Universal output cannot flow back to the server.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/routes",
+      "title": "Mutations go through form actions or remote form/command, not load",
+      "summary": "Use form actions or remote functions for writes; load is read-only and reruns on navigation.",
+      "body": '`load` functions are for reading data and must stay side-effect free, because SvelteKit can rerun them on navigation, invalidation, and SSR.\n\n- Handle writes with named `actions` in `+page.server.ts` and `<form method="POST">`, or with experimental remote `form` / `command` functions, so they are progressively enhanced and type-safe.\n- Validate input server-side and return `fail(status, data)` on validation errors; return a serializable object on success.\n- Use `enhance` for client-side progressive enhancement instead of hand-rolled `fetch`, and trigger `invalidate` / `invalidateAll` to refresh affected `load` data after a mutation.\n- Do not perform POST/PUT/DELETE logic inside a `load` function or call mutating remote `command`s from one.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Svelte 5 runes are the default; classes replace stores",
+      "summary": "Prefer $state/$derived/$effect/$props; use reactive classes in $lib over writable stores.",
+      "body": "This codebase targets Svelte 5, so reactivity is rune-based, not store-based.\n\n- Use `$state` for mutable reactive values, `$derived` (or `$derived.by`) for computed values, `$effect` only for genuine side effects, and `$props` for component inputs.\n- Reach for `$state` only when a value drives the UI. Plain `const`/`let` is cheaper and clearer for everything else.\n- For shared logic, write a reactive class in `$lib` that uses `$state`/`$derived` on its fields and import it, instead of authoring `writable`/`readable` stores. Runes work inside plain `.svelte.ts` modules and classes.\n- Avoid `$:` reactive statements and the implicit let-is-reactive model from Svelte 4. They do not exist in runes mode."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/routes",
+      "title": "Avoid load waterfalls; stream non-critical data",
+      "summary": "Fire independent fetches before await parent(); return unawaited promises for slow, non-essential data.",
+      "body": "Load performance hinges on not serializing requests that could run in parallel.\n\n- Start independent `fetch` calls before `await parent()` so they do not block on parent data they do not need.\n- Return unresolved promises from a server `load` for non-essential data; SvelteKit streams them to the client so the page renders before they settle.\n- Attach `.catch()` to any streamed promise that does not use SvelteKit's enhanced `fetch`, or an unhandled rejection can crash the response.\n- Use the injected `fetch` argument inside `load` (not global `fetch`) so SvelteKit forwards credentials, resolves relative URLs, and tracks the request as a dependency for `invalidate`. Call `depends('app:key')` for custom clients that bypass `fetch`."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "sveltekit-review",
+      "summary": "Pre-merge checklist for SvelteKit 2 routes: data boundaries, secrets, runes, and mutations.",
+      "body": "---\nname: sveltekit-review\ndescription: Review a SvelteKit 2 (Svelte 5) change before merge - verify load placement, secret isolation, runes usage, form actions, and load performance. Use when reviewing or authoring routes, load functions, form actions, or shared $lib reactivity.\n---\n\n# SvelteKit review\n\n- [ ] Secrets, DB access, cookies, and `locals` only appear in `+page.server.ts` / `+layout.server.ts`, never in universal load or client code.\n- [ ] No `$lib/server` or `$env/.../private` import reaches a `+page.ts`, `+layout.ts`, or component.\n- [ ] Universal `load` returns only serializable data or intentional non-serializable values (components/classes); server `load` returns serializable data only.\n- [ ] `load` functions are read-only; all writes go through `actions` or remote `form`/`command`.\n- [ ] Form actions validate input server-side and use `fail(status, data)` for errors; `<form>` uses `enhance` for progressive enhancement.\n- [ ] Data is refreshed after mutations via `invalidate` / `invalidateAll` rather than manual refetch.\n- [ ] Reactivity uses runes (`$state`, `$derived`, `$effect`, `$props`); no `$:` statements or new `writable`/`readable` stores where a reactive class fits.\n- [ ] `$effect` is used only for true side effects, not for deriving values that `$derived` should compute.\n- [ ] `load` uses the injected `fetch` argument; independent fetches start before `await parent()`.\n- [ ] Slow non-critical data is streamed via returned promises with `.catch()` handlers where needed.\n",
+      "skillTags": [
+        "sveltekit",
+        "svelte5",
+        "code-review",
+        "ssr",
+        "runes"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/forms-rhf-zod.js
+var formsRhfZod = {
+  "slug": "forms-rhf-zod",
+  "version": "1.0.0",
+  "name": "Forms with React Hook Form + Zod",
+  "tagline": "Schema-first, type-safe forms with shared client and server validation.",
+  "description": "A pattern for building forms with React Hook Form and a Zod resolver where one schema is the single source of truth for types, client validation, and server validation. It keeps inputs uncontrolled for performance, infers TypeScript types directly from the schema, and reuses the same schema in Server Actions or API routes so client and server never drift. Built for Zod 4 and React Hook Form 7.",
+  "category": "Frontend",
+  "icon": "clipboard-list",
+  "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Forms with React Hook Form + Zod \u2014 AI coding pattern",
+  "metaDescription": "A Pathrule pattern that teaches AI agents to build type-safe React Hook Form + Zod forms with one shared schema for client and server validation.",
+  "problem": "Form types, client validation, and server validation drift apart and re-render the whole form on every keystroke.",
+  "audience": "Frontend and full-stack teams building React or Next.js forms with TypeScript",
+  "prevents": [
+    "Hand-writing TypeScript types that drift from the Zod schema instead of inferring them",
+    "Trusting client-side validation only and skipping a server-side re-parse",
+    "Controlling every input with local useState and re-rendering the whole form on each keystroke"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/components/forms",
+      "/src/lib/schemas",
+      "/app"
+    ],
+    "stacks": [
+      "react",
+      "nextjs",
+      "typescript"
+    ],
+    "packages": [
+      "react-hook-form",
+      "zod",
+      "@hookform/resolvers"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/lib/schemas",
+      "title": "Zod schema is the single source of truth",
+      "summary": "Derive form types from the schema; never hand-write a parallel interface.",
+      "body": "Each form has exactly one Zod schema, and every type comes from it.\n\n- Infer types with `z.infer<typeof schema>`; never declare a parallel `interface` or `type` for the same shape.\n- When the schema has `.transform()`, `.default()`, or coercion, type `useForm` values with `z.input<typeof schema>` and the parsed result with `z.output<typeof schema>` because they diverge.\n- Export the schema from `/src/lib/schemas` so client forms and server handlers import the same object.\n- Keep messages in the schema (`z.string().min(1, 'Required')`) so client and server emit identical errors.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/components/forms",
+      "title": "Wire useForm with a resolver and full defaultValues",
+      "summary": "Every form passes the Zod resolver plus a complete defaultValues object.",
+      "body": "Every `useForm` call is resolver-backed and fully initialized.\n\n- Pass `resolver: zodResolver(schema)` from `@hookform/resolvers/zod`; it auto-detects Zod 3 vs 4, so no version branching.\n- Provide a complete `defaultValues` object covering every field so inputs stay controlled-from-the-start and React never warns about controlled/uncontrolled flips.\n- Default `mode` is fine for submit-time validation; only opt into `mode: 'onChange'` or `onBlur` when the UX needs it, since it costs re-renders.\n- Keep inputs uncontrolled via `register` or `Controller`; do not mirror field values into local `useState`.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Re-parse with the same schema in Server Actions",
+      "summary": "Server handlers re-validate with the shared schema before any write.",
+      "body": "Client validation is a UX affordance, not a security boundary, so the server re-parses.\n\n- In a Server Action or API route, call `schema.safeParse(input)` using the exact schema the form imports; never trust the payload because RHF already validated it.\n- Return `result.error.flatten()` field errors and map them back onto the form with `setError` so server failures surface inline, not just as a toast.\n- Combine with `useActionState` (React 19) to thread pending state and returned errors through the action without extra client state.\n- Coerce and sanitize on the server side via the schema (`z.coerce.number()`, `.trim()`) rather than re-implementing checks by hand."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/components/forms",
+      "title": "Async submit, errors, and reset patterns",
+      "summary": "Drive submission UX from formState and reset with server-confirmed values.",
+      "body": "Submission UX reads from `formState`, never from a separate loading flag.\n\n- Gate the submit button on `formState.isSubmitting` and surface validity with `isValid` / `isDirty` instead of tracking booleans manually.\n- Throwing inside the `handleSubmit` async callback is fine; catch it to map a server error with `setError('root.serverError', ...)`.\n- After a successful save, call `reset(serverConfirmedValues)` so the form's dirty baseline matches what was persisted.\n- For dependent or cross-field rules use `.refine()` / `.superRefine()` in the schema, and read live values with `watch` only where a render genuinely depends on them."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "forms-rhf-zod-review",
+      "summary": "Pre-merge checklist for React Hook Form + Zod forms.",
+      "body": "---\nname: forms-rhf-zod-review\ndescription: Review checklist for forms built with React Hook Form and a Zod resolver. Run before merging any new or changed form to confirm schema-first typing, a complete defaultValues object, and server-side re-validation parity.\n---\n\n# Forms with React Hook Form + Zod review\n\n- [ ] One Zod schema is the source of truth; types come from `z.infer` (or `z.input`/`z.output` when transforms diverge), not a hand-written interface.\n- [ ] `useForm` uses `resolver: zodResolver(schema)` from `@hookform/resolvers/zod`.\n- [ ] `defaultValues` covers every field so no input flips between controlled and uncontrolled.\n- [ ] Validation `mode` matches the intended UX; `onChange` is justified, not the default copy-paste.\n- [ ] Inputs use `register`/`Controller`; field values are not duplicated into local `useState`.\n- [ ] The server (Server Action or API route) re-parses with the same schema via `safeParse` before any write.\n- [ ] Server field errors are mapped back with `setError`; the form shows inline errors, not only a toast.\n- [ ] Submit UX reads `formState.isSubmitting` / `isValid` rather than a separate loading flag.\n- [ ] Successful submit calls `reset(serverConfirmedValues)` to refresh the dirty baseline.\n- [ ] Cross-field rules live in `.refine()`/`.superRefine()`, not in component effects.\n",
+      "skillTags": [
+        "react-hook-form",
+        "zod",
+        "forms",
+        "validation",
+        "typescript",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/react-typescript.js
+var reactTypescript = {
+  slug: "react-typescript",
+  version: "1.0.0",
+  name: "React + TypeScript",
+  tagline: "Pragmatic React and TypeScript conventions: typed props, accessible UI, and predictable hooks.",
+  description: "Rules, memories, and a review skill for React codebases written in TypeScript. Pre-scoped to your source and component directories so your AI assistant writes typed, accessible, and predictable components.",
+  category: "Frontend",
+  icon: "component",
+  color: "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
+  installs: 0,
+  updatedAt: "2026-06-09",
+  changelog: [{ version: "1.0.0", date: "2026-06-09", note: "First release." }],
+  metaTitle: "React and TypeScript patterns for AI coding agents",
+  metaDescription: "A ready-to-use Pathrule pattern for React with TypeScript: typed props without any, accessible interactive elements, hook discipline, and a component review skill.",
+  problem: "React and TypeScript components drift into any-typed props, inaccessible controls, and effect-driven data fetching.",
+  audience: "frontend teams writing React in TypeScript",
+  prevents: [
+    "Untyped or any-typed props and event handlers",
+    "div-with-onClick controls that fail keyboard and screen-reader users",
+    "Fetching data inside effects instead of a real data layer"
+  ],
+  appliesTo: {
+    paths: ["/src", "/src/components", "/app", "/components"],
+    stacks: ["react", "typescript"],
+    packages: ["react"]
+  },
+  pieces: [
+    {
+      kind: "rule",
+      nodePath: "/src/components",
+      title: "Type props explicitly, no any",
+      summary: "Every component has an explicit props type and avoids any.",
+      body: "Every component has an explicit props type and avoids `any`.\n\n- Prefer `unknown` with narrowing when a type is genuinely unknown.\n- Type event handlers and refs precisely.\n- Derive types from a single source of truth (schemas, API types) rather than restating shapes that can drift.",
+      scopeType: "folder",
+      priority: "medium",
+      enforcement: "advisory"
+    },
+    {
+      kind: "rule",
+      nodePath: "/src/components",
+      title: "Interactive elements must be accessible",
+      summary: "Use real semantics, labels, and keyboard support.",
+      body: "Use real semantics before reaching for a `div` with handlers.\n\n- Prefer native `button`, `a`, `label`, `input`.\n- Every control has an accessible name, a visible focus state, and full keyboard operability.\n- Images have `alt` text, and color is never the only signal.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "advisory"
+    },
+    {
+      kind: "memory",
+      nodePath: "/src",
+      title: "Component structure conventions",
+      summary: "Small, focused components; colocate state and lift only when shared.",
+      body: "Keep components small and focused on one responsibility.\n\n- Colocate state with the component that owns it; lift only when genuinely shared.\n- Separate presentational components from data access.\n- Name files and exports consistently so the tree is predictable to navigate."
+    },
+    {
+      kind: "memory",
+      nodePath: "/src",
+      title: "Hooks discipline and data fetching",
+      summary: "Follow the rules of hooks; fetch with a real data layer, not raw effects.",
+      body: "Call hooks unconditionally at the top level with honest dependency arrays.\n\n- Avoid effects for data fetching; use a data-fetching library or the framework's server data layer.\n- Custom hooks encapsulate reusable logic.\n- Return stable references where identity matters."
+    },
+    {
+      kind: "skill",
+      nodePath: "/",
+      title: "react-component-review",
+      summary: "Checklist for reviewing a new or changed React component.",
+      body: "---\nname: react-component-review\ndescription: Review a React + TypeScript component for types, accessibility, and hook correctness.\n---\n\n# React component review\n\n- [ ] Props are explicitly typed; no any\n- [ ] Interactive elements use native semantics, labels, and keyboard support\n- [ ] Hooks are called unconditionally with honest dependency arrays\n- [ ] No data fetching inside raw effects\n- [ ] Component has one clear responsibility and reasonable size\n- [ ] State lives at the right level (colocated, lifted only when shared)\n- [ ] No needless re-renders from unstable inline props or callbacks\n",
+      skillTags: ["react", "typescript", "accessibility", "review"]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/shadcn-ui.js
+var shadcnUi = {
+  "slug": "shadcn-ui",
+  "version": "1.0.0",
+  "name": "shadcn/ui",
+  "tagline": "Own your component code and theme it with CSS variables instead of installing a black-box UI library.",
+  "description": "shadcn/ui is a code distribution system that copies accessible, Tailwind-styled React components straight into your repo via a CLI and registries, so you own and edit every line. This pattern keeps your team aligned on theming through CSS variables, safe component composition, and the CLI and registry workflow. It encodes the current 2026 conventions: Tailwind v4, the unified Radix UI package, namespaced registries, and the shadcn MCP server.",
+  "category": "Frontend",
+  "icon": "blocks",
+  "color": "bg-zinc-500/10 text-zinc-700 dark:bg-zinc-400/15 dark:text-zinc-300",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "shadcn/ui pattern for AI coding agents | Pathrule",
+  "metaDescription": "Teach your AI agent the right shadcn/ui workflow: CSS-variable theming, component composition, the shadcn CLI v4, and namespaced registries for Tailwind v4 projects.",
+  "problem": "AI agents treat shadcn/ui like an npm package, hand-editing generated primitives and hardcoding colors instead of theming through CSS variables.",
+  "audience": "React and Next.js teams using shadcn/ui with Tailwind v4",
+  "prevents": [
+    "Importing shadcn/ui as a runtime dependency instead of copying components into the repo",
+    "Hardcoding hex colors or Tailwind palette classes instead of using semantic CSS-variable tokens",
+    "Forking generated primitives by editing them in place instead of composing new components around them"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/components/ui",
+      "/src/components",
+      "/src/app",
+      "/app"
+    ],
+    "stacks": [
+      "react",
+      "nextjs",
+      "tailwindcss",
+      "typescript",
+      "radix-ui"
+    ],
+    "packages": [
+      "shadcn",
+      "tailwindcss",
+      "radix-ui",
+      "class-variance-authority",
+      "clsx",
+      "tailwind-merge",
+      "lucide-react"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/components/ui",
+      "title": "Treat /components/ui as generated, composable code",
+      "summary": "Add and update primitives through the CLI; compose around them rather than rewriting them.",
+      "body": "Files under `components/ui` are owned by the shadcn registry workflow, not hand-authored from scratch.\n\n- Add or update a primitive with `npx shadcn@latest add <component>` instead of writing it by hand, so dependencies and registry metadata stay correct.\n- Before re-running `add`, review changes with the `--diff` and `--dry-run` flags so local customizations are not silently overwritten.\n- When you need new behavior, build a feature component in `components/` that imports the primitive; do not fork the primitive in place.\n- Keep the `cn` helper from `lib/utils` (`clsx` + `tailwind-merge`) as the only class-merging utility so variant overrides resolve predictably."
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Theme only through semantic CSS variables",
+      "summary": "Style with token classes like bg-background and text-primary, never raw hex or palette colors.",
+      "body": "shadcn/ui themes via semantic CSS variables defined in your global stylesheet, and every color must flow through them.\n\n- Use semantic utility classes (`bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-muted-foreground`) instead of `bg-white`, `text-zinc-900`, or hex values.\n- Define and adjust the palette by editing the `--background`, `--foreground`, `--primary`, and related CSS variables in your global CSS, not by sprinkling colors across components.\n- Provide both `:root` and `.dark` blocks so dark mode resolves from the same token names; never branch with `dark:bg-[#...]` hardcodes.\n- With Tailwind v4 leave `tailwind.config` blank in `components.json` and rely on the `@import` driven setup and `@theme` tokens.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "How shadcn/ui actually works in this repo",
+      "summary": "Components are copied into the codebase via CLI and registries; nothing is imported from a UI package.",
+      "body": "shadcn/ui is a code distribution system, not a component dependency, so the source of truth lives in our own files.\n\n- Running the CLI copies component source into `components/ui` and wires aliases from `components.json` (`components`, `ui`, `lib`, `utils`, `hooks`); there is no `@shadcn/ui` runtime import.\n- As of 2026 primitives sit on the unified `radix-ui` package (single import surface) styled with Tailwind v4 and `class-variance-authority` variants.\n- The `components.json` `style` is `new-york` and `baseColor` picks the token palette (`neutral`, `stone`, `zinc`, `mauve`, and similar); `cssVariables: true` is what enables semantic-token theming.\n- Treat the `cn` helper, the CSS-variable tokens, and the registry-managed primitives as the three pillars: edit tokens for theme, compose for features, re-run the CLI for upstream fixes."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/components",
+      "title": "CLI v4, namespaced registries, and the MCP server",
+      "summary": "Use the v4 CLI plus namespaced registries and the shadcn MCP server to add and discover components.",
+      "body": 'The shadcn CLI v4 plus registries are how we install and extend UI; learn the workflow before adding components.\n\n- Core commands: `init` (scaffolds and writes `components.json`), `add`, `search`, `view`, `build`, plus `info` and `docs` for inspecting installed components and reading their docs.\n- Namespaced registries let you install with `@registry/name` syntax; declare them in `components.json` under `registries`, for example `"@acme": "https://acme.com/r/{name}.json"`, and use header-based auth with env vars for private registries.\n- Pin private or pro registries to a tag or digest in the URL so installs are reproducible, and prefer kebab-case item names with accurate `registryDependencies`.\n- The shadcn MCP server (`npx shadcn@latest mcp init --client claude`) lets an agent search, preview, and add components across configured registries in natural language with zero extra config.'
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "shadcn-ui-review",
+      "summary": "Pre-merge checklist for shadcn/ui changes covering theming, composition, and the CLI workflow.",
+      "body": "---\nname: shadcn-ui-review\ndescription: Review a shadcn/ui change before merge. Verifies CSS-variable theming, component composition over forking, correct CLI and registry usage, and accessibility. Use when adding or editing components under components/ui or any UI built on shadcn primitives.\n---\n\n# shadcn/ui review\n\n- [ ] No `@shadcn/ui` or external UI-library runtime imports; primitives live in `components/ui` and were added via the CLI.\n- [ ] Colors use semantic tokens (`bg-background`, `text-foreground`, `bg-primary`) with no hardcoded hex or raw palette classes.\n- [ ] Theme changes were made by editing CSS variables in global CSS, with matching `:root` and `.dark` blocks.\n- [ ] New behavior is composed in `components/` around primitives rather than forking the generated primitive.\n- [ ] Class merging goes through the `cn` helper so variant overrides resolve via `tailwind-merge`.\n- [ ] `components.json` is intact: Tailwind v4 `tailwind.config` blank, `cssVariables: true`, aliases unchanged.\n- [ ] Registry installs use correct namespaces and pinned versions; private registries authenticate via env-var headers.\n- [ ] Accessibility preserved: Radix primitive props, `aria-*`, focus states, and keyboard interaction are not stripped.\n- [ ] Dark mode and both color schemes verified visually for the changed components.\n",
+      "skillTags": [
+        "shadcn",
+        "react",
+        "tailwind",
+        "theming",
+        "ui-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/tailwind-css.js
+var tailwindCss = {
+  "slug": "tailwind-css",
+  "version": "1.0.0",
+  "name": "Tailwind CSS",
+  "tagline": "Keep Tailwind v4 utility code clean, token-driven, and free of arbitrary-value sprawl.",
+  "description": "A pattern bundle for teams building UIs with Tailwind CSS v4. It encodes the CSS-first workflow (configure in CSS with @theme, no tailwind.config.js), enforces design tokens over arbitrary values, and standardizes class ordering and conditional-class handling. Use it so AI agents and humans write Tailwind that matches your design system instead of one-off magic numbers.",
+  "category": "Frontend",
+  "icon": "wind",
+  "color": "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/15 dark:text-cyan-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Tailwind CSS rules for AI coding agents | Pathrule",
+  "metaDescription": "Pathrule pattern for Tailwind CSS v4: CSS-first @theme tokens, no arbitrary-value sprawl, sorted classes, and a review skill so AI agents ship on-system UI.",
+  "problem": "AI agents and rushed PRs fill Tailwind markup with arbitrary values and ad-hoc classes that drift from the design system and bloat the CSS bundle.",
+  "audience": "Frontend and product teams building component-driven UIs with Tailwind CSS v4 and React or other JSX frameworks.",
+  "prevents": [
+    "Arbitrary values like w-[137px] or text-[#3b82f6] replacing real design tokens",
+    "Resurrecting a tailwind.config.js when v4 expects CSS-first @theme configuration",
+    "Dynamic class strings such as bg-${color}-500 that Tailwind cannot detect at build time"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/app",
+      "/src/components",
+      "/src/styles"
+    ],
+    "stacks": [
+      "tailwind",
+      "tailwind-v4",
+      "react",
+      "nextjs",
+      "vite"
+    ],
+    "packages": [
+      "tailwindcss",
+      "@tailwindcss/vite",
+      "prettier-plugin-tailwindcss",
+      "tailwind-merge",
+      "clsx",
+      "class-variance-authority"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Use design tokens, not arbitrary values",
+      "summary": "Prefer theme-backed utilities over square-bracket arbitrary values.",
+      "body": "Reach for a standard utility before an arbitrary value so markup stays inside the design system.\n\n- Replace one-offs like `w-[137px]`, `text-[#3b82f6]`, or `mt-[13px]` with token utilities (`w-32`, `text-primary`, `mt-3`).\n- If a value is genuinely reused, add it to `@theme` as a custom token (for example `--color-brand` or `--spacing-18`) instead of repeating the bracket form.\n- Arbitrary values are an escape hatch for true one-offs only; each distinct one emits its own rule and bloats the output CSS.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "No dynamic class string interpolation",
+      "summary": "Never build Tailwind class names from runtime template strings.",
+      "body": "Tailwind scans source as plain text, so any class assembled at runtime is invisible to the compiler and gets purged.\n\n- Do not write `className={`bg-${status}-500`}` or concatenate fragments; the full literal class must appear in source.\n- Map state to complete class strings with `class-variance-authority` (cva) or an explicit lookup object, then merge with `cn`.\n- If a class truly must be generated, register it through `@source inline(...)` so the compiler keeps it.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/styles",
+      "title": "Tailwind v4 is CSS-first via @theme",
+      "summary": "Configure tokens in CSS with @theme; there is no tailwind.config.js.",
+      "body": 'Tailwind CSS v4 moved configuration out of JavaScript into your stylesheet, so do not scaffold a `tailwind.config.js`.\n\n- Start the entry stylesheet with `@import "tailwindcss";` then declare tokens in an `@theme { ... }` block (`--color-*`, `--font-*`, `--breakpoint-*`, `--spacing-*`).\n- Theme variables become both real CSS custom properties and generated utilities, so `--color-brand` yields `bg-brand`, `text-brand`, and friends automatically.\n- Add custom utilities with `@utility` and custom selectors with `@custom-variant` (for example a class- or data-attribute-based `dark` variant) rather than a JS plugin or `darkMode` config key.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/components",
+      "title": "Variant + merge stack: cva, clsx, tailwind-merge",
+      "summary": "Standardize a cn helper and define variants outside the component.",
+      "body": "Reusable components compose classes through one shared helper so conflicting utilities resolve predictably.\n\n- Create `cn` once: `export const cn = (...i: ClassValue[]) => twMerge(clsx(i))`, then always merge through it so a later `className` prop wins over base styles.\n- Order matters inside `cn`: base styles first, conditional/variant classes next, caller overrides last.\n- Declare `cva` variant maps at module scope (not inside render) to avoid recreating them each render, and keep one full class string per variant value.\n- Let `prettier-plugin-tailwindcss` own class ordering so reviews stay focused on logic, not sort order."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "tailwind-css-review",
+      "summary": "Pre-merge checklist for Tailwind v4 utility and token hygiene.",
+      "body": "---\nname: tailwind-css-review\ndescription: Review Tailwind CSS v4 changes for token-driven styling, no arbitrary-value or dynamic-class sprawl, CSS-first config, and conflict-safe class merging before merging.\n---\n\n# Tailwind CSS review\n\n- [ ] No new arbitrary values (`w-[..]`, `text-[#..]`, `mt-[..px]`); reused values promoted to `@theme` tokens instead.\n- [ ] No runtime-interpolated class strings (`bg-${x}-500`); state mapped via cva or a literal lookup, or registered with `@source inline(...)`.\n- [ ] Configuration stays CSS-first: tokens live in `@theme`, no `tailwind.config.js` reintroduced.\n- [ ] Custom utilities use `@utility` and custom states use `@custom-variant` (including class/data-attribute `dark`), not JS plugins.\n- [ ] Component classes merged through the shared `cn` helper so caller overrides win and conflicts resolve.\n- [ ] cva variant maps defined at module scope, one full class string per variant value.\n- [ ] Classes are sorted by `prettier-plugin-tailwindcss` and the diff is free of manual reordering churn.\n- [ ] Responsive, dark, and state variants use real modifiers (`md:`, `dark:`, `hover:`) rather than duplicated bespoke CSS.\n",
+      "skillTags": [
+        "tailwind",
+        "css",
+        "frontend",
+        "design-tokens",
+        "code-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/tanstack-query.js
+var tanstackQuery = {
+  "slug": "tanstack-query",
+  "version": "1.0.0",
+  "name": "TanStack Query",
+  "tagline": "Treat the server as the source of truth and let the cache do the work.",
+  "description": "A guardrail bundle for TanStack Query v5 in React apps. It enforces structured query key factories, deliberate staleTime, and mutation-driven invalidation so server state stays consistent. The rules keep data fetching out of effects and push every query through reusable queryOptions.",
+  "category": "Frontend",
+  "icon": "refresh-cw",
+  "color": "bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "TanStack Query Pattern for AI Coding Agents",
+  "metaDescription": "Pathrule pattern that teaches AI coding agents to use TanStack Query v5 correctly: query key factories, staleTime, mutation invalidation, and no fetching in useEffect.",
+  "problem": "Server state drifts out of sync because queries use ad-hoc keys, fetch inside effects, and never invalidate after mutations.",
+  "audience": "React and Next.js teams using TanStack Query v5 for server state",
+  "prevents": [
+    "Fetching data inside useEffect and storing it in component state instead of using useQuery",
+    "Ad-hoc string query keys that make invalidation unpredictable and silently serve stale data",
+    "Mutations that update the server but never invalidate or update the related query cache"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/src/api",
+      "/src/hooks",
+      "/app"
+    ],
+    "stacks": [
+      "react",
+      "nextjs",
+      "typescript",
+      "tanstack-query"
+    ],
+    "packages": [
+      "@tanstack/react-query",
+      "@tanstack/react-query-devtools"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Never fetch in useEffect for server state",
+      "summary": "Use useQuery instead of useEffect plus useState for any server data.",
+      "body": "Server state belongs to TanStack Query, not to component effects. Fetching in `useEffect` and storing the result in `useState` reintroduces every bug the library exists to solve: no caching, no dedupe, manual loading and error flags, and race conditions on fast navigation.\n\n- Replace any `useEffect` that calls `fetch` or an API client with `useQuery` or `useSuspenseQuery`.\n- Read status from `query.status`, `isPending`, and `isError` instead of hand-rolled `useState` flags.\n- Use `enabled` (or component composition with `useSuspenseQuery`) for dependent queries rather than gating fetches inside an effect.\n- Reserve `useEffect` for true side effects like subscriptions and DOM work, never for data loading.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Invalidate related queries after every mutation",
+      "summary": "Each useMutation must invalidate or update the queries its write affects.",
+      "body": "A mutation that changes server data must tell the cache. Without invalidation the UI keeps rendering stale data until a refetch trigger happens to fire.\n\n- In `onSuccess` (or `onSettled`), call `queryClient.invalidateQueries({ queryKey: keys.lists() })` for every list or detail the write touches.\n- Prefer key-factory references over inline arrays so invalidation targets match the keys that were set.\n- For optimistic UI, use `onMutate` to `cancelQueries`, snapshot with `getQueryData`, write with `setQueryData`, and roll back in `onError`; still invalidate in `onSettled`.\n- Do not manually `setQueryData` as a substitute for invalidation unless you return the exact server shape.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Query key factories are the cache contract",
+      "summary": "Centralize hierarchical query keys per entity so invalidation is predictable.",
+      "body": "Query keys are how TanStack Query identifies, dedupes, and invalidates cache entries, so they live in one factory per entity rather than as scattered inline arrays.\n\n- Shape each factory hierarchically: `all`, `lists()`, `list(filters)`, `details()`, `detail(id)` so a single `invalidateQueries({ queryKey: keys.all })` can clear a whole entity.\n- Include every input a query depends on (filters, ids, pagination) in the key; changing the key is how a new fetch is triggered.\n- Pair factories with `queryOptions()` from v5 so the same key, `queryFn`, and `staleTime` are reused across `useQuery`, `useSuspenseQuery`, `prefetchQuery`, and `setQueryData`.\n- Keys must be serializable and order-stable; objects are compared by deep structure, not reference.",
+      "skillTags": []
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "TanStack Query v5 defaults and staleTime tuning",
+      "summary": "Know the v5 defaults before overriding refetch and cache behavior.",
+      "body": "TanStack Query v5 (`@tanstack/react-query` 5.x) ships aggressive freshness defaults that surprise teams expecting cache-first behavior.\n\n- `staleTime` defaults to `0`, so data is stale immediately and refetches on mount, window focus, and reconnect; set a realistic value like `5 * 60 * 1000` per query for data that does not change every second.\n- `gcTime` (renamed from `cacheTime`) defaults to 5 minutes and controls when inactive cache entries are garbage collected, not staleness.\n- Use `staleTime: Infinity` for data that only changes via your own mutations, and `staleTime: 'static'` for truly immutable data like feature flags.\n- v5 removed the `suspense: true` flag on `useQuery`; use the dedicated `useSuspenseQuery`, and note it has no `enabled` option since loading is handled by Suspense and errors by an Error Boundary.",
+      "skillTags": []
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "tanstack-query-review",
+      "summary": "Checklist for reviewing TanStack Query v5 usage before merge.",
+      "body": "---\nname: tanstack-query-review\ndescription: Review checklist for TanStack Query v5 code. Use when adding or changing useQuery, useSuspenseQuery, useMutation, query keys, or QueryClient config in a React or Next.js codebase.\n---\n\n# TanStack Query review\n\n- [ ] No server data is fetched in `useEffect` plus `useState`; every read uses `useQuery` or `useSuspenseQuery`\n- [ ] Query keys come from a centralized factory, not inline ad-hoc arrays, and include every input the query depends on\n- [ ] Shared queries are defined with `queryOptions()` and reused across hooks, prefetch, and `setQueryData`\n- [ ] `staleTime` and `gcTime` are set deliberately rather than relying on the `0ms` stale default\n- [ ] Every `useMutation` invalidates or updates the queries its write affects in `onSuccess` or `onSettled`\n- [ ] Optimistic updates cancel in-flight queries, snapshot previous data, and roll back in `onError`\n- [ ] Loading and error states read from `isPending`, `isError`, and Error Boundaries, not hand-rolled flags\n- [ ] `enabled` or component composition handles dependent queries; nothing gates fetching inside an effect\n",
+      "skillTags": [
+        "tanstack-query",
+        "react",
+        "code-review",
+        "data-fetching"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/web-accessibility.js
+var webAccessibility = {
+  "slug": "web-accessibility",
+  "version": "1.0.0",
+  "name": "Web Accessibility",
+  "tagline": "Ship interfaces that work for keyboard, screen reader, and low-vision users by default.",
+  "description": "A WCAG 2.2 AA pattern for frontend teams that keeps accessibility correct without slowing delivery. It enforces a semantic-HTML-first approach, reserves ARIA for genuine custom widgets, and ships a review checklist so every component is keyboard operable, properly labeled, and visibly focusable before merge.",
+  "category": "Frontend",
+  "icon": "accessibility",
+  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Web Accessibility pattern for AI coding agents (WCAG 2.2)",
+  "metaDescription": "Teach your AI coding agent WCAG 2.2 AA: semantic HTML first, ARIA only when needed, keyboard support, visible focus, and a per-component review checklist.",
+  "problem": "Agents reach for ARIA and div soup instead of native elements, shipping components that fail keyboard, focus, and screen-reader users.",
+  "audience": "Frontend and product teams building React, Next.js, or component-library UIs to WCAG 2.2 AA.",
+  "prevents": [
+    "Clickable <div> and <span> that keyboard and screen-reader users cannot operate",
+    "Redundant or wrong ARIA that creates more errors than it fixes",
+    "Form inputs with no programmatic label and controls with invisible focus rings"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/components",
+      "/app",
+      "/src"
+    ],
+    "stacks": [
+      "react",
+      "nextjs",
+      "typescript",
+      "tailwind",
+      "html"
+    ],
+    "packages": [
+      "eslint-plugin-jsx-a11y",
+      "@axe-core/react",
+      "axe-core",
+      "@testing-library/react"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/components",
+      "title": "Native HTML before ARIA",
+      "summary": "Use the semantically correct native element first; add ARIA only for behavior HTML cannot express.",
+      "body": 'Reach for the native element that already has the role, state, and keyboard behavior you need before adding any ARIA. Per the 2026 WebAIM Million report, pages with ARIA average more detectable errors than pages without it, so ARIA is a last resort, not a default.\n\n- Use `<button>` for actions and `<a href>` for navigation. Never attach `onClick` to a `<div>` or `<span>` to fake a control.\n- Use `<label>`, `<fieldset>`/`<legend>`, `<nav>`, `<main>`, `<header>`, and `<footer>` instead of generic `<div>` plus `role`.\n- Reserve ARIA for custom widgets that have no native equivalent (`role="dialog"`, `role="tablist"`, `aria-live`), and never override a native role with a redundant one such as `<button role="button">`.\n- Any ARIA control built from non-interactive elements must add `tabindex="0"` plus keydown handlers, because ARIA declares semantics but adds zero keyboard behavior.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/components",
+      "title": "Keyboard operability and visible focus",
+      "summary": "Every interactive element must be reachable, operable by keyboard, and show a clear focus indicator.",
+      "body": 'All functionality must work with the keyboard alone, and the focused element must always be visibly distinguishable. This covers WCAG 2.2 AA 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, and 2.5.8 Target Size.\n\n- Never remove the focus outline with `outline: none` unless you replace it with an equally visible indicator at 3:1 contrast against adjacent colors.\n- Maintain a logical DOM/tab order and avoid positive `tabindex` values; use `tabindex="-1"` only for programmatic focus targets.\n- Manage focus on route changes, dialog open/close, and dynamic content so focus is never lost or trapped unintentionally.\n- Provide a non-drag alternative for any drag-and-drop interaction, and give pointer targets at least 24x24 CSS pixels (44x44 for primary touch targets).',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/components",
+      "title": "Accessible forms: labels, errors, and grouping",
+      "summary": "How we wire labels, required state, and error messaging so every field is programmatically understandable.",
+      "body": 'Every input needs a programmatic label and a clear path from field to error. Placeholder text is not a label and disappears on input, so it never substitutes for `<label>`.\n\n- Associate labels explicitly with `<label htmlFor={id}>` matching the input `id`, or wrap the input inside the `<label>`.\n- Mark required fields with the native `required` attribute and surface validation errors with `aria-invalid="true"` plus `aria-describedby` pointing at the error text node.\n- Group related controls (radio sets, address blocks) in `<fieldset>` with a `<legend>`; use `aria-live="polite"` for async/inline validation summaries.\n- Keep error text adjacent and specific ("Enter a valid email"), and move focus to the first invalid field on submit failure.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Accessibility tooling and CI gates",
+      "summary": "The lint, dev-time, and test stack we use to catch a11y regressions before merge.",
+      "body": "Automated checks catch roughly a third of accessibility issues, so we run them in CI and pair them with manual keyboard and screen-reader passes. The target is WCAG 2.2 AA.\n\n- `eslint-plugin-jsx-a11y` runs in lint and blocks the build on errors (clickable non-interactive elements, missing alt, label-less controls).\n- `@axe-core/react` logs violations to the console in development; `jest-axe` / `axe-core` assert no violations in component tests.\n- Color contrast must meet 4.5:1 for normal text and 3:1 for large text and UI/focus indicators; verify in design tokens, not per component.\n- Automation never replaces manual testing: tab through every flow and verify with a real screen reader (NVDA, VoiceOver, or JAWS), since simulators are unreliable."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "web-accessibility-review",
+      "summary": "Per-component WCAG 2.2 AA review checklist to run before merging any UI change.",
+      "body": '---\nname: web-accessibility-review\ndescription: Run this checklist before merging any new or changed UI component to verify WCAG 2.2 AA. Covers semantic HTML, keyboard operability, focus, labels, contrast, and screen-reader output.\n---\n\n# Web accessibility review\n\n- [ ] Every interactive element uses a native control (`<button>`, `<a href>`, `<input>`); no `onClick` on `<div>`/`<span>`.\n- [ ] ARIA is present only where native HTML cannot express the role or state, with no redundant or conflicting roles.\n- [ ] All functionality is reachable and operable with the keyboard alone; tab order follows reading order.\n- [ ] Focus is always visible (no bare `outline: none`) and meets 3:1 contrast against adjacent colors.\n- [ ] Focus is managed on dialog open/close and route changes, and is never trapped unintentionally.\n- [ ] Every form field has an associated `<label>`; errors use `aria-invalid` plus `aria-describedby`.\n- [ ] Images have meaningful `alt`, or `alt=""` when decorative; icon-only buttons have an accessible name.\n- [ ] Text contrast is at least 4.5:1 (3:1 for large text and UI components).\n- [ ] Pointer targets are at least 24x24 CSS px and drag interactions have a single-pointer alternative.\n- [ ] Verified with `eslint-plugin-jsx-a11y`, an axe run, and one manual screen-reader pass.\n',
+      "skillTags": [
+        "accessibility",
+        "a11y",
+        "wcag",
+        "frontend",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/auth-sessions-jwt-oauth.js
+var authSessionsJwtOauth = {
+  "slug": "auth-sessions-jwt-oauth",
+  "version": "1.0.0",
+  "name": "Auth (Sessions, JWT, OAuth)",
+  "tagline": "Build authentication that resists XSS, CSRF, and token replay by default.",
+  "description": "A backend auth pattern covering the decisions agents get wrong: when to use server sessions versus JWTs, how to store tokens safely in httpOnly cookies, and how to wire OAuth/OIDC with PKCE. It encodes 2026 OWASP guidance on Argon2id password hashing, refresh token rotation, and CSRF defense so generated auth code is secure on the first pass.",
+  "category": "Backend",
+  "icon": "key-round",
+  "color": "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Auth (Sessions, JWT, OAuth) pattern for AI coding agents",
+  "metaDescription": "A Pathrule pattern that teaches AI coding agents secure auth: session vs JWT tradeoffs, httpOnly cookies, OAuth/OIDC with PKCE, Argon2id hashing, CSRF, and token rotation.",
+  "problem": "AI agents reach for localStorage JWTs, weak password hashing, and missing CSRF defenses, shipping auth that breaks under XSS and token replay.",
+  "audience": "Backend and full-stack teams building Node, TypeScript, or Python services that own login, sessions, and OAuth flows.",
+  "prevents": [
+    "Storing access or refresh tokens in localStorage where XSS can steal them",
+    "Hashing passwords with fast or unsalted algorithms like SHA-256 or MD5",
+    "Skipping refresh token rotation and CSRF protection on cookie-based auth"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/auth",
+      "/src/middleware",
+      "/src/routes"
+    ],
+    "stacks": [
+      "node",
+      "typescript",
+      "express",
+      "fastify",
+      "oidc"
+    ],
+    "packages": [
+      "argon2",
+      "jose",
+      "openid-client",
+      "oauth4webapi",
+      "csrf-csrf"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/auth",
+      "title": "Never store auth tokens in localStorage",
+      "summary": "Session and refresh tokens must live in httpOnly cookies, never web storage.",
+      "body": "Any token that authenticates a request must be set as an httpOnly cookie so JavaScript cannot read it and XSS cannot exfiltrate it.\n\n- Set the session or refresh cookie with `httpOnly`, `secure`, `sameSite: 'lax'` (or `strict` for high-value actions), and the `__Host-` name prefix.\n- Never write access tokens, refresh tokens, or session ids to `localStorage`, `sessionStorage`, or non-httpOnly cookies.\n- Keep access tokens short lived (15 to 60 minutes) and refresh tokens long lived (7 to 14 days) so a stolen access token expires fast.\n- If a short-lived access token must reach the browser for API calls, hold it in memory only, never in persistent storage."
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/auth",
+      "title": "Hash passwords with Argon2id, never fast hashes",
+      "summary": "Use Argon2id at OWASP parameters; bcrypt cost 12+ only as a legacy fallback.",
+      "body": "Passwords must be hashed with a memory-hard algorithm so offline cracking stays expensive.\n\n- Default to Argon2id via the `argon2` package using OWASP 2026 minimums: 19 MiB memory, 2 iterations, parallelism 1, then tune upward to your hardware.\n- Use bcrypt at cost factor 12 or higher only when Argon2 is unavailable in the runtime.\n- Never use `md5`, `sha1`, `sha256`, or any unsalted or single-round hash for passwords.\n- Compare with the library's built-in `verify` so the work factor and salt are read from the stored hash; never roll your own comparison."
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/middleware",
+      "title": "Protect cookie-based auth from CSRF",
+      "summary": "Cookie sessions need SameSite plus a double-submit CSRF token on state changes.",
+      "body": "Because the browser sends auth cookies automatically, every state-changing request needs an explicit CSRF defense.\n\n- Set `sameSite: 'lax'` as the baseline and `strict` on sensitive POST/PUT/PATCH/DELETE flows; SameSite alone is not a complete defense.\n- Add a double-submit cookie token (for example `csrf-csrf`) validated on every unsafe method; pure stateless JWT-in-header APIs that never use cookies can skip this.\n- Verify `Origin` or `Referer` on state-changing requests as defense in depth.\n- Treat `GET`, `HEAD`, and `OPTIONS` as safe and never mutate state in them.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/auth",
+      "title": "Sessions vs JWT: pick the right model",
+      "summary": "Default to server sessions; reach for JWT only when statelessness is required.",
+      "body": "Choosing between server-side sessions and JWTs is the first auth decision and the one agents most often get wrong.\n\n- Default to opaque server sessions stored in Redis or Postgres with an httpOnly cookie. They are revocable instantly, carry no payload to leak, and are simplest to reason about.\n- Reach for JWTs only when you genuinely need stateless verification across services or edge runtimes, and accept that revocation requires a denylist or very short TTLs.\n- A signed JWT cannot be invalidated before expiry, so keep access token TTL low (15 to 60 min) and pair it with a rotating refresh token.\n- Do not put secrets or PII in a JWT payload; it is base64, not encrypted, and is readable by anyone holding it."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/auth",
+      "title": "OAuth/OIDC and refresh token rotation",
+      "summary": "Use Authorization Code + PKCE and rotate refresh tokens with replay detection.",
+      "body": "For third-party login and delegated access, follow RFC 9700 (OAuth 2.0 Security BCP) rather than older tutorials.\n\n- Always use the Authorization Code flow with PKCE, even for confidential clients; the implicit and password grants are deprecated. Use `openid-client` or `oauth4webapi` rather than hand-rolling the flow.\n- Validate the `state` parameter against CSRF and validate the OIDC `id_token` signature, `iss`, `aud`, and `nonce` before trusting any claim.\n- Rotate refresh tokens on every use: issue a new refresh token and invalidate the old one. If a consumed token is replayed, revoke the entire token family.\n- Make rotation atomic with a DB transaction or lock so concurrent refreshes cannot mint two valid tokens for one client."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "auth-sessions-jwt-oauth-review",
+      "summary": "Pre-merge checklist for any auth, session, JWT, or OAuth change.",
+      "body": "---\nname: auth-sessions-jwt-oauth-review\ndescription: Use before merging any authentication change covering sessions, JWTs, OAuth/OIDC, password storage, cookies, CSRF, and token rotation. Run every item against the diff.\n---\n\n# Auth (Sessions, JWT, OAuth) review\n\n- [ ] Tokens and session ids are stored in httpOnly, secure, SameSite cookies with a `__Host-` prefix, never in localStorage or sessionStorage.\n- [ ] Passwords are hashed with Argon2id at OWASP 2026 parameters (19 MiB, 2 iterations, parallelism 1), or bcrypt cost 12+ only as a documented fallback.\n- [ ] No fast or unsalted hash (md5, sha1, sha256) is used for passwords anywhere.\n- [ ] Session vs JWT choice is justified: opaque server sessions by default, JWT only when stateless verification is required.\n- [ ] Access tokens are short lived (15 to 60 min); JWTs carry no secrets or PII in the payload.\n- [ ] OAuth uses Authorization Code + PKCE; implicit and password grants are absent.\n- [ ] OAuth `state` is validated and the OIDC `id_token` signature, `iss`, `aud`, and `nonce` are verified before trusting claims.\n- [ ] Refresh tokens rotate on every use with replay detection that revokes the token family; rotation is atomic.\n- [ ] Cookie-based endpoints enforce CSRF protection (SameSite plus double-submit token) on all state-changing methods.\n- [ ] Auth failures return generic messages and do not leak whether the user or password was wrong.\n",
+      "skillTags": [
+        "auth",
+        "security",
+        "jwt",
+        "oauth",
+        "oidc",
+        "sessions",
+        "csrf",
+        "password-hashing"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/background-jobs-queues.js
+var backgroundJobsQueues = {
+  "slug": "background-jobs-queues",
+  "version": "1.0.0",
+  "name": "Background Jobs & Queues",
+  "tagline": "Make every queued job safe to run twice so retries heal instead of corrupt.",
+  "description": "Queue-backed work is delivered at-least-once, which means every job can and eventually will run more than once. This pattern bundles the rules, memories, and review checklist that keep your workers idempotent, retried with backoff and jitter, drained on dead-letter queues you actually watch, and enqueued atomically with the data they describe.",
+  "category": "Backend",
+  "icon": "list-todo",
+  "color": "bg-fuchsia-500/10 text-fuchsia-600 dark:bg-fuchsia-400/15 dark:text-fuchsia-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Background Jobs & Queues pattern for AI coding agents",
+  "metaDescription": "Teach your AI coding agent to write idempotent jobs, exponential backoff with jitter, dead-letter queues, and atomic enqueue via the transactional outbox.",
+  "problem": "Queues deliver at-least-once, so naive jobs run twice and corrupt data, retry storms hammer dependencies, and failed jobs vanish silently.",
+  "audience": "Backend and platform teams running Node.js queue workers (BullMQ, SQS, RabbitMQ) behind an API or event stream.",
+  "prevents": [
+    "Duplicate side effects from a job that re-runs after a retry or redelivery",
+    "Retry storms that hammer a downstream dependency because there is no jitter or failure-type classification",
+    "Permanently failed jobs disappearing into the failed set with no dead-letter queue or alert"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/jobs",
+      "/src/workers",
+      "/src/queues"
+    ],
+    "stacks": [
+      "node",
+      "typescript",
+      "bullmq",
+      "redis",
+      "sqs",
+      "rabbitmq"
+    ],
+    "packages": [
+      "bullmq",
+      "ioredis",
+      "@aws-sdk/client-sqs",
+      "amqplib"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/jobs",
+      "title": "Every job handler must be idempotent",
+      "summary": "Assume at-least-once delivery: re-running a job with the same input must not change the final state.",
+      "body": "Queue delivery is at-least-once, so write every handler so the same input produces the same end state whether it runs once or five times.\n\n- Carry a stable idempotency key on the job payload (for example `orderId` or a UUID minted at enqueue time), not a value generated inside the worker.\n- Guard side effects with a unique constraint or a dedup record (`INSERT ... ON CONFLICT DO NOTHING`, or a `processed_jobs` row) checked inside the same transaction as the work.\n- Make external calls idempotent too: pass the same key to providers (Stripe `Idempotency-Key`, conditional writes) so a redelivery is a no-op.\n- Keep the dedup record's TTL longer than the queue's full retry window, or a late redelivery will slip past the guard.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/workers",
+      "title": "Retry with backoff and route permanent failures to a DLQ",
+      "summary": "Use exponential backoff with jitter, a bounded attempt count, and a dead-letter queue that is monitored.",
+      "body": "Retries must back off and stop, and exhausted jobs must land somewhere a human will see them.\n\n- Configure `attempts` plus `backoff: { type: 'exponential', delay }` in BullMQ; add jitter so synchronized failures do not retry in lockstep.\n- Classify errors: throw `UnrecoverableError` for permanent failures (malformed payload, missing referenced row) so they skip the remaining attempts instead of burning them.\n- On final failure move the job to a dead-letter queue and emit a metric or alert; never let it sit silently in the `failed` set forever.\n- Set `removeOnComplete` and a bounded `removeOnFail` so Redis does not grow unbounded, but keep enough failed history to debug and replay.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/queues",
+      "title": "BullMQ conventions for this service",
+      "summary": "Versions, scheduler API, and connection rules we standardize on for BullMQ.",
+      "body": "We run BullMQ v5.x (current line as of mid-2026) on a dedicated Redis instance, separate from the cache.\n\n- Use `Worker` and `Queue` from `bullmq`; share one `ioredis` connection per process with `maxRetriesPerRequest: null` (required by BullMQ blocking commands).\n- Schedule recurring work with `queue.upsertJobScheduler(schedulerId, repeat, template)`; the old `Repeat`/`add({ repeat })` API is deprecated and removed in v6.\n- Set `Worker` `concurrency` deliberately and add a rate limiter (`limiter: { max, duration }`) for jobs that call rate-limited providers.\n- Job IDs are the dedup unit: pass a deterministic `jobId` to drop duplicate enqueues, and remember BullMQ keeps a completed job's ID only while its record lives.\n- See /src/workers for retry and DLQ policy and /src/jobs for the idempotency contract every handler must honor."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/jobs",
+      "title": "Enqueue atomically with the transactional outbox",
+      "summary": "Never enqueue inside a DB transaction; write an outbox row and let a relay publish it.",
+      "body": "Enqueueing to Redis or SQS from inside a database transaction is a dual-write bug: the commit can succeed while the enqueue fails, or vice versa, leaving data and jobs out of sync.\n\n- Within the business transaction, insert an `outbox` row describing the job instead of calling the queue directly. The row commits atomically with the data it depends on.\n- A relay worker polls the outbox with `SELECT ... FOR UPDATE SKIP LOCKED` to claim a batch, enqueues each job, and marks the row dispatched. Multiple relays can run in parallel without double-claiming.\n- Because the relay can crash after enqueue but before marking the row, dispatch is at-least-once too. That is fine: the downstream job is already idempotent (see /src/jobs idempotency rule).\n- Use a stable outbox row ID as the job's idempotency key so a re-dispatched row maps to the same job."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "background-jobs-queues-review",
+      "summary": "Pre-merge checklist for any new or changed queue job, worker, or enqueue path.",
+      "body": "---\nname: background-jobs-queues-review\ndescription: Review checklist for background jobs and queues. Use before merging any new or changed job handler, worker configuration, scheduler, or enqueue path to confirm idempotency, retry/backoff policy, dead-letter handling, and atomic enqueue.\n---\n\n# Background Jobs & Queues review\n\n- [ ] The handler is idempotent: the same payload produces the same end state when run more than once.\n- [ ] A stable idempotency key rides on the payload (not generated inside the worker) and guards side effects via a unique constraint or dedup record.\n- [ ] The dedup record's TTL outlives the queue's full retry window.\n- [ ] `attempts` is bounded and `backoff` is exponential with jitter, not a fixed or zero delay.\n- [ ] Permanent failures throw `UnrecoverableError` (or equivalent) so they skip remaining retries instead of burning them.\n- [ ] Exhausted jobs move to a dead-letter queue and emit a metric or alert; nothing fails silently.\n- [ ] `removeOnComplete` and a bounded `removeOnFail` are set so Redis does not grow without limit.\n- [ ] Recurring jobs use `upsertJobScheduler`, not the deprecated `Repeat`/`add({ repeat })` API.\n- [ ] The Redis connection uses `maxRetriesPerRequest: null` and worker `concurrency`/rate limits are set deliberately.\n- [ ] Enqueues that depend on a DB write go through a transactional outbox, not a direct enqueue inside the transaction.\n- [ ] Workers shut down gracefully (`worker.close()`) on SIGTERM so in-flight jobs finish or requeue cleanly on deploy.\n",
+      "skillTags": [
+        "backend",
+        "queues",
+        "bullmq",
+        "idempotency",
+        "reliability",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/drizzle-orm.js
+var drizzleOrm = {
+  "slug": "drizzle-orm",
+  "version": "1.0.0",
+  "name": "Drizzle ORM",
+  "tagline": "Keep your TypeScript schema, migrations, and typed queries honest with Drizzle.",
+  "description": "Guardrails for teams using Drizzle ORM as their type-safe SQL layer. It keeps the TypeScript schema as the single source of truth, enforces a generate-then-migrate workflow with drizzle-kit, and steers queries toward inferred types, relations v2, and safe transactions. Use it to stop schema drift and silent N+1 patterns before they ship.",
+  "category": "Backend",
+  "icon": "table-2",
+  "color": "bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Drizzle ORM pattern for AI coding agents | Pathrule",
+  "metaDescription": "A Pathrule pattern that teaches AI coding agents the correct 2026 Drizzle ORM workflow: TypeScript schema source of truth, drizzle-kit migrations, typed queries, relations, and transactions.",
+  "problem": "AI agents drift Drizzle schemas out of sync with the database and write untyped, N+1-prone queries.",
+  "audience": "Backend and full-stack teams running Drizzle ORM on Postgres, MySQL, or SQLite.",
+  "prevents": [
+    "Editing the database directly instead of regenerating migrations from the schema",
+    "Hand-writing column types instead of inferring them with $inferSelect and $inferInsert",
+    "Issuing per-row queries in loops instead of using relations or a single batched query"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/db",
+      "/src/db/schema",
+      "/drizzle"
+    ],
+    "stacks": [
+      "typescript",
+      "node",
+      "postgres",
+      "mysql",
+      "sqlite"
+    ],
+    "packages": [
+      "drizzle-orm",
+      "drizzle-kit"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/db/schema",
+      "title": "Schema is the single source of truth",
+      "summary": "Change tables in the TypeScript schema, never in the live database.",
+      "body": "Treat the Drizzle TypeScript schema as the only place a table shape is defined.\n\n- Edit column and table definitions in `src/db/schema`, then run `drizzle-kit generate` to produce the SQL migration.\n- Never alter columns directly in the database or hand-edit a generated migration's SQL after it is committed.\n- Export inferred types with `typeof users.$inferSelect` and `typeof users.$inferInsert` instead of redeclaring row shapes by hand.\n- Define foreign keys, indexes, and constraints in the schema so `drizzle-kit` can diff and version them.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/drizzle",
+      "title": "Generate then migrate, never push to production",
+      "summary": "Commit generated SQL migrations and apply them with drizzle-kit migrate.",
+      "body": "Use the `generate` + `migrate` workflow for anything that touches a shared or production database.\n\n- Run `drizzle-kit generate` and commit the resulting file in `drizzle/` alongside the schema change in the same PR.\n- Apply migrations with `drizzle-kit migrate` (or `migrate()` at deploy time), and reserve `drizzle-kit push` for throwaway local prototyping only.\n- Hand-write the reverse SQL for destructive changes (dropping or retyping a column) and test it on staging first.\n- Add a CI check that fails when a schema diff exists with no matching migration file, so drift cannot ship.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/db",
+      "title": "Drizzle versions and config baseline (2026)",
+      "summary": "Current package versions, dialect-based config, and the relations v2 shape.",
+      "body": 'Pin to the current Drizzle line and use the dialect-based config introduced in the v1 betas.\n\n- Runtime is `drizzle-orm` and the CLI is `drizzle-kit`; the stable line is the 0.4x releases with v1.0.0 in beta as of mid-2026, so confirm the exact pinned version in `package.json` before relying on v1-only APIs.\n- `drizzle.config.ts` uses `dialect` (`"postgresql"`, `"mysql"`, or `"sqlite"`) plus `schema` and `out` paths; the older `driver` key is gone in the v1 config.\n- Relations v2 centralizes relations: define them once with `defineRelations` in a dedicated file and pass that object to `drizzle()` instead of attaching `relations()` per table.\n- Keep one shared `db` client instance per process; pass it (or a `tx`) into functions rather than constructing new connections per call.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/db",
+      "title": "Querying patterns: relations, transactions, prepared statements",
+      "summary": "Use the relational query API, atomic transactions, and prepared statements.",
+      "body": "Prefer Drizzle's higher-level query APIs over hand-rolled joins and per-row loops.\n\n- Load nested data with `db.query.users.findMany({ with: { posts: true } })` so related rows come back in one round trip instead of an N+1 loop.\n- Wrap multi-statement writes in `db.transaction(async (tx) => { ... })` and use only `tx` inside; throwing rolls everything back, and nested calls become savepoints.\n- For hot paths, build a prepared statement once with `.prepare()` and bind values via `sql.placeholder('name')`, then call `.execute({ name })`.\n- Reach for the `sql` template tag for expressions Drizzle has no builder for, and keep user input as parameters rather than interpolated strings."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "drizzle-orm-review",
+      "summary": "Checklist to review a Drizzle schema change, migration, and queries before merge.",
+      "body": "---\nname: drizzle-orm-review\ndescription: Review a Drizzle ORM change before merge - schema source of truth, drizzle-kit migration hygiene, inferred types, relations, and safe transactions.\n---\n\n# Drizzle ORM review\n\n- [ ] Schema change lives in `src/db/schema` and the database was not edited directly.\n- [ ] A `drizzle-kit generate` migration is committed in `drizzle/` for this schema diff.\n- [ ] `drizzle-kit push` is not used against any shared or production database.\n- [ ] Destructive changes (drop or retype a column) have tested reverse SQL and a staging plan.\n- [ ] Row types come from `$inferSelect` / `$inferInsert`, not hand-written interfaces.\n- [ ] `drizzle.config.ts` sets `dialect`, `schema`, and `out` (no legacy `driver` key).\n- [ ] Relations use `defineRelations` (relations v2) in one place, not per-table `relations()`.\n- [ ] Nested reads use the relational query API or a single join, not per-row loops.\n- [ ] Multi-statement writes run inside `db.transaction` and use only `tx` internally.\n- [ ] Hot-path queries use `.prepare()` with `sql.placeholder` and user input stays parameterized.\n",
+      "skillTags": [
+        "drizzle",
+        "orm",
+        "typescript",
+        "migrations",
+        "sql",
+        "code-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/node-ts-api-hono.js
+var nodeTsApiHono = {
+  "slug": "node-ts-api-hono",
+  "version": "1.0.0",
+  "name": "Node + TypeScript API (Hono)",
+  "tagline": "Build type-safe Hono APIs with chained routes, schema validation, and a typed RPC client.",
+  "description": "An opinionated baseline for shipping Hono APIs on Node 22 with end-to-end type safety. It covers route chaining for RPC inference, Standard Schema validation at the edge of every handler, centralized error handling with HTTPException, and the conventions that keep the client and server in sync.",
+  "category": "Backend",
+  "icon": "server",
+  "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Node + TypeScript API (Hono) pattern for AI coding agents",
+  "metaDescription": "Pathrule pattern for Node + TypeScript APIs on Hono: chained routes for RPC, Standard Schema validation, HTTPException error handling, and a typed RPC client, tuned for AI coding agents.",
+  "problem": "AI agents writing Hono APIs break RPC type inference, scatter validation, and return inconsistent error shapes.",
+  "audience": "Backend teams building type-safe Hono APIs on Node or the edge",
+  "prevents": [
+    "Mounting sub-apps on separate lines so the RPC client infers responses as unknown",
+    "Reading untrusted req.json() or query params without a schema validator",
+    "Returning ad-hoc error objects instead of a consistent HTTPException shape"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/src/routes",
+      "/src/index.ts"
+    ],
+    "stacks": [
+      "node",
+      "typescript",
+      "hono",
+      "edge"
+    ],
+    "packages": [
+      "hono",
+      "@hono/zod-validator",
+      "@hono/standard-validator",
+      "@hono/node-server",
+      "zod"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/routes",
+      "title": "Chain routes and export AppType for RPC",
+      "summary": "Always chain .get/.post/.route calls and export typeof the chained app so the RPC client infers types.",
+      "body": "The Hono RPC client only sees routes that are part of a single chained expression. Break the chain and `hc<AppType>` resolves responses to `unknown`.\n\n- Define handlers by chaining directly off `new Hono()` (for example `const app = new Hono().get(...).post(...)`); do not assign `app` then call `app.get(...)` on later lines.\n- Mount sub-apps inline with `.route('/books', books)` inside the same chain, never as a standalone `app.route(...)` statement.\n- Export the route tree as a type with `export type AppType = typeof routes` and import it where you build the client.\n- Skip Rails-style controller files; write handlers right after the path so path-param and validator types infer. If you must split, use `factory.createHandlers()`.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Validate every input and centralize errors",
+      "summary": "Guard each handler with a Standard Schema validator and route all failures through app.onError with HTTPException.",
+      "body": "Untyped `c.req.json()` and raw query params are untrusted input. Every handler reads validated data, and every failure returns one consistent shape.\n\n- Validate `json`, `query`, `param`, `form`, and `header` targets with `zValidator` or the multi-library `sValidator` (`@hono/standard-validator`), then read with `c.req.valid('json')`.\n- Return a 400 with a structured body from the validator hook on `!result.success`; do not let invalid data reach business logic.\n- Throw `HTTPException` for expected failures (`new HTTPException(404, { message })`) instead of returning ad-hoc error objects.\n- Register a single `app.onError((err, c) => ...)` that serializes `HTTPException` via `err.getResponse()` and maps everything else to a 500 without leaking stack traces.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Hono baseline: versions, runtime, and app wiring",
+      "summary": "Pinned stack and the canonical app/server bootstrap for Hono on Node 22.",
+      "body": "This API runs Hono v4 (4.12.x line) on Node 22 LTS with TypeScript 5.4+, which the route-param type inference depends on.\n\n- Serve on Node with `@hono/node-server`'s `serve({ fetch: app.fetch, port })`; the same `app` deploys unchanged to Workers, Deno, or Bun because Hono targets Web Standards.\n- Keep `src/index.ts` thin: create the root app, attach global middleware (`logger`, `cors`, `secureHeaders`), mount feature routers via chained `.route()`, then `export default app` plus `export type AppType`.\n- Use `c.json()`, `c.text()`, and typed `c.var`/context variables instead of mutating Node req/res directly.\n- Order middleware deliberately: auth and validation run before handlers; `onError` and `notFound` are registered once on the root app."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/client",
+      "title": "Typed RPC client usage",
+      "summary": "How to consume the server's AppType with hc and avoid the unknown-response trap.",
+      "body": "The frontend and internal callers talk to the API through Hono's RPC client, which derives request and response types straight from `AppType` with no codegen step.\n\n- Build the client with `import { hc } from 'hono/client'` and `const client = hc<AppType>(baseUrl)`; types come from the exported server type, so import it as `import type { AppType }`.\n- Call endpoints as method chains, for example `await client.books[':id'].$get({ param: { id } })`, then `await res.json()` is fully typed from the handler's `c.json()` return.\n- If responses come back as `unknown`, the cause is almost always a server route mounted outside the chain, not a client bug; fix the chaining on the server.\n- For large apps, compile the client type once with `hc<AppType>` and re-export it to cut editor type-checking cost (`hcWithType` pattern)."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "node-ts-api-hono-review",
+      "summary": "Pre-merge checklist for Hono API changes: RPC type safety, validation, errors, and runtime.",
+      "body": "---\nname: node-ts-api-hono-review\ndescription: Review checklist for Node + TypeScript Hono API changes. Run before merging any route, validator, or client change to keep RPC types, validation, and error handling consistent.\n---\n\n# Node + TypeScript API (Hono) review\n\n- [ ] Routes are defined as a single chained expression (`new Hono().get(...).post(...)`), not reassigned line by line.\n- [ ] Sub-apps are mounted inline with `.route()` inside the chain, and `export type AppType = typeof routes` is present.\n- [ ] Every handler reads input via `c.req.valid(...)` behind a `zValidator`/`sValidator`, never raw `c.req.json()` or query params.\n- [ ] Validator failure paths return a structured 400; no invalid data reaches business logic.\n- [ ] Expected failures throw `HTTPException`; a single `app.onError` serializes errors and hides stack traces on 500.\n- [ ] Global middleware (`logger`, `cors`, `secureHeaders`) and `notFound` are registered once on the root app in the right order.\n- [ ] Pinned to Hono v4 on Node 22 LTS with TypeScript 5.4+; Node entry uses `@hono/node-server` `serve()`.\n- [ ] RPC client uses `hc<AppType>` with `import type`, and responses type-check (no `unknown` leaks).\n",
+      "skillTags": [
+        "hono",
+        "typescript",
+        "node",
+        "rpc",
+        "validation",
+        "api-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/postgres-schema.js
+var postgresSchema = {
+  "slug": "postgres-schema",
+  "version": "1.0.0",
+  "name": "PostgreSQL Schema & Migrations",
+  "tagline": "Design normalized PostgreSQL schemas and ship lock-safe, forward-only migrations.",
+  "description": "A pattern bundle that teaches AI agents how to model PostgreSQL tables with correct types and constraints, and how to evolve them without downtime. It enforces forward-only, expand-contract migrations, concurrent index builds, and validated constraints so schema changes never lock production traffic. Tuned for PostgreSQL 18 with native UUIDv7 and identity columns.",
+  "category": "Backend",
+  "icon": "table-properties",
+  "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "PostgreSQL Schema & Migrations pattern for AI coding agents",
+  "metaDescription": "Teach AI coding agents to design normalized PostgreSQL schemas with correct types and constraints, and ship lock-safe forward-only migrations on PostgreSQL 18.",
+  "problem": "AI agents write migrations that rename columns in place, build indexes that lock the table, and pick types that cause silent data and timezone bugs.",
+  "audience": "Backend and platform teams running PostgreSQL in production",
+  "prevents": [
+    "Blocking ACCESS EXCLUSIVE locks from rewriting tables or building indexes inline during deploys",
+    "Destructive in-place column renames or retypes that break the previous app version mid-rollout",
+    "Wrong column types like timestamp without time zone, varchar(n), or serial that cause timezone and overflow bugs"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/db",
+      "/db/migrations",
+      "/src/db"
+    ],
+    "stacks": [
+      "postgresql",
+      "postgres-18",
+      "sql",
+      "migrations",
+      "backend"
+    ],
+    "packages": [
+      "pg",
+      "drizzle-orm",
+      "knex",
+      "node-pg-migrate",
+      "prisma"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/db/migrations",
+      "title": "Migrations are forward-only and lock-safe",
+      "summary": "Never write down migrations; never take ACCESS EXCLUSIVE locks on hot tables.",
+      "body": "Every migration moves the schema forward and acquires only weak locks, so deploys never block live traffic.\n\n- Write forward-only migrations. Do not author `down`/rollback steps; recover by shipping a new forward migration.\n- Build and drop indexes with `CREATE INDEX CONCURRENTLY` / `DROP INDEX CONCURRENTLY`, which cannot run inside a transaction block.\n- Set `SET lock_timeout = '5s'` before any DDL on a populated table so a blocked statement fails fast instead of queueing all traffic behind an `ACCESS EXCLUSIVE` lock.\n- Add foreign keys and check constraints as `NOT VALID` first, then `VALIDATE CONSTRAINT` in a separate statement to avoid a full-table scan under a strong lock.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/db/migrations",
+      "title": "Evolve columns with expand-contract, never in place",
+      "summary": "Rename and retype across multiple deploys so old and new app versions both keep working.",
+      "body": "Schema changes that affect existing data run as separate expand, backfill, and contract migrations so each deployed app version stays compatible.\n\n- Never `RENAME` or `ALTER ... TYPE` a column in a single step. Add the new column, dual-write from the app, backfill in batches, switch reads, then drop the old column in a later deploy.\n- Add new columns as nullable or with a constant `DEFAULT`; PostgreSQL stores constant defaults as metadata so no table rewrite occurs.\n- Backfill large tables in bounded batches (for example a few thousand rows per statement) inside their own transactions, not one giant `UPDATE`.\n- Drop the old structure only after every running app version has stopped reading or writing it.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/db",
+      "title": "Default column types for new tables",
+      "summary": "The canonical type and key choices for PostgreSQL 18 tables.",
+      "body": "Pick the same correct types on every new table so the schema stays consistent and bug-free on PostgreSQL 18.\n\n- Primary keys: `bigint GENERATED ALWAYS AS IDENTITY` for internal rows, or `uuid DEFAULT uuidv7()` (native in PG 18) when ids are exposed externally or generated client-side. Never use `serial`/`bigserial`.\n- Timestamps: always `timestamptz`, never `timestamp` (without time zone). Default audit columns to `now()`.\n- Strings: use `text`; there is no performance gain from `varchar(n)`. Enforce length only with a `CHECK` constraint when a real limit exists.\n- Money and exact decimals: `numeric`, never `float`/`double precision`. Use `boolean` for flags and `jsonb` (not `json`) for semi-structured data."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/db",
+      "title": "Index and constraint design checklist",
+      "summary": "Where indexes and constraints belong, and how to add unique safely.",
+      "body": "Model integrity at the database, and index for the queries that actually run.\n\n- Index every foreign key column; PostgreSQL does not create that index automatically and unindexed FKs make parent deletes and joins slow.\n- Use partial indexes (`WHERE deleted_at IS NULL`) and expression indexes instead of indexing whole columns when queries filter on a subset.\n- Enforce business rules with `CHECK`, `NOT NULL`, `UNIQUE`, and foreign keys in the schema rather than trusting application code.\n- Add a unique constraint without a long lock by running `CREATE UNIQUE INDEX CONCURRENTLY` then `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE USING INDEX`."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "postgres-schema-review",
+      "summary": "Pre-merge checklist for any PostgreSQL schema change or migration.",
+      "body": "---\nname: postgres-schema-review\ndescription: Review a PostgreSQL schema change or migration before merge. Use when adding or altering tables, columns, indexes, or constraints, or when writing a migration file, to confirm correct types, sound integrity, and lock-safe forward-only DDL on PostgreSQL 18.\n---\n\n# PostgreSQL schema and migration review\n\n## Types and keys\n\n- [ ] Primary key is `bigint GENERATED ALWAYS AS IDENTITY` or `uuid DEFAULT uuidv7()`, not `serial`.\n- [ ] All point-in-time columns are `timestamptz`, not `timestamp`.\n- [ ] Strings use `text` (length enforced via `CHECK` only when a real limit exists); money/decimals use `numeric`; structured data uses `jsonb`.\n\n## Integrity and indexes\n\n- [ ] `NOT NULL`, `UNIQUE`, `CHECK`, and foreign keys express the real business rules at the database level.\n- [ ] Every foreign key column has a covering index.\n- [ ] Partial or expression indexes are used where queries filter a subset, instead of broad full-column indexes.\n\n## Lock-safe migration\n\n- [ ] Migration is forward-only with no `down` step.\n- [ ] `lock_timeout` is set before DDL on any populated table.\n- [ ] Indexes are built/dropped `CONCURRENTLY` and that statement is outside a transaction block.\n- [ ] New foreign keys and check constraints are added `NOT VALID`, then validated separately.\n- [ ] New columns are nullable or use a constant `DEFAULT` so no table rewrite is triggered.\n\n## Expand-contract\n\n- [ ] Renames and type changes are split into expand, backfill, and contract deploys.\n- [ ] Backfills run in bounded batches, each in its own transaction.\n- [ ] Old columns or tables are dropped only after no running app version uses them.\n",
+      "skillTags": [
+        "postgresql",
+        "migrations",
+        "schema",
+        "review",
+        "backend",
+        "ddl"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/rest-api-design.js
+var restApiDesign = {
+  "slug": "rest-api-design",
+  "version": "1.0.0",
+  "name": "REST / HTTP API Design",
+  "tagline": "Design HTTP APIs that stay predictable, safe to retry, and easy to evolve.",
+  "description": "A 2026 HTTP API design pattern for backend teams shipping REST endpoints. It standardizes resource naming and status codes, mandates RFC 9457 problem details for errors, cursor pagination for collections, idempotency keys for unsafe writes, and a deprecation discipline so versions retire cleanly instead of breaking clients.",
+  "category": "Backend",
+  "icon": "network",
+  "color": "bg-teal-500/10 text-teal-600 dark:bg-teal-400/15 dark:text-teal-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "REST / HTTP API Design pattern for AI coding agents",
+  "metaDescription": "Teach your AI coding agent modern HTTP API design: resource naming, correct status codes, RFC 9457 errors, cursor pagination, idempotency keys, and clean versioning.",
+  "problem": "Agents ship inconsistent endpoints with ad-hoc error shapes, offset pagination, no retry safety, and breaking version changes that silently break clients.",
+  "audience": "Backend and platform teams building or maintaining public and internal REST/HTTP APIs.",
+  "prevents": [
+    "Verb-in-path endpoints and 200 responses that hide failures behind a body field",
+    "Bespoke per-endpoint error JSON instead of one machine-readable envelope",
+    "Duplicate charges and double-creates when a client retries an unsafe POST"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/api",
+      "/src/routes",
+      "/app/api"
+    ],
+    "stacks": [
+      "nodejs",
+      "typescript",
+      "rest",
+      "http",
+      "openapi"
+    ],
+    "packages": [
+      "express",
+      "fastify",
+      "zod",
+      "@hono/hono",
+      "openapi-typescript"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/api",
+      "title": "Resource naming and HTTP semantics",
+      "summary": "Model nouns as resources, map verbs to HTTP methods, and return the status code that matches the outcome.",
+      "body": 'URLs name resources with plural nouns; the HTTP method carries the verb and the status code carries the result. Never tunnel an action through a path segment or hide a failure inside a 200 body.\n\n- Use plural noun collections (`/orders`, `/users/{id}/invoices`) and keep nesting at most two levels deep; never `POST /createOrder` or `/orders/get`.\n- Map methods correctly: `GET` reads (safe), `POST` creates, `PUT` replaces, `PATCH` partially updates, `DELETE` removes. `GET`, `PUT`, and `DELETE` must be idempotent.\n- Return the precise status: `201` with a `Location` header on create, `200` on read/update, `204` on a body-less delete, `400`/`422` for invalid input, `401`/`403` for auth, `404` for missing, `409` for conflicts, `429` when rate limited.\n- Never return `200` with `{ "success": false }`; let the status line signal failure so clients and proxies can react without parsing the body.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/api",
+      "title": "Idempotency keys on unsafe writes",
+      "summary": "Every non-idempotent mutation accepts an Idempotency-Key header and deduplicates safely on retry.",
+      "body": "Networks drop responses, so clients retry; without deduplication a retried `POST` charges twice or creates duplicate rows. Make unsafe writes safe to retry with a client-supplied key.\n\n- Accept an `Idempotency-Key` request header on every `POST` (and any non-idempotent endpoint) that creates resources, money movement, or external side effects.\n- Persist the key with the request fingerprint and the stored response; a replay with the same key returns the original result without re-executing the operation.\n- Scope keys per endpoint and per authenticated principal, set a retention TTL (commonly 24 hours), and return `409` if the same key arrives with a different request body.\n- While the first request is still in flight, return `409` (or `425 Too Early`) for a concurrent replay rather than running the operation twice.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Error envelope: RFC 9457 problem details",
+      "summary": "How every error response is shaped so clients get one consistent, machine-readable contract.",
+      "body": "Every error returns an RFC 9457 problem document (the successor to RFC 7807), served as `application/problem+json`. One envelope across the whole API means clients write error handling once.\n\n- Always include `type` (a stable URI identifying the problem class), `title`, and `status`; add `detail` for a human-readable specific message and `instance` for the affected resource.\n- Make `type` a real, documented URI per problem class (for example `https://api.example.com/problems/insufficient-funds`); reuse it so clients can branch on it instead of parsing prose.\n- Add custom extension members for machine use (`errors` array for field-level validation, `traceId` for correlation, `balance` for domain context); never repurpose the standard members.\n- Keep `status` in the body equal to the HTTP status line, and never leak stack traces or internal identifiers into `detail`."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Collection pagination and list contracts",
+      "summary": "We use opaque cursor pagination with consistent parameters and a clear last-page signal.",
+      "body": "Collections are paginated with cursor (keyset) pagination, the pattern used by Stripe, GitHub, and Slack. Offset/`OFFSET` paging drifts when rows are inserted or deleted and degrades as the database counts and skips rows at scale.\n\n- Accept `limit` plus an opaque `cursor` (or `after`/`before`); the cursor encodes the sort key and id of the last item so clients cannot tamper with or reverse-engineer it.\n- Enforce a default and a hard maximum page size (for example default `20`, max `100`); clamp oversized `limit` values instead of honoring `limit=1000000`.\n- Return a stable envelope: a `data` array plus a `next_cursor` (null on the last page) or a `has_more` boolean; never make clients guess where the list ends.\n- Sort on a deterministic, indexed tiebreaker (such as `created_at`, `id`) so the cursor maps to a single position and page boundaries stay consistent."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "rest-api-design-review",
+      "summary": "Pre-merge checklist for any new or changed HTTP endpoint covering naming, status codes, errors, pagination, idempotency, and versioning.",
+      "body": "---\nname: rest-api-design-review\ndescription: Run this checklist before merging any new or changed HTTP/REST endpoint. Covers resource naming, HTTP method and status semantics, RFC 9457 error envelopes, cursor pagination, idempotency keys, and deprecation discipline.\n---\n\n# REST / HTTP API design review\n\n- [ ] Paths name resources with plural nouns and nest at most two levels; no verbs in the path.\n- [ ] HTTP method matches intent and `GET`/`PUT`/`DELETE` are idempotent; safe methods cause no side effects.\n- [ ] Status codes are precise: `201`+`Location` on create, `204` on empty delete, `400`/`422`, `401`/`403`, `404`, `409`, `429`; no `200` wrapping a failure.\n- [ ] All errors return an RFC 9457 `application/problem+json` document with `type`, `title`, `status`, and a documented stable `type` URI.\n- [ ] Field-level validation errors and a `traceId` are carried as problem-detail extension members, with no stack traces leaked.\n- [ ] Collection endpoints use opaque cursor pagination with `limit`, a clamped max page size, and a `next_cursor`/`has_more` last-page signal.\n- [ ] Unsafe `POST` mutations accept an `Idempotency-Key` and return the stored result on replay instead of re-executing.\n- [ ] Breaking changes ship under a new version; the old version sends `Deprecation` and `Sunset` headers (RFC 9745 / RFC 8594).\n- [ ] Retired versions return `410 Gone` after the sunset date, not `404` or `500`, and a migration guide is linked.\n- [ ] The endpoint is documented in the OpenAPI spec with request/response schemas and example error payloads.\n",
+      "skillTags": [
+        "rest",
+        "http",
+        "api-design",
+        "backend",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/supabase-rls.js
+var supabaseRls = {
+  slug: "supabase-rls",
+  version: "1.0.0",
+  name: "Supabase + RLS",
+  tagline: "Row Level Security done right: deny by default, user JWT only, and a clean migration workflow.",
+  description: "Rules, memories, and a review skill for Supabase Postgres projects that take Row Level Security seriously. Pre-scoped to your supabase directory so your AI assistant enforces RLS, keeps the service role out of clients, and follows a disciplined migration flow.",
+  category: "Backend",
+  icon: "database",
+  color: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
+  installs: 0,
+  updatedAt: "2026-06-09",
+  changelog: [{ version: "1.0.0", date: "2026-06-09", note: "First release." }],
+  metaTitle: "Supabase Row Level Security patterns for AI coding agents",
+  metaDescription: "A ready-to-use Pathrule pattern for Supabase: RLS enabled by default, user JWT instead of the service role, a helper-function access model, and a migration review skill.",
+  problem: "Postgres tables ship without Row Level Security, or the service role key sneaks into client paths, leaving data open to anyone.",
+  audience: "teams building on Supabase Postgres with multi-tenant or per-user data",
+  prevents: [
+    "Creating a table without RLS enabled and policies",
+    "Using the service role key where the user's JWT belongs",
+    "Ad hoc access checks that drift apart across tables"
+  ],
+  appliesTo: {
+    paths: ["/supabase", "/supabase/migrations", "/supabase/functions"],
+    stacks: ["supabase", "postgres"],
+    packages: ["@supabase/supabase-js"]
+  },
+  pieces: [
+    {
+      kind: "rule",
+      nodePath: "/supabase",
+      title: "RLS enabled on every table, deny by default",
+      summary: "No table ships without Row Level Security and explicit policies.",
+      body: "Every table in a public-facing schema has Row Level Security enabled.\n\n- Start from deny by default and add narrow policies per operation (`select`, `insert`, `update`, `delete`).\n- A migration that creates a table without enabling RLS and adding policies is incomplete and must not merge.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "strict"
+    },
+    {
+      kind: "rule",
+      nodePath: "/supabase",
+      title: "User JWT only, never the service role in client paths",
+      summary: "The service role key bypasses RLS and must stay server-side.",
+      body: "The service role key bypasses RLS entirely, so it stays server-side.\n\n- Client code and edge functions acting on behalf of a user use the user's JWT, so RLS applies.\n- The service role key is only for trusted server-side jobs that intentionally need it.\n- Never ship it to a browser or derive it from a client request.",
+      scopeType: "project",
+      priority: "high",
+      enforcement: "strict"
+    },
+    {
+      kind: "memory",
+      nodePath: "/supabase",
+      title: "Access via a single has_access helper",
+      summary: "Centralize the access check in one SQL function reused by policies.",
+      body: "Express membership and ownership in one `SECURITY DEFINER` helper (for example `has_workspace_access(user_id, workspace_id)`) and reference it from RLS policies across tables.\n\n- Keeps the access model in one place.\n- Makes policies readable.\n- Avoids subtly different inline checks that drift apart over time."
+    },
+    {
+      kind: "memory",
+      nodePath: "/supabase/migrations",
+      title: "Migration workflow",
+      summary: "Forward-only, reviewed SQL with RLS and types regenerated.",
+      body: "Migrations are forward-only and timestamped.\n\n- Each one is self-contained and idempotent where practical.\n- Enable RLS and add policies in the same migration as the table.\n- Regenerate TypeScript types after a schema change.\n- Never edit a migration that already ran in a shared environment; add a new one."
+    },
+    {
+      kind: "skill",
+      nodePath: "/",
+      title: "supabase-rls-review",
+      summary: "Checklist for reviewing a Supabase schema or migration change.",
+      body: "---\nname: supabase-rls-review\ndescription: Review a Supabase migration or schema change for RLS correctness and safety.\n---\n\n# Supabase RLS review\n\n- [ ] RLS is enabled on every new table\n- [ ] Policies exist per operation and deny by default\n- [ ] Policies use the shared access helper, not ad hoc inline checks\n- [ ] No service role key is reachable from client or per-request code\n- [ ] Indexes back the columns used in policy predicates\n- [ ] TypeScript types regenerated after the schema change\n- [ ] Migration is forward-only and does not edit an already-applied file\n",
+      skillTags: ["supabase", "postgres", "security", "review"]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/stripe-billing.js
+var stripeBilling = {
+  slug: "stripe-billing",
+  version: "1.0.0",
+  name: "Stripe Billing",
+  tagline: "Safe Stripe integration: verified webhooks, idempotent handlers, and the right API for the job.",
+  description: "Rules, memories, and a review skill for adding Stripe billing to a product. Pre-scoped to your Stripe API routes and serverless functions so your AI assistant verifies webhook signatures, keeps handlers idempotent, and picks the correct payment API.",
+  category: "Billing",
+  icon: "credit-card",
+  color: "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
+  installs: 0,
+  updatedAt: "2026-06-09",
+  changelog: [{ version: "1.0.0", date: "2026-06-09", note: "First release." }],
+  metaTitle: "Stripe billing patterns for AI coding agents",
+  metaDescription: "A ready-to-use Pathrule pattern for Stripe: webhook signature verification, idempotent handlers, Checkout vs PaymentIntents guidance, and a billing review skill.",
+  problem: "Billing code trusts unverified webhooks or double-applies retried events, causing security holes and wrong charges.",
+  audience: "teams adding subscriptions or payments with Stripe",
+  prevents: [
+    "Acting on a webhook before verifying its signature",
+    "Non-idempotent handlers that double-process retried events",
+    "Driving entitlements from the client redirect instead of webhooks"
+  ],
+  appliesTo: {
+    paths: ["/api/stripe", "/app/api/stripe", "/supabase/functions"],
+    stacks: ["stripe"],
+    packages: ["stripe"]
+  },
+  pieces: [
+    {
+      kind: "rule",
+      nodePath: "/api/stripe",
+      title: "Always verify webhook signatures",
+      summary: "Reject any webhook whose Stripe signature does not verify.",
+      body: "Verify the `Stripe-Signature` header with the endpoint secret, using the raw request body, before trusting any field.\n\n- Never act on an unverified event.\n- Read the webhook secret from server config, not from the request.\n- Return `400` on verification failure.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "strict"
+    },
+    {
+      kind: "rule",
+      nodePath: "/api/stripe",
+      title: "Webhook handlers must be idempotent",
+      summary: "The same event can arrive more than once; handle it safely.",
+      body: "Stripe delivers at least once, so the same event can arrive more than once.\n\n- Record processed event IDs and skip duplicates, or make the side effect idempotent (upsert by a stable key).\n- Do slow work outside the request and return `2xx` quickly so Stripe does not retry a successful delivery.",
+      scopeType: "folder",
+      priority: "high",
+      enforcement: "advisory"
+    },
+    {
+      kind: "memory",
+      nodePath: "/api/stripe",
+      title: "Checkout Sessions vs PaymentIntents",
+      summary: "Default to Checkout; reach for PaymentIntents for custom flows.",
+      body: "Default to Stripe Checkout; reach for PaymentIntents only for fully custom flows.\n\n- Checkout handles SCA, tax, and the payment UI for subscriptions and standard one-time payments.\n- Use PaymentIntents with the Payment Element when you need a custom in-app flow.\n- Drive entitlements from webhook events, not the client redirect result."
+    },
+    {
+      kind: "memory",
+      nodePath: "/supabase/functions",
+      title: "Stripe secret handling",
+      summary: "Secret key and webhook secret live in server env, never the client.",
+      body: "Secret key and webhook signing secret live in server-side env only.\n\n- Only the publishable key is client-safe.\n- In edge or serverless functions, verify the caller and the webhook signature before any billing action."
+    },
+    {
+      kind: "skill",
+      nodePath: "/",
+      title: "stripe-integration-review",
+      summary: "Checklist for reviewing a Stripe billing change.",
+      body: "---\nname: stripe-integration-review\ndescription: Review a Stripe billing change for security and correctness.\n---\n\n# Stripe integration review\n\n- [ ] Webhook signature verified against the raw body before any logic\n- [ ] Handler is idempotent (dedupe by event ID or idempotent side effect)\n- [ ] Entitlements are driven by webhook events, not the client redirect\n- [ ] Secret key and webhook secret are server-side only\n- [ ] Correct API chosen (Checkout for standard, PaymentIntents for custom)\n- [ ] Amounts and currency handled in minor units, no float math\n- [ ] Handler returns 2xx fast and offloads slow work\n",
+      skillTags: ["stripe", "billing", "security", "review"]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/subscriptions-usage-billing.js
+var subscriptionsUsageBilling = {
+  "slug": "subscriptions-usage-billing",
+  "version": "1.0.0",
+  "name": "Subscriptions & Usage Billing",
+  "tagline": "Ship metered subscriptions on Stripe Billing without dropping usage or double-charging customers.",
+  "description": "A pattern bundle for subscription and usage-based billing on Stripe Billing in 2026. It covers Billing Meters and meter events, idempotent webhook handling, entitlement sync, proration on plan changes, and dunning for failed payments. Keep your own database as the source of truth for usage and entitlements, and treat Stripe events as a queue you reconcile against.",
+  "category": "Billing",
+  "icon": "gauge",
+  "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Subscriptions & Usage Billing pattern for AI coding agents",
+  "metaDescription": "A Pathrule pattern that teaches AI coding agents to build Stripe metered subscriptions correctly: meters, idempotent webhooks, entitlements, proration, and dunning.",
+  "problem": "Usage-based subscription billing silently loses meter events, grants the wrong entitlements, and mis-charges on plan changes when webhooks and metering are handled ad hoc.",
+  "audience": "SaaS and AI product teams running subscription plus usage-based billing on Stripe.",
+  "prevents": [
+    "Dropping usage because meter events are sent without idempotency or outside the accepted timestamp window",
+    "Granting or revoking the wrong plan access because entitlements are derived from redirect callbacks instead of webhooks",
+    "Double-applying webhook side effects or mis-charging customers on proration during plan upgrades and downgrades"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/billing",
+      "/src/api/webhooks",
+      "/src/usage"
+    ],
+    "stacks": [
+      "stripe-billing",
+      "node",
+      "typescript",
+      "postgres"
+    ],
+    "packages": [
+      "stripe",
+      "@stripe/stripe-js"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/usage",
+      "title": "Report usage through Billing Meters with idempotent meter events",
+      "summary": "Send every usage event to a Billing Meter with a unique identifier and a valid timestamp.",
+      "body": "Meter all usage through Stripe Billing Meters and meter events; the legacy `usage_records` API is deprecated and must not be used for new code.\n\n- Set a unique `identifier` on every meter event so retries dedupe inside Stripe's rolling 24 hour+ window; reuse the same identifier when you retry a failed send.\n- Keep the event `timestamp` within the past 35 days and no more than 5 minutes in the future, or Stripe rejects it.\n- For high throughput (over a few hundred events/sec) use the v2 meter event stream with a session token instead of one synchronous call per event.\n- Treat your own `usage_events` table as the source of truth; Stripe meter summaries are for billing, not for showing customers their live usage.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/api/webhooks",
+      "title": "Verify, dedupe, and acknowledge Stripe webhooks before doing work",
+      "summary": "Every Stripe webhook handler verifies the signature, is idempotent, and returns 2xx fast.",
+      "body": "Drive all billing state transitions from verified webhooks, never from browser redirects, because the user can close the tab before the redirect fires.\n\n- Verify the signature with the raw request body and the endpoint secret; reject anything that fails before parsing.\n- Make handlers idempotent by recording processed `event.id` values and skipping duplicates, since Stripe can deliver the same event more than once.\n- Return a 2xx within seconds and offload slow work to a queue; long handlers cause Stripe retries and duplicate processing.\n- Subscribe to `v1.billing.meter.error_report_triggered` and alert on `meter_event_customer_not_found` spikes, which signal a broken usage integration silently dropping events.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/billing",
+      "title": "Entitlements are derived from subscription webhooks, not local guesses",
+      "summary": "Sync feature access from Stripe Entitlements events and gate features on stored entitlements.",
+      "body": "Stripe Entitlements expose what each customer can access based on their active subscription, and we mirror them locally rather than hardcoding plan-to-feature maps.\n\n- On `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, and `entitlements.active_entitlement_summary.updated`, refetch the customer's active entitlements and upsert them into our `entitlements` table.\n- Gate every paid feature on the stored entitlement lookup, not on the price ID or product name, so plan and packaging changes do not require code edits.\n- Treat `customer.subscription.deleted` and past-due states as access removal, but keep a short grace window driven by `status` rather than deleting rows immediately.\n- Reconcile nightly by listing live subscriptions and entitlements to heal any missed webhook."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/billing",
+      "title": "Proration, seats, and dunning are configured in Stripe, not hand-rolled",
+      "summary": "Let Stripe handle proration math, seat quantity changes, and failed-payment recovery.",
+      "body": "Plan changes, seat counts, and recovery from failed payments are owned by Stripe Billing; we configure behavior and react to the resulting events.\n\n- For upgrades and downgrades, update the subscription item and let Stripe compute proration (`proration_behavior`); never compute partial-period charges ourselves.\n- Model seats as a licensed (per-seat) subscription item quantity; adjust the quantity on team membership changes so proration applies automatically.\n- Enable Smart Retries for dunning (default schedule is 7 retries over 21 days) and react to `invoice.payment_failed`, `invoice.paid`, and `customer.subscription.updated` to flip account status.\n- Never store prices locally; always reference Stripe price IDs so amounts stay authoritative."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "subscriptions-usage-billing-review",
+      "summary": "Pre-merge checklist for any change touching metering, webhooks, entitlements, proration, or dunning.",
+      "body": "---\nname: subscriptions-usage-billing-review\ndescription: Review checklist for subscription and usage-based billing changes on Stripe Billing. Use before merging any code that records usage, handles billing webhooks, syncs entitlements, changes plans or seats, or touches dunning.\n---\n\n# Subscriptions & usage billing review\n\n- [ ] Usage is reported via Billing Meters and meter events, not the deprecated `usage_records` API.\n- [ ] Every meter event sets a unique `identifier` and is safe to retry without double counting.\n- [ ] Meter event timestamps fall within the past 35 days and under 5 minutes in the future.\n- [ ] High-volume metering uses the v2 meter event stream rather than one synchronous call per event.\n- [ ] A local `usage_events` ledger is written first and treated as the source of truth.\n- [ ] Webhook signatures are verified against the raw body and endpoint secret before parsing.\n- [ ] Webhook handlers are idempotent on `event.id` and tolerate duplicate delivery.\n- [ ] Handlers return 2xx quickly and push slow work to a queue.\n- [ ] `v1.billing.meter.error_report_triggered` is subscribed and alerts on `meter_event_customer_not_found`.\n- [ ] Entitlements are synced from subscription and entitlement-summary webhooks and feature gates read the stored entitlement, not the price ID.\n- [ ] Plan changes update the subscription item and let Stripe handle proration; no hand-rolled proration math.\n- [ ] Seats are modeled as a per-seat item quantity that updates on membership changes.\n- [ ] Dunning relies on Smart Retries plus reactions to `invoice.payment_failed` and `invoice.paid`.\n- [ ] No prices are stored locally; code references Stripe price IDs.\n- [ ] A nightly reconciliation job heals missed webhooks for subscriptions and entitlements.\n",
+      "skillTags": [
+        "stripe",
+        "billing",
+        "subscriptions",
+        "usage-based",
+        "webhooks",
+        "entitlements",
+        "dunning"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/docker-containers.js
+var dockerContainers = {
+  "slug": "docker-containers",
+  "version": "1.0.0",
+  "name": "Docker & Containers",
+  "tagline": "Ship small, secure, cache-friendly container images by default.",
+  "description": "A ready-to-use bundle of rules, memories, and a review checklist for authoring production Dockerfiles. It encodes 2026 best practices: multi-stage builds, non-root minimal runtimes, BuildKit cache mounts, a tight .dockerignore, and meaningful healthchecks so your agent stops generating bloated, root-running images.",
+  "category": "Infra",
+  "icon": "container",
+  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Docker & Containers pattern for AI coding agents",
+  "metaDescription": "Teach your AI coding agent to write production Dockerfiles: multi-stage builds, non-root minimal images, BuildKit cache mounts, .dockerignore, and healthchecks.",
+  "problem": "AI agents tend to emit single-stage, root-running, uncached Dockerfiles that are large, slow to build, and insecure in production.",
+  "audience": "Backend and platform teams shipping containerized services to production",
+  "prevents": [
+    "Single-stage images that bake build tools and dev dependencies into the runtime",
+    "Containers that run as root because no USER directive was set",
+    "Cache-busting layer order that forces a full dependency reinstall on every code change"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/docker",
+      "/deploy"
+    ],
+    "stacks": [
+      "docker",
+      "buildkit",
+      "containers",
+      "ci-cd"
+    ],
+    "packages": []
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Use multi-stage builds with a minimal non-root runtime",
+      "summary": "Every production Dockerfile must end in a slim, non-root final stage.",
+      "body": "Split build and runtime into separate stages so build tools never reach the final image.\n\n- Build in a full stage (for example `node:22` or `golang:1.24`), then `COPY --from=build` only the artifacts into a minimal final stage like `-slim`, `alpine`, or a `distroless` `:nonroot` image.\n- Create and switch to a non-root user with an explicit UID and add a `USER` directive before `CMD`; copy artifacts with `COPY --chown` so they are owned correctly.\n- Pin base images by major version or digest; never ship `latest` to production.",
+      "scopeType": "file_type",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Keep build context small and cache-ordered",
+      "summary": "Maintain a .dockerignore and order layers stable-to-volatile.",
+      "body": "Order Dockerfile instructions so rarely changing layers come first and the build context stays tiny.\n\n- Commit a `.dockerignore` that excludes `node_modules`, `.git`, build output, secrets, and local env files so they are never sent to the builder.\n- Copy the dependency manifest (`package.json`, `go.mod`, `requirements.txt`) and install before `COPY . .`, so a code change does not invalidate the dependency layer.\n- Use BuildKit cache mounts for package managers, for example `RUN --mount=type=cache,target=/root/.npm npm ci`, with `sharing=locked` for apt.",
+      "scopeType": "file_type",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Healthchecks must use exec form and match the runtime",
+      "summary": "Pick a healthcheck the final image can actually run.",
+      "body": 'Add a `HEALTHCHECK` so the orchestrator knows when the container is ready, but match it to the runtime you shipped.\n\n- Use the JSON exec form, for example `HEALTHCHECK CMD ["node", "healthcheck.js"]`; the shell form fails on `distroless` images that have no shell.\n- `curl` and `wget` are absent from `distroless` and minimal images, so ship a tiny in-language probe instead of shelling out.\n- Tune `--interval`, `--timeout`, `--start-period`, and `--retries` to the service: fast checks for latency-critical APIs, slower checks for background workers.',
+      "skillTags": []
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/deploy",
+      "title": "BuildKit and CI cache strategy for fast rebuilds",
+      "summary": "Combine layer cache, cache mounts, and a registry cache backend.",
+      "body": "BuildKit is the default builder; layer order plus cache mounts plus a remote cache backend is what cuts CI times by 70 to 85 percent.\n\n- Layer cache is all-or-nothing per instruction; cache mounts (`--mount=type=cache`) persist a package store across builds so only new deps download when a manifest changes.\n- In CI, push and pull a registry cache with `--cache-to type=registry` and `--cache-from` so ephemeral runners reuse prior layers.\n- The dependency-first layout and a tight `.dockerignore` are the two highest-leverage changes; add multi-stage and cache backends on top.",
+      "skillTags": []
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "docker-containers-review",
+      "summary": "Pre-merge checklist for any new or changed Dockerfile.",
+      "body": "---\nname: docker-containers-review\ndescription: Review checklist for production Dockerfiles covering multi-stage builds, non-root runtime, layer caching, .dockerignore, and healthchecks. Run before merging any Dockerfile change.\n---\n\n# Docker & Containers review\n\n- [ ] Dockerfile uses multi-stage builds; the final stage contains only runtime artifacts, no build tools or dev dependencies.\n- [ ] Base images are pinned by major version or digest, not `latest`.\n- [ ] A non-root user is created with an explicit UID and a `USER` directive precedes `CMD`/`ENTRYPOINT`.\n- [ ] Artifacts are copied with `COPY --chown` so the non-root user owns them.\n- [ ] Dependency manifests are copied and installed before `COPY . .` to preserve the dependency cache layer.\n- [ ] A `.dockerignore` excludes `node_modules`, `.git`, build output, secrets, and local env files.\n- [ ] BuildKit cache mounts are used for package managers (with `sharing=locked` for apt).\n- [ ] A `HEALTHCHECK` is defined in JSON exec form and uses a probe the final image can actually run.\n- [ ] No secrets are baked into layers via `ARG`/`ENV`; build secrets use `--mount=type=secret`.\n- [ ] CI build pushes/pulls a registry cache (`--cache-to` / `--cache-from`) for fast rebuilds.\n",
+      "skillTags": [
+        "docker",
+        "containers",
+        "buildkit",
+        "ci-cd",
+        "security"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/github-actions-cicd.js
+var githubActionsCicd = {
+  "slug": "github-actions-cicd",
+  "version": "1.0.0",
+  "name": "GitHub Actions CI/CD",
+  "tagline": "Build hardened, fast, OIDC-deployed GitHub Actions pipelines that AI agents keep secure by default.",
+  "description": "A bundle of rules, memories, and a review skill that lock GitHub Actions workflows to least-privilege tokens, SHA-pinned actions, and keyless OIDC deploys. It encodes the current 2026 stack (checkout@v6, setup-node@v6, cache@v5) so coding agents stop reintroducing long-lived secrets and over-broad permissions. Use it to keep CI fast with caching and matrix builds while staying audit-clean.",
+  "category": "Infra",
+  "icon": "workflow",
+  "color": "bg-slate-500/10 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "GitHub Actions CI/CD pattern for AI coding agents",
+  "metaDescription": "Keep AI coding agents shipping secure, fast GitHub Actions pipelines: least-privilege tokens, SHA-pinned actions, OIDC deploys, caching, and matrix builds for 2026.",
+  "problem": "AI agents and busy teams keep shipping GitHub Actions workflows with write-all tokens, mutable action tags, and long-lived cloud secrets that fail security review.",
+  "audience": "Platform and application teams running GitHub Actions CI/CD who let AI agents edit workflow files",
+  "prevents": [
+    "Workflows running with the default read/write GITHUB_TOKEN instead of explicit least privilege",
+    "Pinning third-party actions to mutable tags like @v4 instead of an immutable commit SHA",
+    "Storing long-lived cloud access keys as repo secrets instead of deploying with OIDC"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/.github/workflows"
+    ],
+    "stacks": [
+      "github-actions",
+      "ci-cd",
+      "oidc",
+      "node"
+    ],
+    "packages": [
+      "actions/checkout",
+      "actions/setup-node",
+      "actions/cache",
+      "aws-actions/configure-aws-credentials"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/.github/workflows",
+      "title": "Least-privilege GITHUB_TOKEN by default",
+      "summary": "Default-deny permissions, grant the minimum per job.",
+      "body": "Every workflow must set explicit `permissions` instead of relying on the default read/write `GITHUB_TOKEN`.\n\n- Set `permissions: {}` (or `contents: read`) at the workflow top level as a default-deny baseline.\n- Grant scopes only on the individual jobs that need them, e.g. `packages: write` on the publish job only.\n- Add `id-token: write` strictly on jobs that request an OIDC token, never workflow-wide.\n- Set a `concurrency` group with `cancel-in-progress: true` so stale runs cannot push or deploy.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/.github/workflows",
+      "title": "Pin every action to a full commit SHA",
+      "summary": "No mutable tags; pin third-party actions to an immutable SHA.",
+      "body": "Reference every `uses:` action by a full-length 40-character commit SHA, with the human-readable version in a trailing comment.\n\n- Write `uses: actions/checkout@<sha> # v6.0.0`, not `actions/checkout@v6` or `@main`.\n- Pinning a mutable tag lets an upstream maintainer or attacker swap code under your runner with write access.\n- First-party `actions/*` may pin to the major tag only if org policy allows it; all third-party and marketplace actions must be SHA-pinned.\n- Keep pins current with a tool like Dependabot or `pin-github-action` so you get patched SHAs, not stale ones.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/.github/workflows",
+      "title": "Current GitHub Actions stack and caching defaults (2026)",
+      "summary": "Pinned action versions and the caching approach we use.",
+      "body": "These are the current stable building blocks for our pipelines as of mid-2026; do not downgrade them when editing workflows.\n\n- Core actions: `actions/checkout@v6`, `actions/setup-node@v6`, `actions/cache@v5` (cache runs on Node 24 and needs runner >= 2.327.1).\n- Prefer the built-in cache of `setup-node` (`cache: 'npm'`) over a manual `actions/cache` step for dependency restore.\n- Reserve standalone `actions/cache` for build outputs (Turbo, Next, Playwright browsers) keyed on a lockfile hash with a partial `restore-keys` fallback.\n- Test across versions with a matrix, e.g. `strategy.matrix.node: [20, 22, 24]`, and gate merges on the matrix job."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/.github/workflows",
+      "title": "Keyless deploys via OIDC, not stored secrets",
+      "summary": "How we authenticate to cloud providers from CI.",
+      "body": "Production deploys use OpenID Connect to mint short-lived, identity-bound cloud credentials instead of long-lived access keys in repo secrets.\n\n- The deploy job sets `permissions: id-token: write` plus `contents: read`, then calls `aws-actions/configure-aws-credentials@v6` with `role-to-assume` (no `aws-access-key-id`).\n- The cloud-side trust policy restricts `sub` to our specific repo, branch, or environment (e.g. `repo:org/app:ref:refs/heads/main`) so other repos cannot assume the role.\n- Bind deploys to a protected GitHub Environment with required reviewers; environment secrets are exposed only to that job.\n- See /.github/workflows for the least-privilege token and SHA-pinning rules that apply to the same files."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "github-actions-cicd-review",
+      "summary": "Checklist to review a GitHub Actions workflow before merge.",
+      "body": "---\nname: github-actions-cicd-review\ndescription: Review checklist for GitHub Actions CI/CD workflows covering least-privilege tokens, SHA-pinned actions, OIDC deploys, caching, and matrix builds. Use when creating or editing any file under .github/workflows.\n---\n\n# GitHub Actions CI/CD review\n\n- [ ] Workflow declares a top-level `permissions:` block that is default-deny (`{}` or `contents: read`).\n- [ ] Write scopes (`packages`, `contents`, `id-token`, etc.) are granted per job, not workflow-wide.\n- [ ] Every `uses:` references a full 40-char commit SHA with a `# vX.Y.Z` comment, no `@main` or floating tags.\n- [ ] Action versions are current: `checkout@v6`, `setup-node@v6`, `cache@v5` or newer.\n- [ ] Dependency caching is enabled (`setup-node` `cache: 'npm'` or a lockfile-keyed `actions/cache`).\n- [ ] Build matrix covers the supported runtime versions and merge protection requires the matrix job.\n- [ ] Cloud deploys use OIDC (`id-token: write` + `role-to-assume`), with no long-lived keys in secrets.\n- [ ] OIDC trust policy / `sub` claim is scoped to this repo and branch or environment.\n- [ ] Deploy jobs target a protected GitHub Environment with required reviewers.\n- [ ] A `concurrency` group with `cancel-in-progress: true` prevents overlapping deploy runs.\n- [ ] `pull_request_target` and untrusted-input `run:` steps are avoided or carefully sandboxed.\n",
+      "skillTags": [
+        "github-actions",
+        "ci-cd",
+        "security",
+        "oidc",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/observability.js
+var observability = {
+  "slug": "observability",
+  "version": "1.0.0",
+  "name": "Observability",
+  "tagline": "Emit correlated logs, metrics, and traces that make incidents debuggable.",
+  "description": "A ready-to-use bundle of rules, memories, and a review checklist for instrumenting services with OpenTelemetry. It encodes 2026 best practices: OTLP-first telemetry, structured JSON logs carrying trace and span ids, low-cardinality metrics, and SLO burn-rate alerts so your agent stops generating print-statement debugging and noisy page-on-everything alerting.",
+  "category": "Infra",
+  "icon": "activity",
+  "color": "bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Observability pattern for AI coding agents",
+  "metaDescription": "Teach your AI coding agent to instrument services with OpenTelemetry: structured logs with trace ids, low-cardinality metrics, OTLP export, SLOs, and burn-rate alerts.",
+  "problem": "AI agents reach for ad-hoc console logs and unbounded custom metrics, producing telemetry that cannot be correlated across signals and alerts that page on noise instead of user impact.",
+  "audience": "Backend and platform teams running production services who own their on-call and SLOs",
+  "prevents": [
+    "Plain-text or console logs with no trace_id, so a log line can never be tied back to the request that produced it",
+    "High-cardinality metric attributes (user ids, raw URLs, request ids) that explode storage cost and degrade queries",
+    "Threshold alerts on raw CPU or error counts that page constantly without reflecting actual user impact"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/src",
+      "/src/observability",
+      "/src/instrumentation",
+      "/deploy"
+    ],
+    "stacks": [
+      "opentelemetry",
+      "otlp",
+      "node",
+      "typescript",
+      "prometheus",
+      "slo"
+    ],
+    "packages": [
+      "@opentelemetry/api",
+      "@opentelemetry/sdk-node",
+      "@opentelemetry/auto-instrumentations-node",
+      "@opentelemetry/exporter-trace-otlp-http",
+      "pino"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Log structured JSON carrying trace and span ids",
+      "summary": "Every log line is structured and correlated to its active span.",
+      "body": "Emit structured JSON through one logger and let OpenTelemetry inject the active trace context, so any log line jumps straight to its trace.\n\n- Never use `console.log` or `print` for application logging; route everything through a single structured logger (`pino`, `winston`, `structlog`) wired to the OTel logs bridge.\n- Include `trace_id` and `span_id` on every record from the active span context, plus `service.name` and a severity that maps to the OTel `SeverityNumber`.\n- Attach business identifiers (`user.id`, `order.id`, `request.id`) as discrete fields, never by string-concatenating them into the message.\n- Do not log secrets, tokens, or full PII; redact at the logger, not at the call site.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Keep metric attributes low-cardinality",
+      "summary": "Never attach unbounded ids to metric attributes.",
+      "body": "Metric attributes form the cardinality of a time series, so only attach bounded, enumerable values.\n\n- Allowed attributes are bounded sets: `http.route` (the templated path, not the raw URL), `http.response.status_code`, `service.name`, region, and environment.\n- Never attach user ids, session ids, request ids, raw URLs, or error messages as metric attributes; carry those on spans and logs instead.\n- Follow stable OpenTelemetry semantic conventions for attribute names (`http.request.method`, `http.route`) so cross-service dashboards and SLO queries work without per-team mapping.\n- Drop or aggregate unwanted attributes at the source with SDK Views, or in the Collector, before they are ever exported.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/observability",
+      "title": "OpenTelemetry SDK setup: OTLP export, signals, and propagation",
+      "summary": "Initialize one SDK that exports traces, metrics, and logs over OTLP.",
+      "body": "OpenTelemetry is the default instrumentation layer in 2026, with traces, metrics, and logs all stable and shipped over the OTLP wire protocol. Continuous profiling is the fourth signal, in release-candidate status.\n\n- Initialize the SDK once at process start, before any other import, so auto-instrumentation can patch libraries; in Node use `@opentelemetry/sdk-node` with `getNodeAutoInstrumentations()`.\n- Export all three signals over OTLP (gRPC `4317` or HTTP `4318`) to a local OpenTelemetry Collector, not directly to a vendor; the Collector handles batching, retries, and re-routing.\n- Set `service.name`, `service.version`, and `deployment.environment` as Resource attributes so every signal is attributable.\n- Use the W3C `traceparent` propagator (the default) so trace context flows across HTTP, gRPC, and message queues; do not hand-roll correlation headers.\n- LLM and agent calls have a `gen_ai` semantic-convention group (still experimental) covering `gen_ai.request.model` and token-usage attributes; use it for AI pipelines rather than inventing attribute names.",
+      "skillTags": []
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/deploy",
+      "title": "SLOs and multi-window burn-rate alerts",
+      "summary": "Alert on error-budget burn rate, page only on user impact.",
+      "body": "Define SLOs on user-facing symptoms (availability, latency) and alert on how fast you burn the error budget, not on raw resource thresholds. This is the Google SRE multi-window, multi-burn-rate approach.\n\n- Pick SLIs that reflect user experience: success ratio of requests and a latency percentile (for example p95 under 300ms); set a realistic objective like 99.9% over 30 days.\n- Page when burn rate is greater than 14.4 over a 1-hour window (about 2% of a 30-day budget consumed in an hour) and the short window confirms it is still burning now.\n- Open a ticket (no page) when burn rate is greater than 6 over a 6-hour window, and surface slow burns (greater than 1 over 3 days) in weekly review.\n- Each alert pairs a long detection window with a short confirmation window so resolved incidents stop paging; instrument RED metrics (Rate, Errors, Duration) for request services and USE (Utilization, Saturation, Errors) for resources to power these SLIs.\n- Every page must be actionable and link to a runbook; if an alert cannot be acted on, it is a dashboard, not a page.",
+      "skillTags": []
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "observability-review",
+      "summary": "Pre-merge checklist for new or changed instrumentation, logging, and alerts.",
+      "body": "---\nname: observability-review\ndescription: Review checklist for service observability covering structured correlated logs, OpenTelemetry trace and metric instrumentation, OTLP export, low-cardinality metrics, and SLO burn-rate alerts. Run before merging any telemetry, logging, or alerting change.\n---\n\n# Observability review\n\n- [ ] All application logs go through one structured logger emitting JSON; no `console.log`/`print` for app logging.\n- [ ] Every log record carries `trace_id`, `span_id`, `service.name`, and a mapped OTel severity from the active span context.\n- [ ] Secrets, tokens, and PII are redacted at the logger; business identifiers are discrete fields, not embedded in the message string.\n- [ ] The OpenTelemetry SDK is initialized once before other imports, with `service.name`, `service.version`, and `deployment.environment` set on the Resource.\n- [ ] Traces, metrics, and logs export over OTLP to a Collector, not directly to a vendor backend.\n- [ ] W3C `traceparent` propagation is used across HTTP, gRPC, and queues; no hand-rolled correlation headers.\n- [ ] Metric attributes are low-cardinality and follow semantic conventions (`http.route`, `http.request.method`); no user ids, request ids, or raw URLs as attributes.\n- [ ] High-cardinality attributes are dropped or aggregated via SDK Views or the Collector before export.\n- [ ] New alerts are tied to an SLO and fire on multi-window burn rate (page at >14.4 / 1h, ticket at >6 / 6h), not raw CPU or error counts.\n- [ ] Every paging alert is actionable and links to a runbook; non-actionable signals are dashboards, not pages.\n",
+      "skillTags": [
+        "opentelemetry",
+        "observability",
+        "logging",
+        "metrics",
+        "slo"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/secrets-env-management.js
+var secretsEnvManagement = {
+  "slug": "secrets-env-management",
+  "version": "1.0.0",
+  "name": "Secrets & Environment Management",
+  "tagline": "Keep secrets out of git, inject them at runtime, and rotate them automatically.",
+  "description": "A pattern bundle for handling API keys, tokens, and credentials safely across local development, CI, and production. It enforces .env hygiene, pushes teams toward a managed secret store with runtime injection and OIDC, and ships a review checklist so no credential ever lands in source control or a build log.",
+  "category": "Infra",
+  "icon": "lock-keyhole",
+  "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Secrets & Environment Management for AI Coding Agents",
+  "metaDescription": "Rules, memories, and a review checklist that keep AI coding agents from committing secrets, teach safe .env hygiene, secret managers, OIDC, and credential rotation.",
+  "problem": "Secrets keep leaking into commits, build logs, and client bundles because there is no enforced convention for where credentials live or how they reach runtime.",
+  "audience": "Backend and platform teams shipping services with API keys, database credentials, and CI/CD pipelines.",
+  "prevents": [
+    "Committing a real .env file or hardcoded API key to git history",
+    "Leaking server-side secrets into a client bundle via the wrong env prefix",
+    "Long-lived static cloud keys sitting in CI with no rotation or expiry"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/.github/workflows",
+      "/src",
+      "/config"
+    ],
+    "stacks": [
+      "node",
+      "docker",
+      "github-actions",
+      "aws",
+      "vault"
+    ],
+    "packages": [
+      "@dotenvx/dotenvx",
+      "dotenv",
+      "gitleaks"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Never commit plaintext secrets",
+      "summary": "Real credentials never enter the repo; only encrypted or example files are tracked.",
+      "body": "No file containing a live secret may be committed, and `.gitignore` must block every plaintext env file before the first commit.\n\n- Add `.env`, `.env.*`, and `.env.local` to `.gitignore`; track only `.env.example` with placeholder values.\n- Commit secrets only when encrypted at rest, for example a `dotenvx`-encrypted `.env` or a `sops`-encrypted file where the decryption key lives outside the repo.\n- Run `gitleaks` as a pre-commit hook and in CI so a staged secret is blocked before it reaches the remote.\n- If a secret is ever pushed, treat it as compromised: rotate it immediately, then scrub history. Removing the commit is not enough.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Keep server secrets out of the client bundle",
+      "summary": "Only explicitly public-prefixed vars cross into client code; read secrets server-side only.",
+      "body": "Anything bundled for the browser is public, so server secrets must never be referenced from client-reachable modules.\n\n- Read secrets only in server code (route handlers, server actions, API layers, background jobs), never in components that ship to the client.\n- Expose values to the client only through an intentional public prefix such as `NEXT_PUBLIC_`, `VITE_`, or `PUBLIC_`, and assume anything prefixed that way is world-readable.\n- Validate the full env at startup with a typed schema (for example `zod`) so a missing or misnamed secret fails fast instead of surfacing as a runtime `undefined`.\n- Never log a secret value or echo it into an error message, response body, or analytics event.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Secret storage tiers: local, CI, production",
+      "summary": "Where secrets live and how they reach the app at each stage.",
+      "body": "Secrets flow through three tiers, and each has a distinct source of truth so no plaintext credential is shared by hand.\n\n- Local: developers keep an uncommitted `.env.local`, or pull from the team store with a CLI such as `doppler run`, `infisical run`, or `vault`. Share new keys via the store, never over chat.\n- CI: the pipeline authenticates with GitHub OIDC to mint a short-lived cloud role instead of holding static keys. Vercel and similar platforms issue OIDC tokens with roughly a 60-minute TTL, so the long-lived key never exists in the environment.\n- Production: a managed store (AWS Secrets Manager, HashiCorp Vault, GCP Secret Manager, or the platform env UI) injects values at runtime. Prefer Vault dynamic secrets, which mint per-request credentials with a built-in TTL and auto-revoke, so there is nothing to rotate.\n\nSee /.github/workflows for the OIDC pipeline wiring and /src for the runtime read and validation rules."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Rotation and least-privilege defaults",
+      "summary": "Lifetime, scoping, and revocation expectations for every credential.",
+      "body": "Every credential is scoped narrowly and has a known expiry, so a leak has a small blast radius and a short window.\n\n- Issue a distinct key per service or consumer; never share one key across apps, which makes revocation surgical instead of a fleet-wide outage.\n- Grant least privilege: scope each key to the exact resources and actions it needs, read-only where possible.\n- Set a rotation policy. Prefer dynamic or OIDC short-lived credentials so rotation is automatic; for unavoidable static keys, schedule rotation (for example AWS Secrets Manager rotation for RDS) and alert before expiry.\n- Keep audit logging on at the store so every access (who, when, what) is traceable, and revoke immediately on offboarding or suspected exposure."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "secrets-env-management-review",
+      "summary": "Pre-merge checklist to confirm no secret leaks and env handling is sound.",
+      "body": "---\nname: secrets-env-management-review\ndescription: Review checklist for any change that touches secrets, env vars, CI credentials, or config. Run before merging to confirm no credential leaks into git, logs, or the client bundle.\n---\n\n# Secrets & environment management review\n\n- [ ] No plaintext secret is added to a tracked file; `.env`, `.env.*`, and `.env.local` are in `.gitignore`.\n- [ ] Only `.env.example` (placeholder values) or an encrypted env file (`dotenvx`/`sops`, key stored outside the repo) is committed.\n- [ ] `gitleaks` runs as a pre-commit hook and in CI, and the diff passes a secret scan.\n- [ ] Secrets are read server-side only; nothing sensitive is exposed via a public prefix (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`).\n- [ ] Env is validated at startup with a typed schema so missing or misnamed vars fail fast.\n- [ ] No secret value is logged, returned in a response, or sent to analytics.\n- [ ] CI authenticates via OIDC for short-lived cloud roles instead of storing long-lived static keys.\n- [ ] Production reads secrets from a managed store with runtime injection, not a baked-in build artifact.\n- [ ] Each new credential is least-privilege, distinct per consumer, and has a rotation policy or short TTL.\n- [ ] Any previously exposed secret has been rotated, not just deleted from history.\n",
+      "skillTags": [
+        "secrets",
+        "env",
+        "security",
+        "ci-cd",
+        "rotation"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/terraform-iac.js
+var terraformIac = {
+  "slug": "terraform-iac",
+  "version": "1.0.0",
+  "name": "Terraform / IaC",
+  "tagline": "Ship Terraform with locked remote state, pinned versions, and a plan-gated CI pipeline.",
+  "description": "A guardrail bundle for teams managing infrastructure as code with Terraform 1.11+ on AWS. It enforces remote state with native S3 locking, pinned providers and modules, secrets kept out of state via write-only arguments, and a CI pipeline that always reviews a plan before apply. Built so AI agents make the same safe choices a senior platform engineer would.",
+  "category": "Infra",
+  "icon": "cloud-cog",
+  "color": "bg-purple-500/10 text-purple-600 dark:bg-purple-400/15 dark:text-purple-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Terraform / IaC pattern for AI coding agents | Pathrule",
+  "metaDescription": "Pathrule rules, memories, and a review skill that keep AI agents shipping safe Terraform: locked remote state, pinned versions, plan-gated CI, and no secrets in state.",
+  "problem": "AI agents and rushed PRs ship Terraform with unlocked state, drifting versions, secrets baked into state, and applies that never matched a reviewed plan.",
+  "audience": "Platform, DevOps, and SRE teams running Terraform 1.11+ against AWS",
+  "prevents": [
+    "Concurrent applies corrupting unlocked remote state",
+    "Secrets and tokens persisted in plaintext inside the state file",
+    "Applying changes in CI that were never reviewed as a plan"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/infra",
+      "/infra/modules",
+      "/infra/environments",
+      "/.github/workflows"
+    ],
+    "stacks": [
+      "terraform",
+      "opentofu",
+      "aws",
+      "iac",
+      "github-actions"
+    ],
+    "packages": []
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/infra",
+      "title": "Remote state with native locking only",
+      "summary": "Every root module uses an encrypted, versioned S3 backend with use_lockfile.",
+      "body": "State lives in a remote backend with locking, encryption, and versioning. Never local, never unlocked.\n\n- Configure the `s3` backend with `use_lockfile = true` (GA since Terraform 1.11); do not add a `dynamodb_table` lock, that path is deprecated.\n- Enable bucket versioning and SSE-KMS (`encrypt = true` plus a customer-managed `kms_key_id`) so state is recoverable and encrypted at rest.\n- Give each environment its own state `key` and isolated IAM access; never share one state file across `dev`, `staging`, and `prod`.\n- Never commit `terraform.tfstate` or `*.tfstate.backup`; treat state as a secret and keep it out of git."
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/.github/workflows",
+      "title": "Plan-gated, OIDC-authenticated CI",
+      "summary": "CI authenticates via OIDC and applies only a reviewed plan artifact.",
+      "body": "The pipeline runs `terraform plan`, saves it as an artifact, and applies that exact plan after approval.\n\n- Use `terraform plan -out=tfplan` then `terraform apply tfplan`; never re-plan at apply time, the applied change must match what was reviewed.\n- Authenticate to the cloud with short-lived OIDC tokens (GitHub Actions `id-token: write`), never long-lived static access keys in secrets.\n- Scope the apply role to least privilege, and prefer a read-only identity for `plan` and a separate write identity for `apply`.\n- Gate `apply` on a manual approval or protected environment so a human signs off on the plan before infrastructure changes.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/infra/modules",
+      "title": "Module and provider versioning conventions",
+      "summary": "How we pin, structure, and version reusable modules and providers.",
+      "body": "Reusable infrastructure is composed from versioned modules with pinned providers.\n\n- Pin every provider in `required_providers` with `~>` constraints and commit `.terraform.lock.hcl` so every run and teammate resolves identical versions.\n- Set `required_version` to the supported Terraform line (1.15.x as of mid-2026; 1.13 is EOL); bump deliberately, not implicitly.\n- Source registry and git modules with an explicit `version` or pinned `?ref=` tag, never a floating `main` branch.\n- Keep modules small and single-purpose with typed `variables.tf`, `outputs.tf`, and a README; root modules in `/infra/environments` only wire modules together."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/infra",
+      "title": "Secrets and tagging conventions",
+      "summary": "Keep secrets out of state and tag every resource consistently.",
+      "body": 'Sensitive values never land in state, and every resource carries a consistent tag set.\n\n- Use write-only arguments (e.g. `password_wo` with `password_wo_version`) and `ephemeral` resources/values (Terraform 1.11+) for passwords and tokens so they never persist to state or plan files.\n- Source secrets at apply time from a secrets manager (AWS Secrets Manager / SSM Parameter Store) data sources; do not hardcode them in `*.tfvars` or commit them.\n- Apply a baseline tag set via the AWS provider `default_tags` block: `Environment`, `Owner`, `ManagedBy = "terraform"`, and `CostCenter`.\n- Mark sensitive outputs and variables `sensitive = true`, and remember that flag hides values from logs but does not encrypt or remove them from state.'
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "terraform-iac-review",
+      "summary": "Pre-merge checklist for any Terraform change.",
+      "body": "---\nname: terraform-iac-review\ndescription: Pre-merge review checklist for Terraform / IaC changes covering remote state, locking, versioning, secrets, tagging, and plan-gated CI. Use before merging any Terraform PR.\n---\n\n# Terraform / IaC review\n\n- [ ] Remote `s3` backend configured with `use_lockfile = true`, no deprecated DynamoDB lock\n- [ ] State bucket has versioning enabled and SSE-KMS encryption (`encrypt = true` + `kms_key_id`)\n- [ ] Each environment uses an isolated state `key`; no state files committed to git\n- [ ] `required_version` and all `required_providers` are pinned; `.terraform.lock.hcl` is committed\n- [ ] Modules sourced with an explicit `version` or pinned `?ref=`, never a floating branch\n- [ ] No secrets in `*.tfvars`, code, or state; write-only / ephemeral args used for passwords and tokens\n- [ ] Sensitive variables and outputs marked `sensitive = true`\n- [ ] `default_tags` applies the baseline tag set (`Environment`, `Owner`, `ManagedBy`, `CostCenter`)\n- [ ] CI runs `terraform plan -out=tfplan` and applies that exact artifact after approval\n- [ ] Cloud auth uses short-lived OIDC tokens with a least-privilege role, no static keys\n- [ ] `terraform validate` and `terraform fmt -check` pass; a security scan (tfsec/Checkov/Trivy) is clean\n",
+      "skillTags": [
+        "terraform",
+        "iac",
+        "aws",
+        "ci",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/vercel-deploy.js
+var vercelDeploy = {
+  "slug": "vercel-deploy",
+  "version": "1.0.0",
+  "name": "Vercel Deployment",
+  "tagline": "Ship to Vercel with safe previews, scoped env vars, and instant rollbacks.",
+  "description": "An opinionated bundle for teams deploying Next.js and other apps on Vercel in 2026. It codifies the preview-then-promote workflow, per-environment secrets with OIDC and Sensitive variables, Fluid Compute function config, and CDN-aware caching so deploys stay fast, safe, and reversible.",
+  "category": "Infra",
+  "icon": "triangle",
+  "color": "bg-neutral-500/10 text-neutral-700 dark:bg-neutral-400/15 dark:text-neutral-300",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Vercel Deployment pattern for AI coding agents",
+  "metaDescription": "A Pathrule pattern that teaches AI coding agents the 2026 Vercel workflow: preview-then-promote, scoped env vars with OIDC, Fluid Compute, ISR caching, and instant rollbacks.",
+  "problem": "Teams break production on Vercel by pushing untested changes, leaking secrets into client bundles, and misconfiguring functions and caching.",
+  "audience": "Frontend and full-stack teams deploying Next.js apps on Vercel",
+  "prevents": [
+    "Promoting an untested build straight to the production branch",
+    "Leaking server secrets through NEXT_PUBLIC_ variables or unredacted env values",
+    "Stale or runaway pages from missing revalidation and wrong function durations"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/app",
+      "/src",
+      "/api"
+    ],
+    "stacks": [
+      "vercel",
+      "nextjs",
+      "edge",
+      "serverless"
+    ],
+    "packages": [
+      "next",
+      "vercel"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Preview first, then promote to production",
+      "summary": "Never push directly to the production branch; validate a preview deployment and promote it.",
+      "body": "Production traffic only ever serves a deployment that was first validated as a preview.\n\n- Land changes on a non-production branch or PR so Vercel builds a preview, and run health checks against that preview URL before promoting.\n- Promote the exact preview build with `vercel promote <url>` or the dashboard Promote action instead of re-merging, so the bytes serving production are the bytes you tested.\n- Keep instant rollback usable: a known-good earlier production deployment must always exist, since rollback just reassigns the domain rather than rebuilding.\n- Treat the production branch (usually `main`) as protected; do not force-push or rebase history that has been deployed.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Scope secrets to the server and the right environment",
+      "summary": "Only NEXT_PUBLIC_ vars reach the client; mark real secrets Sensitive and prefer OIDC.",
+      "body": "Environment variables are scoped per environment and never leak server secrets to the browser.\n\n- Only prefix a variable with `NEXT_PUBLIC_` when it is safe in client JS; everything else (API keys, DB URLs, tokens) stays server-only.\n- Set distinct values per environment (Production, Preview, Development) rather than reusing production credentials in previews.\n- Mark credentials as Sensitive so Vercel redacts them, and never commit `.env*` files; pull with `vercel env pull` for local dev.\n- For backend access (AWS, GCP, Azure, databases), prefer OIDC Federation via `VERCEL_OIDC_TOKEN` to get short-lived tokens instead of long-lived static secrets.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Function runtime config with Fluid Compute",
+      "summary": "How maxDuration, runtime, and memory work on Vercel Functions in 2026.",
+      "body": "Fluid Compute is the default execution model for new Vercel projects as of 2025, and it changes how function limits behave.\n\n- Set `maxDuration` per function in `vercel.json` (or via route segment config in Next.js); with Fluid Compute the Pro max rises to 800s, versus 300s without it.\n- Memory can no longer be set in `vercel.json` when Fluid Compute is on; configure it under Functions in the project dashboard.\n- Choose the runtime deliberately: Edge for low-latency middleware and lightweight routes, Node.js for heavier or dependency-rich work.\n- Use Cron Jobs for scheduled invocations rather than external pingers, and keep cold-start-sensitive paths lean."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Caching and ISR on the Vercel CDN",
+      "summary": "How revalidation, cacheTag/cacheLife, and CDN purges fit together.",
+      "body": "Next.js sets `Cache-Control` from the rendering strategy, and Vercel's CDN serves those responses; on-demand invalidation must reach both layers.\n\n- Static pages emit `s-maxage=31536000`; ISR pages emit `s-maxage={revalidate}` with `stale-while-revalidate` so users get fast pages that refresh in the background.\n- With Cache Components, wrap cacheable work in `use cache`, set lifetime via `cacheLife`, and label entries with `cacheTag` for targeted invalidation.\n- Invalidate on mutation with `revalidateTag` / `revalidatePath` (or `updateTag`); these clear the Next.js cache and Vercel propagates the CDN purge for those keys.\n- Avoid `revalidate = 0` or fully dynamic rendering on hot pages unless the data truly cannot be cached."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "vercel-deploy-review",
+      "summary": "Pre-promotion checklist before sending a Vercel deployment to production.",
+      "body": "---\nname: vercel-deploy-review\ndescription: Run this checklist before promoting any Vercel deployment to production. Covers preview validation, environment variables, function config, caching, and rollback readiness for Next.js apps on Vercel in 2026.\n---\n\n# Vercel deployment review\n\n- [ ] Change landed on a non-production branch or PR and produced a green preview deployment.\n- [ ] Preview URL passed health checks and key flows; build logs show no errors or unredacted secrets.\n- [ ] No server secret is exposed via a `NEXT_PUBLIC_` variable; secrets are marked Sensitive.\n- [ ] Environment variables are set per environment (Production/Preview/Development), with no production credentials reused in previews.\n- [ ] Backend access uses OIDC (`VERCEL_OIDC_TOKEN`) or short-lived credentials where possible.\n- [ ] `maxDuration` and runtime (Edge vs Node.js) are correct for each function; memory is set in the dashboard under Fluid Compute.\n- [ ] Caching is intentional: ISR `revalidate` / `cacheLife` set, hot pages tagged with `cacheTag`, mutations call `revalidateTag` / `revalidatePath`.\n- [ ] A known-good prior production deployment exists so instant rollback is available.\n- [ ] Promotion will reuse the tested preview build (`vercel promote` or dashboard Promote), not a fresh rebuild.\n",
+      "skillTags": [
+        "vercel",
+        "deployment",
+        "nextjs",
+        "ci-cd",
+        "checklist"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/code-review.js
+var codeReview = {
+  "slug": "code-review",
+  "version": "1.0.0",
+  "name": "Code Review",
+  "tagline": "Ship small pull requests that reviewers can approve fast with confidence.",
+  "description": "A workflow bundle that keeps code review focused on correctness, security, and maintainability instead of style nits. It encodes small-PR discipline, an author self-check before requesting review, structured reviewer feedback, and a fast turnaround norm so changes merge in hours, not days.",
+  "category": "Workflow",
+  "icon": "git-pull-request",
+  "color": "bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Code Review pattern for AI coding agents | Pathrule",
+  "metaDescription": "A Pathrule workflow pattern that teaches AI coding agents to ship small PRs, self-check before review, give specific feedback, and keep turnaround fast.",
+  "problem": "Pull requests pile up because they are too large, mix unrelated changes, and trigger slow rounds of vague review feedback.",
+  "audience": "Engineering teams using PR-based GitHub or GitLab workflows with human and AI reviewers",
+  "prevents": [
+    "Oversized PRs that mix refactors, features, and formatting in one review",
+    "Style and lint nits crowding out correctness and security feedback",
+    "Reviews stalling for days because turnaround has no agreed norm"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/src",
+      "/.github"
+    ],
+    "stacks": [
+      "github",
+      "gitlab",
+      "git",
+      "ci"
+    ],
+    "packages": [
+      "eslint",
+      "prettier",
+      "husky"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Keep pull requests small and single-purpose",
+      "summary": "Cap PR scope so reviewers can finish in one sitting.",
+      "body": "Each PR should do one thing and stay reviewable in a single focused pass.\n\n- Target under ~400 changed lines of meaningful diff; split larger work into stacked PRs that build on each other.\n- Never mix a refactor, a feature, and reformatting in the same PR \u2014 separate them so each diff has one intent.\n- Exclude generated files, lockfile churn, and bulk renames from logic PRs, or call them out explicitly in the description.\n- If a change cannot be split, write a `## Why this is large` note so the reviewer knows it is intentional.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Review for correctness and security, automate style",
+      "summary": "Human review focuses on logic and risk, not formatting.",
+      "body": "Reserve reviewer attention for what tools cannot catch: correctness, security, and long-term maintainability.\n\n- Let formatters and linters (`prettier`, `eslint`) own style; never leave a style nit that automation should enforce.\n- Verify external input is validated and escaped at trust boundaries to block injection, XSS, and path-traversal classes.\n- Confirm error and edge paths are handled and that no secrets, tokens, or credentials are committed.\n- Use `nit:` for optional polish and `issue:` for blocking concerns so authors can tell what must change before merge.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Fast turnaround keeps reviews unblocking",
+      "summary": "Respond within one business day; optimize response time, not total time.",
+      "body": "What slows teams down is reviewer response time, not total review duration, so we keep the first response fast.\n\n- Respond to a review request within one business day; if mid-focus, do it at the next natural break, ideally same day.\n- For distributed teams, aim feedback inside the author's working hours so a late reply does not cost a full day across regions.\n- If a PR is solid and only minor comments remain, approve with `LGTM, nits aside` instead of blocking another round.\n- When a PR is too large to review promptly, ask the author to split it rather than letting it sit."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Give specific, kind, conventional feedback",
+      "summary": "Label comments by intent and critique the code, not the author.",
+      "body": "Structured comments make intent obvious and keep review collegial, following the Conventional Comments labels.\n\n- Prefix each comment with its kind: `issue:`, `suggestion:`, `question:`, `nit:`, or `praise:` so the author knows what is blocking.\n- Be specific: point at the line and the concrete risk, and propose an alternative rather than just flagging a problem.\n- Critique the code path, not the person; reserve `nit:` for trivial preference and never let nits block a merge.\n- Note positives with `praise:` too, so reviews reinforce good patterns and not only defects."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "code-review-review",
+      "summary": "Author self-check to run before requesting review on any PR.",
+      "body": "---\nname: code-review-review\ndescription: Author self-review checklist to run before requesting review on a pull request. Confirms scope, description, correctness, security, and tests so the first reviewer pass is fast.\n---\n\n# Code review self-check\n\n## Scope and description\n\n- [ ] The PR does one thing; unrelated refactors and reformatting are in separate PRs.\n- [ ] Diff is roughly under 400 meaningful lines, or a `## Why this is large` note explains why not.\n- [ ] Title and description state the what and the why, and link the issue or ticket.\n\n## Correctness\n\n- [ ] The code does what the description claims, and I have run it or the tests locally.\n- [ ] Edge cases and error paths are handled, not just the happy path.\n- [ ] No leftover debug logs, commented-out code, or TODOs without a tracking link.\n\n## Security\n\n- [ ] External input is validated and escaped at trust boundaries (injection, XSS, path traversal).\n- [ ] No secrets, tokens, or credentials are committed; config comes from env or a secret store.\n- [ ] Authz checks gate any new endpoint, mutation, or data access.\n\n## Tests and automation\n\n- [ ] New behavior has tests; changed behavior has updated tests.\n- [ ] Linters and formatters pass, so no style nits reach the reviewer.\n- [ ] CI is green before I hit request review.\n",
+      "skillTags": [
+        "code-review",
+        "workflow",
+        "pull-request",
+        "checklist",
+        "self-review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/git-conventional-commits.js
+var gitConventionalCommits = {
+  "slug": "git-conventional-commits",
+  "version": "1.0.0",
+  "name": "Git & Conventional Commits",
+  "tagline": "Keep history readable and releases automatic with small commits and Conventional Commits.",
+  "description": "A workflow bundle that standardizes how AI agents and humans commit, branch, and open pull requests. It enforces the Conventional Commits v1.0.0 spec, short-lived branches off main, and small reviewable PRs so changelogs and version bumps can be generated automatically.",
+  "category": "Workflow",
+  "icon": "git-commit-horizontal",
+  "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Git & Conventional Commits for AI coding agents",
+  "metaDescription": "Teach AI coding agents to write Conventional Commits, keep branches short-lived, and ship small reviewable PRs so changelogs and semantic versions stay automatic.",
+  "problem": "AI agents and humans write inconsistent commit messages and oversized PRs, breaking automated changelogs and making history impossible to review.",
+  "audience": "Product teams on GitHub Flow or trunk-based development that automate releases from commit history.",
+  "prevents": [
+    "Vague commit subjects like 'fix stuff' that break automated changelogs",
+    "Giant 1000-line PRs that nobody can review properly",
+    "Rebasing already-pushed shared branches and forcing teammates to re-clone"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/.github",
+      "/src"
+    ],
+    "stacks": [
+      "git",
+      "github",
+      "conventional-commits",
+      "ci-cd"
+    ],
+    "packages": [
+      "@commitlint/cli",
+      "@commitlint/config-conventional",
+      "lefthook",
+      "release-please"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Commit messages follow Conventional Commits v1.0.0",
+      "summary": "Every commit subject uses a Conventional Commits type and stays under 50 characters.",
+      "body": "Format every commit as `<type>[optional scope][!]: <description>` per Conventional Commits v1.0.0 so `release-please` can derive versions and changelogs.\n\n- Use only these types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.\n- Keep the subject in imperative mood, lowercase after the colon, no trailing period, and at most 50 characters; wrap the body at 72.\n- A `feat` maps to a MINOR bump and a `fix` to a PATCH; signal breaking changes with a `!` after the type or a `BREAKING CHANGE:` footer for a MAJOR bump.\n- Add a scope in parentheses when it clarifies the area, for example `fix(auth): refresh token before expiry`.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Short-lived branches and small focused PRs",
+      "summary": "Branch off main, keep PRs under ~400 lines, and never rebase pushed shared branches.",
+      "body": "Work on short-lived branches cut from `main` and merge them back within a day or two to keep integration cheap.\n\n- Target under ~400 changed lines per PR; split larger work into stacked or sequential PRs.\n- One logical change per PR so reviews are fast and reverts are clean.\n- Rebase your local branch onto `main` to stay current, but never rebase a branch others have already pulled.\n- Use squash merge so each PR lands as a single Conventional Commit on `main`; the PR title becomes that commit and must pass commit linting.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Rebase vs merge decision guide",
+      "summary": "When to rebase, when to merge, and the one rule you must never break.",
+      "body": "Pick the integration strategy by branch lifecycle, not by habit.\n\n- Rebase private short-lived feature branches onto `main` before opening or updating a PR to keep a linear, bisectable history.\n- Use a true merge (no rebase) for long-lived branches like a release branch going back into `main`, preserving collaboration context.\n- The hard rule: never rebase commits already pushed to a shared branch, since rewriting public history forces teammates to force-pull or re-clone.\n- Prefer squash merge for PR landings so the merged result is one clean Conventional Commit regardless of messy intermediate commits.",
+      "scopeType": "project"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/.github",
+      "title": "Commit and release automation stack",
+      "summary": "How commitlint, lefthook, and release-please wire together in CI.",
+      "body": "Commit hygiene is enforced locally and in CI, then drives automated releases.\n\n- `@commitlint/cli` with `@commitlint/config-conventional` validates messages; run it from a `lefthook` `commit-msg` hook so bad messages never get committed.\n- Because we squash merge, the PR title becomes the commit, so lint PR titles in a GitHub Action against the same Conventional Commits rules.\n- `release-please` parses Conventional Commits on `main`, opens a release PR with the computed semver bump and generated `CHANGELOG.md`, and cuts the GitHub release on merge.\n- Keep `lefthook.yml` and the commitlint config at the repo root; keep the release-please and PR-title-lint workflows under `/.github/workflows`.",
+      "scopeType": "project"
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "git-conventional-commits-review",
+      "summary": "Pre-commit and pre-PR checklist for clean commits and reviewable pull requests.",
+      "body": "---\nname: git-conventional-commits-review\ndescription: Checklist to run before committing and before opening a PR so commits follow Conventional Commits v1.0.0, branches stay short-lived, and PRs stay small and reviewable. Use when writing a commit, opening a pull request, or reviewing git history hygiene.\n---\n\n# Git & Conventional Commits review\n\n- [ ] Subject matches `<type>[scope][!]: <description>` using an allowed type (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`).\n- [ ] Subject is imperative mood, lowercase after the colon, no trailing period, and at most 50 characters.\n- [ ] Body (if present) explains the why, wraps at 72 characters, and references issues in the footer.\n- [ ] Breaking changes are flagged with `!` or a `BREAKING CHANGE:` footer so the MAJOR bump is correct.\n- [ ] The change is one logical unit; unrelated changes are split into separate commits or PRs.\n- [ ] Branch is short-lived and freshly rebased onto `main`, with no rebase of commits already pushed to a shared branch.\n- [ ] PR is under ~400 changed lines, or has a clear plan to split it.\n- [ ] PR title is itself a valid Conventional Commit, since squash merge turns it into the landed commit.\n- [ ] `commitlint` and the PR-title lint check pass locally and in CI before requesting review.\n",
+      "skillTags": [
+        "git",
+        "conventional-commits",
+        "code-review",
+        "ci-cd",
+        "release"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/monorepo-pnpm-turborepo.js
+var monorepoPnpmTurborepo = {
+  "slug": "monorepo-pnpm-turborepo",
+  "version": "1.0.0",
+  "name": "Monorepo (pnpm + Turborepo)",
+  "tagline": "Keep a pnpm and Turborepo monorepo fast, cacheable, and boundary-clean.",
+  "description": "A pattern bundle for JavaScript and TypeScript monorepos built on pnpm workspaces and Turborepo. It codifies the rules that keep task pipelines deterministic and cacheable, package boundaries explicit, and dependency versions unified. Use it so AI agents and humans both extend the repo without breaking the cache or leaking cross-package imports.",
+  "category": "Workflow",
+  "icon": "folder-tree",
+  "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Monorepo (pnpm + Turborepo) pattern for AI coding agents",
+  "metaDescription": "Pathrule pattern for pnpm + Turborepo monorepos: cacheable task pipelines, clean package boundaries, catalog-pinned versions, and shared configs for AI agents.",
+  "problem": "Monorepo task pipelines silently lose cache hits and packages drift across boundaries as the repo grows.",
+  "audience": "Teams running a JavaScript or TypeScript monorepo on pnpm workspaces and Turborepo.",
+  "prevents": [
+    "Cache misses from unset outputs or env vars left out of a task hash",
+    "Cross-package imports that bypass the package's public entry and break boundaries",
+    "Duplicate dependency versions because packages pin their own ranges instead of using the catalog"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/apps",
+      "/packages",
+      "/turbo.json",
+      "/pnpm-workspace.yaml"
+    ],
+    "stacks": [
+      "pnpm",
+      "turborepo",
+      "monorepo",
+      "typescript",
+      "node"
+    ],
+    "packages": [
+      "turbo",
+      "pnpm",
+      "@turbo/gen"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/turbo.json",
+      "title": "Every task declares outputs, inputs, and env",
+      "summary": "A task that omits outputs, inputs, or env hashing will cache wrong results or never hit cache.",
+      "body": 'Turborepo only caches and replays a task correctly when its hash is complete. Configure each task in `turbo.json` so the hash reflects exactly what the task reads and writes.\n\n- Set `outputs` to every artifact the task produces (for example `[".next/**", "!.next/cache/**"]` or `["dist/**"]`); a missing `outputs` means nothing is restored from cache.\n- Add build-time `env` and `globalEnv` entries for any variable that changes output, and run with `envMode: "strict"` so undeclared vars cannot silently leak into a build.\n- Use `dependsOn: ["^build"]` to build upstream packages first, and mark `dev`/`watch` tasks `persistent: true` with `cache: false`.\n- Narrow `inputs` only when you understand the default; the safe default already hashes all tracked files in the package.'
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/packages",
+      "title": "Import packages only through their public entry",
+      "summary": "Reaching into another package's src or dist by relative or deep path breaks boundaries and caching.",
+      "body": 'Internal packages are consumed by their name and `exports` map, never by reaching across folders. This keeps Turborepo Boundaries valid and the dependency graph honest.\n\n- Import a workspace package as `@repo/ui` (resolved via its `package.json` `exports`), never as `../../packages/ui/src/...`.\n- Declare every workspace package you use in that package\'s `package.json` with `"@repo/ui": "workspace:*"`; an undeclared import is an implicit dependency Turborepo cannot track.\n- Keep each package\'s public surface in its `exports` field and avoid deep subpath imports unless they are explicitly exported.\n- Run `turbo boundaries` in CI to catch cross-package imports and undeclared dependencies before merge.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/pnpm-workspace.yaml",
+      "title": "Pin shared dependency versions with pnpm catalogs",
+      "summary": "Define one version per shared dependency in pnpm-workspace.yaml and reference it with catalog:.",
+      "body": 'This repo uses pnpm workspaces with catalogs as the single source of truth for shared dependency versions, so every package stays on the same React, TypeScript, and tooling versions.\n\n- `pnpm-workspace.yaml` lists workspace globs under `packages:` (for example `apps/*` and `packages/*`) plus a `catalog:` block and optional named `catalogs:` for version sets.\n- Packages reference shared deps as `"react": "catalog:"` (default catalog) or `"catalog:react19"` for a named one, instead of hard-coding a range.\n- Bump a version in one place in the catalog and run `pnpm install`; pnpm rewrites the resolved lockfile entries across all packages.\n- The content-addressable store hard-links shared deps, so a single committed `pnpm-lock.yaml` keeps installs fast and deterministic.'
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/packages/config",
+      "title": "Share base configs as workspace packages",
+      "summary": "TypeScript, ESLint, and Tailwind base configs live in packages and are extended per package.",
+      "body": 'Tooling configuration is published as internal config packages (for example `@repo/typescript-config`, `@repo/eslint-config`) rather than duplicated or pushed to the repo root. Each app and package extends the base it needs.\n\n- There is intentionally no root `tsconfig.json` for source; each package has its own `tsconfig.json` that does `"extends": "@repo/typescript-config/base.json"`.\n- ESLint flat config and Tailwind/PostCSS presets are exported from config packages and imported, so a rule change ships once.\n- List the config package as a `devDependency` with `workspace:*` so Turborepo treats a config change as an input and busts the cache.\n- Keep the root `package.json` for workspace scripts and `turbo` only; per-package concerns stay in their own package.'
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "monorepo-pnpm-turborepo-review",
+      "summary": "Checklist to review a pnpm + Turborepo monorepo change before merge.",
+      "body": "---\nname: monorepo-pnpm-turborepo-review\ndescription: Review checklist for changes in a pnpm workspaces plus Turborepo monorepo, covering task hashing, caching, package boundaries, catalog-pinned versions, and shared configs. Use before merging any change that touches turbo.json, pnpm-workspace.yaml, package.json files, or cross-package imports.\n---\n\n# Monorepo (pnpm + Turborepo) review\n\n- [ ] Every new or changed `turbo.json` task sets `outputs` covering all produced artifacts (and excludes cache dirs like `!.next/cache/**`).\n- [ ] Build-affecting env vars are declared in the task `env` or `globalEnv`, and `envMode` is `strict`.\n- [ ] `dependsOn` uses `^build` for upstream packages; `dev`/`watch` tasks are `persistent: true` and `cache: false`.\n- [ ] New cross-package usage imports by package name (`@repo/*` via `exports`), never by relative or deep `src`/`dist` paths.\n- [ ] Each used workspace package is declared with `workspace:*` in the consuming package's `package.json`.\n- [ ] `turbo boundaries` and the build pass with a clean dependency graph; no implicit deps.\n- [ ] Shared dependency versions use `catalog:` (or a named catalog) instead of hard-coded ranges.\n- [ ] `pnpm-lock.yaml` is committed and reflects the install; only one version of each shared dep is resolved.\n- [ ] TypeScript, ESLint, and Tailwind extend the shared `@repo/*-config` packages rather than duplicating config.\n- [ ] `packageManager` is pinned in the root `package.json` and matches the pnpm version used in CI.\n",
+      "skillTags": [
+        "monorepo",
+        "pnpm",
+        "turborepo",
+        "caching",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/patterns/testing-vitest-playwright.js
+var testingVitestPlaywright = {
+  "slug": "testing-vitest-playwright",
+  "version": "1.0.0",
+  "name": "Testing (Vitest + Playwright)",
+  "tagline": "Unit test behavior with Vitest, drive real user flows with Playwright, and keep both green in CI.",
+  "description": "A layered testing setup that splits fast unit and component tests in Vitest from end-to-end browser tests in Playwright. It pushes assertions toward observable behavior and role-based selectors so tests survive refactors, and it wires both suites into CI with coverage, retries, and trace artifacts.",
+  "category": "Workflow",
+  "icon": "flask-conical",
+  "color": "bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400",
+  "installs": 0,
+  "updatedAt": "2026-06-09",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Testing (Vitest + Playwright) pattern for AI coding agents",
+  "metaDescription": "A Pathrule pattern that teaches AI coding agents to write Vitest unit tests and Playwright e2e tests the right way: behavior over implementation, stable role-based selectors, and green CI.",
+  "problem": "AI-generated tests often assert on implementation details and brittle CSS selectors, so they break on every refactor while missing real user-facing regressions.",
+  "audience": "Frontend and full-stack teams running Vitest for units and Playwright for end-to-end on a TypeScript codebase.",
+  "prevents": [
+    "Brittle e2e tests pinned to CSS classes or DOM structure instead of accessible roles",
+    "Unit tests that assert on internal state, private methods, or call counts instead of observable output",
+    "Flaky CI runs with no traces, no retries, and no parallelism or sharding"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/tests",
+      "/e2e"
+    ],
+    "stacks": [
+      "typescript",
+      "vitest",
+      "playwright",
+      "react",
+      "vite"
+    ],
+    "packages": [
+      "vitest",
+      "@vitest/coverage-v8",
+      "@playwright/test",
+      "@testing-library/react",
+      "@testing-library/jest-dom",
+      "jsdom"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/e2e",
+      "title": "Select by role and accessible name, not CSS",
+      "summary": "Playwright locators must follow the role-first hierarchy; CSS and XPath are last resort.",
+      "body": "End-to-end tests must locate elements the way a user or screen reader does, so they survive markup and styling refactors.\n\n- Reach for `getByRole(name)` first; it is Playwright's recommended locator and doubles as an accessibility check.\n- Fall back in order to `getByLabel`, `getByPlaceholder`, `getByText`, then `getByTestId` only when no semantic handle exists.\n- Do not select by CSS class, tag chains, or XPath; these break on every redesign.\n- Add `data-testid` to the element, not a wrapper, when a test id is genuinely needed.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Test observable behavior, not implementation",
+      "summary": "Assert on rendered output and public contracts, never on internal state or private methods.",
+      "body": "Unit and component tests must verify what a user or caller observes, so they catch regressions without breaking on internal refactors.\n\n- Assert on rendered DOM, returned values, and emitted events; query with `@testing-library` role and label helpers.\n- Do not assert on component internal state, private methods, or spy call counts when an observable effect exists.\n- Prefer `await screen.findByRole(...)` and `userEvent` interactions over reaching into instances.\n- Reserve mocks for true boundaries (network, time, randomness); never mock the unit under test.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Two-layer test stack: Vitest units, Playwright e2e",
+      "summary": "Vitest 4.1 owns fast unit/component tests; Playwright owns real-browser end-to-end flows.",
+      "body": "We run two distinct layers so each test sits at the right altitude. Keep them separate; do not drive full app flows from Vitest or unit-test pure logic through Playwright.\n\n- Unit and component tests live in `/src` next to source or in `/tests`, run under Vitest 4.1 with `environment: 'jsdom'` (or `happy-dom`) and `@testing-library/react`.\n- End-to-end tests live in `/e2e`, run under `@playwright/test` against a real browser via the `webServer` config that boots the app.\n- Vitest 4 defaults coverage to `v8`; set `coverage.include` explicitly since `coverage.all` was removed in v4.\n- Heavy component-interaction tests can use Vitest Browser Mode (stable since v4) instead of jsdom when DOM fidelity matters.\n\nSee /e2e for the Playwright selector rule and /src for the behavior-testing rule.",
+      "skillTags": []
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/e2e",
+      "title": "Playwright CI config: parallel, retries, traces, sharding",
+      "summary": "How the e2e suite is wired for stable, debuggable CI runs.",
+      "body": "Our `playwright.config.ts` is tuned so CI failures are reproducible and fast. Match these settings when adding projects or jobs.\n\n- `fullyParallel: true`, `workers` left to default locally and capped in CI, `retries: process.env.CI ? 2 : 0`.\n- `trace: 'on-first-retry'` so a failing test ships a full trace (network, DOM snapshots, timeline) without slowing green runs.\n- `webServer` boots the app with `reuseExistingServer: !process.env.CI` so local runs reuse a running dev server and CI always starts clean.\n- Large suites split across runners with `--shard=index/total`; merge the blob reports afterward for one HTML report.\n- Open the Trace Viewer (`npx playwright show-trace`) before editing any flaky test.",
+      "skillTags": []
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "testing-vitest-playwright-review",
+      "summary": "Pre-merge checklist for Vitest unit tests and Playwright e2e tests.",
+      "body": "---\nname: testing-vitest-playwright-review\ndescription: Review checklist for any change that adds or edits Vitest unit/component tests or Playwright e2e tests. Confirms tests assert behavior, use stable role-based selectors, and run reliably in CI.\n---\n\n# Testing (Vitest + Playwright) review\n\n- [ ] New logic and components have Vitest tests; new user flows have a Playwright e2e test.\n- [ ] Assertions target observable output (rendered DOM, return values, events), not internal state or private methods.\n- [ ] Component queries use `@testing-library` role/label helpers and `userEvent`, not container DOM traversal.\n- [ ] Playwright locators follow the hierarchy: `getByRole` first, then label/placeholder/text, `getByTestId` last, no raw CSS or XPath.\n- [ ] Mocks are limited to real boundaries (network, time, randomness); the unit under test is never mocked.\n- [ ] Async work is awaited via `findBy*` / web-first `expect` assertions, with no fixed `sleep`/`waitForTimeout` waits.\n- [ ] Vitest `coverage.include` is set and coverage does not regress; provider is `v8`.\n- [ ] Playwright config keeps `trace: 'on-first-retry'`, CI `retries: 2`, `fullyParallel`, and a `webServer` entry.\n- [ ] Tests are deterministic and isolated: one context per e2e test, no shared mutable fixtures, no order dependence.\n- [ ] CI runs both suites and uploads Playwright traces/reports as artifacts.\n",
+      "skillTags": [
+        "testing",
+        "vitest",
+        "playwright",
+        "e2e",
+        "ci",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../shared/node_modules/@pathrule/patterns/dist/index.js
+var PATTERNS = [
+  astro,
+  expoReactNative,
+  nextjsAppRouter,
+  nuxt,
+  reactRouter,
+  sveltekit,
+  formsRhfZod,
+  reactTypescript,
+  shadcnUi,
+  tailwindCss,
+  tanstackQuery,
+  webAccessibility,
+  authSessionsJwtOauth,
+  backgroundJobsQueues,
+  drizzleOrm,
+  nodeTsApiHono,
+  postgresSchema,
+  restApiDesign,
+  supabaseRls,
+  stripeBilling,
+  subscriptionsUsageBilling,
+  dockerContainers,
+  githubActionsCicd,
+  observability,
+  secretsEnvManagement,
+  terraformIac,
+  vercelDeploy,
+  codeReview,
+  gitConventionalCommits,
+  monorepoPnpmTurborepo,
+  testingVitestPlaywright
+];
+function getPattern(slug) {
+  return PATTERNS.find((p) => p.slug === slug);
+}
+
+// ../shared/src/tools/import-pattern.ts
+function joinPatternPaths(base, rel) {
+  const b = (base ?? "/").trim();
+  if (!b || b === "/") return rel;
+  const trimmed = b.replace(/\/+$/, "");
+  if (rel === "/") return trimmed || "/";
+  return trimmed + (rel.startsWith("/") ? rel : `/${rel}`);
+}
+async function importPatternHandler(ctx, args) {
+  const pattern = getPattern(args.slug);
+  if (!pattern) {
+    return {
+      ok: false,
+      error: {
+        code: "not_found",
+        message: `No pattern named "${args.slug}". Browse pathrule.io/patterns for valid slugs.`
+      }
+    };
+  }
+  const imported = { memories: 0, rules: 0, skills: 0 };
+  let skipped = 0;
+  const details = [];
+  for (const piece of pattern.pieces) {
+    const node_path = joinPatternPaths(args.node_path, piece.nodePath);
+    const result = piece.kind === "memory" ? await writeMemoryHandler(ctx, {
+      node_path,
+      title: piece.title,
+      content: piece.body,
+      source: "manual"
+    }) : piece.kind === "rule" ? await writeRuleHandler(ctx, {
+      node_path,
+      name: piece.title,
+      content: piece.body,
+      scope_type: piece.scopeType ?? "project",
+      priority: piece.priority ?? "medium"
+    }) : await writeSkillHandler(ctx, {
+      node_path,
+      name: piece.title,
+      description: piece.summary ?? null,
+      content: piece.body,
+      source: "manual",
+      tags: piece.skillTags
+    });
+    if (result.ok) {
+      if (piece.kind === "memory") imported.memories += 1;
+      else if (piece.kind === "rule") imported.rules += 1;
+      else imported.skills += 1;
+      details.push({ kind: piece.kind, title: piece.title, path: node_path, status: "imported" });
+    } else if (result.error.code === "duplicate") {
+      skipped += 1;
+      details.push({
+        kind: piece.kind,
+        title: piece.title,
+        path: node_path,
+        status: "skipped",
+        reason: "already present"
+      });
+    } else {
+      details.push({
+        kind: piece.kind,
+        title: piece.title,
+        path: node_path,
+        status: "failed",
+        reason: result.error.message
+      });
+    }
+  }
+  return {
+    ok: true,
+    data: {
+      slug: pattern.slug,
+      name: pattern.name,
+      version: pattern.version,
+      imported,
+      skipped,
+      details
+    }
+  };
+}
+function formatPatternImportMessage(data) {
+  const total = data.imported.memories + data.imported.rules + data.imported.skills;
+  const failed = data.details.filter((d) => d.status === "failed").length;
+  return `Imported "${data.name}": ${total} item${total === 1 ? "" : "s"} (${data.imported.rules} rules, ${data.imported.memories} memories, ${data.imported.skills} skills)${data.skipped ? `, ${data.skipped} already present` : ""}${failed ? `, ${failed} failed` : ""}. Open Pathrule to review.`;
+}
+
 // ../shared/src/skills/invocation.ts
 var TOKEN_RE = /^[A-Za-z0-9_-]+/;
 var LEFT_BOUNDARY_RE = /[\s([{'"`]/;
+var RESERVED_PREFIX = "pathrule:";
+var PATTERN_IMPORT_RE = /^pathrule:package:([a-z0-9][a-z0-9-]*)/i;
 function normalizeSkillInvocationName(value) {
   return value.trim().toLowerCase();
 }
@@ -22492,7 +25626,12 @@ function extractSkillInvocationMarkers(prompt) {
     if (masked[i] !== ":" || masked[i + 1] !== ":") continue;
     const prev = i === 0 ? "" : masked[i - 1] ?? "";
     if (prev && !LEFT_BOUNDARY_RE.test(prev)) continue;
-    const match = masked.slice(i + 2).match(TOKEN_RE);
+    const rest = masked.slice(i + 2);
+    if (rest.slice(0, RESERVED_PREFIX.length).toLowerCase() === RESERVED_PREFIX) {
+      i += 1 + RESERVED_PREFIX.length;
+      continue;
+    }
+    const match = rest.match(TOKEN_RE);
     if (!match?.[0]) continue;
     const raw = match[0];
     markers.push({
@@ -22504,6 +25643,29 @@ function extractSkillInvocationMarkers(prompt) {
     i += 1 + raw.length;
   }
   return dedupeMarkers(markers);
+}
+function extractPatternImportMarkers(prompt) {
+  const masked = maskMarkdownCode(prompt);
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = 0; i < masked.length - 2; i += 1) {
+    if (masked[i] !== ":" || masked[i + 1] !== ":") continue;
+    const prev = i === 0 ? "" : masked[i - 1] ?? "";
+    if (prev && !LEFT_BOUNDARY_RE.test(prev)) continue;
+    const match = masked.slice(i + 2).match(PATTERN_IMPORT_RE);
+    if (!match?.[1]) continue;
+    const slug = match[1].toLowerCase();
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push({
+      slug,
+      raw: masked.slice(i, i + 2 + match[0].length),
+      start: i,
+      end: i + 2 + match[0].length
+    });
+    i += 1 + match[0].length;
+  }
+  return out;
 }
 function dedupeMarkers(markers) {
   const seen = /* @__PURE__ */ new Set();
@@ -22811,6 +25973,8 @@ async function getContextHandler(ctx, args) {
     const skillInvocation = matchInvokedSkills(invocationSkills, args.user_intent);
     const invokedSkills = skillInvocation.invokedSkills.length > 0 ? skillInvocation.invokedSkills : void 0;
     const missingInvokedSkills = skillInvocation.missingInvokedSkills.length > 0 ? skillInvocation.missingInvokedSkills : void 0;
+    const patternMarkers = extractPatternImportMarkers(args.user_intent ?? "");
+    const patternImports = patternMarkers.length > 0 ? patternMarkers.map((m) => ({ slug: m.slug, raw: m.raw })) : void 0;
     const node = await ctx.backend.findNodeByPath(args.workspace_id, args.relative_path);
     if (!node) {
       const overview2 = await ctx.backend.workspaceOverview(args.workspace_id);
@@ -22824,7 +25988,8 @@ async function getContextHandler(ctx, args) {
           skills: [],
           workspace_overview: overview2,
           invoked_skills: invokedSkills,
-          missing_invoked_skills: missingInvokedSkills
+          missing_invoked_skills: missingInvokedSkills,
+          pattern_imports: patternImports
         }
       };
     }
@@ -22872,7 +26037,8 @@ async function getContextHandler(ctx, args) {
         skills,
         workspace_overview: overview,
         invoked_skills: invokedSkills,
-        missing_invoked_skills: missingInvokedSkills
+        missing_invoked_skills: missingInvokedSkills,
+        pattern_imports: patternImports
       }
     };
   } catch (err) {
@@ -23206,6 +26372,7 @@ var PATHRULE_PROTOCOL = {
   before: [
     "Pathrule is the first knowledge layer for this workspace. Hooks auto-inject path-scoped memory/rule titles + session digest on every tool call and user prompt (M12). Trust that context before falling back to files, git, or general knowledge.",
     "`::skill-name` is a hard gate: use the exact injected skill; if missing, stop and resolve it through Pathrule/MCP before file edits.",
+    "`::pathrule:package:<slug>` is a PATTERN import, NOT a skill. When the user pastes one, call pathrule_import_pattern(workspace_id, slug) \u2014 the bare <slug> after `package:` \u2014 to add that bundle (memories + rules + skills) to the workspace, then relay the returned human_message. Never run the find-skills protocol for it. Works the same in the cloud and local editions.",
     "Do NOT reflexively call pathrule_get_context before every small known-path code task. DO call pathrule_get_context(cwd, user_intent, omit_protocol: true) before any grep/read/fallback when hook context is missing, ambiguous, stale, or the user asks for discovery, inventory, architecture, recent activity, or list/show/find/where/which style questions (including Turkish: listele, g\xF6ster, bul, nerede, hangi, neler).",
     "Hook silence on a topic does not mean Pathrule has no relevant memory/rule. For discovery/inventory/architecture questions, call pathrule_get_context first; fall back to files, git, or general knowledge only after Pathrule returns nothing relevant. It's a single unified tool (M13): the router classifies intent and returns a depth-appropriate response - minimal for ui_tweak/new_feature on a known path, focused for bug_fix/refactor, deep for debug/discovery.",
     "For discovery/inventory questions, treat `subtree_memory_index`, `discovery_signal`, and `semantic_candidates` as Pathrule evidence before filesystem fallback. Semantic candidates are not answers or rules: call pathrule_read_memory(id) and inspect the body before citing or following one.",
@@ -25825,6 +28992,44 @@ var deleteSkillTool = {
     }
   }
 };
+var importPatternTool = {
+  name: "pathrule_import_pattern",
+  title: "Pathrule Import Pattern",
+  description: "Import an official Pathrule pattern (a bundle of memories, rules, and skills, each pre-scoped to a path) into the workspace. Call this when the user pastes a `::pathrule:package:<slug>` token; pass the bare <slug> (e.g. 'nextjs-app-router'). Each piece is written path-first (missing nodes auto-create); pieces whose content already exists are skipped, so re-import is idempotent. After calling, relay the returned human_message. This is a pattern import, NOT a skill \u2014 do not run the find-skills protocol.",
+  inputSchema: {
+    workspace_id: external_exports.string().uuid().describe(workspaceIdDescription),
+    slug: external_exports.string().regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase slug, e.g. nextjs-app-router").describe("Pattern slug \u2014 the part after 'package:' in ::pathrule:package:<slug>."),
+    node_path: external_exports.string().optional().describe("Optional base path to re-root the whole bundle under. Omit to use the pattern's own paths."),
+    verbose: external_exports.boolean().optional().describe("Set true for per-piece import detail. Default false (compact summary).")
+  },
+  requiredScopes: ["pathrule:write"],
+  mode: "write_beta",
+  workspace: { required: true, subscriptionRequired: true },
+  response: { includeLocalRuntimeCta: false },
+  handler: async (args, ctx) => {
+    try {
+      const result = await importPatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+        slug: args.slug,
+        node_path: args.node_path
+      });
+      if (!result.ok) return formatToolError3(result.error);
+      const data = result.data;
+      const human_message = formatPatternImportMessage(data);
+      return args.verbose ? {
+        ok: true,
+        slug: data.slug,
+        name: data.name,
+        version: data.version,
+        imported: data.imported,
+        skipped: data.skipped,
+        details: data.details,
+        human_message
+      } : { ok: true, slug: data.slug, imported: data.imported, skipped: data.skipped, human_message };
+    } catch (error2) {
+      return formatThrown5(error2);
+    }
+  }
+};
 var writeTools = [
   writeMemoryTool,
   updateMemoryTool,
@@ -25834,7 +29039,8 @@ var writeTools = [
   deleteRuleTool,
   writeSkillTool,
   updateSkillTool,
-  deleteSkillTool
+  deleteSkillTool,
+  importPatternTool
 ];
 
 // src/mcp/remote-tools.ts
