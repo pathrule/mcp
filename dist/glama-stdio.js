@@ -21876,10 +21876,16 @@ function normalizeFilesTouched(filesTouched, workspaceRoot) {
   }
   const total = Object.values(by_area).reduce((sum, paths) => sum + paths.length, 0);
   return {
-    normalized: { total, by_area },
+    // normalized_v1: this function just canonicalised every path above, so it is the
+    // one place entitled to make the claim. See the M43 note on the return type.
+    normalized: { total, by_area, normalized_v1: true },
     dropped
   };
 }
+
+// ../shared/src/auth/offline-grace.ts
+var OFFLINE_GRACE_DAYS = 14;
+var OFFLINE_GRACE_MS = OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1e3;
 
 // ../shared/src/git-config.ts
 var import_ini = __toESM(require_ini(), 1);
@@ -28297,7 +28303,7 @@ function clampFilesTouched(filesTouched) {
     }
   }
   const total = Object.values(by_area).reduce((sum, paths) => sum + paths.length, 0);
-  return { total, by_area };
+  return filesTouched?.normalized_v1 === true ? { total, by_area, normalized_v1: true } : { total, by_area };
 }
 async function writeActivityLog(ctx, input) {
   if (!ctx.backend) throw new Error("No backend configured.");
@@ -28644,12 +28650,18 @@ var FORMULAS = [
     active: true
   },
   {
+    // RETIRED 2026-08-22 on its own numbers: 32 suggestions produced, ZERO ever
+    // accepted, baseline confidence 0.3, and it was still firing daily. "A memory's
+    // node has not been touched lately" says nothing about whether the memory is
+    // still true, so the finding had no action attached to it and users correctly
+    // ignored all 32. Kept in the registry (inactive) rather than deleted so the
+    // formula id stays resolvable for the rows it already wrote.
     id: "last_touched",
     findingType: "stale_knowledge",
     cadence: "daily",
     confidenceBaseline: 0.3,
     phase: 1,
-    active: true
+    active: false
   },
   {
     id: "dead_path_ref",
@@ -29180,8 +29192,11 @@ var MOTION_PROMPT = [
   "Use 100 to 150 ms for feedback, 200 to 300 ms for small state changes, 300 to 500 ms for panels, and 500 to 800 ms for focal entrances. Let a complete brand reveal breathe across roughly 900 to 1600 ms.",
   "Prefer named easing tokens. Keep one easing family and reserve overshoot for one justified focal accent.",
   "Use load for entrances, hover for one justified accent, and scroll for short inessential below-fold reveals.",
-  "Prefer transform and opacity. Supported editable channels include opacity, movement, percentage movement, uniform and per-axis scale, 2D and 3D rotation, skew, perspective, blur, color, and background.",
-  "Use two to four meaningful keys per channel with clean offsets. Use simple keyframes for shared timing, tracks for independent timing, or one supported named effect. Never combine these forms in one spec.",
+  "Prefer transform and opacity. The channel id is part of the contract and an unknown id is dropped on ingest. Use exactly these ids: opacity, moveX, moveY, moveXPct, moveYPct, scale, scaleX, scaleY, rotate, rotateX, rotateY, skewX, skewY, perspective, blur, color, background.",
+  "Channel values carry the CSS intent unit: opacity 0 to 1, scale 1 at natural size, moveX and moveY and blur and perspective in px, moveXPct and moveYPct in percent, rotate and skew in degrees, color and background as CSS colors.",
+  'Author each spec as {"id":"...","target":{"prId":"<existing data-pr-id>"},"trigger":"load","timeline":{"durationMs":600,"delayMs":0,"easing":"<token>","iterations":1,"fill":"both"},"tracks":[{"channel":"opacity","keys":[{"offset":0,"value":0},{"offset":1,"value":1}]}]}. Offsets run 0 to 1 inside the spec timeline.',
+  "Use two to four meaningful keys per channel with clean offsets. Use tracks for independent per-channel timing, simple keyframes for shared timing, or one supported named effect. Never combine these forms in one spec.",
+  "Every spec must carry at least one channel with at least two keys. A spec with no usable channel is rejected, so never emit a timeline shell with empty keyframes.",
   "Keep the base HTML at the final visible rest state. Bind every target to a stable semantic data-pr-id. Keep static export and reduced-motion behavior complete.",
   "Run temporal QA across start, major transitions, and end. Fix flashes, clipping, collisions, rushed timing, unreadable text, wrong final state, or uneditable tracks."
 ].join("\n");
@@ -29564,15 +29579,19 @@ var CloudBackend = class {
     return data ? this.toMemory(data) : null;
   }
   async writeMemory(input) {
-    const { data, error: error2 } = await this.supabase.from("memories").insert({
-      workspace_id: input.workspaceId,
-      node_id: input.nodeId ?? null,
-      title: input.title,
-      content: input.content,
-      source: input.source ?? "claude",
-      created_by: this.userId,
-      last_edited_by: this.userId
-    }).select("*").single();
+    const { data, error: error2 } = await this.supabase.from("memories").upsert(
+      {
+        ...input.id ? { id: input.id } : {},
+        workspace_id: input.workspaceId,
+        node_id: input.nodeId ?? null,
+        title: input.title,
+        content: input.content,
+        source: input.source ?? "claude",
+        created_by: this.userId,
+        last_edited_by: this.userId
+      },
+      input.id ? { onConflict: "id", ignoreDuplicates: false } : {}
+    ).select("*").single();
     if (error2 || !data) throw error2 ?? new Error("memory insert failed");
     return this.toMemory(data);
   }
@@ -29666,15 +29685,19 @@ var CloudBackend = class {
     return data ? this.toRule(data) : null;
   }
   async writeRule(input) {
-    const { data, error: error2 } = await this.supabase.from("rules").insert({
-      workspace_id: input.workspaceId,
-      name: input.name,
-      content: input.content,
-      scope_type: input.scopeType,
-      priority: input.priority ?? "medium",
-      created_by: this.userId,
-      last_edited_by: this.userId
-    }).select("*").single();
+    const { data, error: error2 } = await this.supabase.from("rules").upsert(
+      {
+        ...input.id ? { id: input.id } : {},
+        workspace_id: input.workspaceId,
+        name: input.name,
+        content: input.content,
+        scope_type: input.scopeType,
+        priority: input.priority ?? "medium",
+        created_by: this.userId,
+        last_edited_by: this.userId
+      },
+      input.id ? { onConflict: "id", ignoreDuplicates: false } : {}
+    ).select("*").single();
     if (error2 || !data) throw error2 ?? new Error("rule insert failed");
     const rule = this.toRule(data);
     if (input.nodeId) {
@@ -29798,18 +29821,22 @@ var CloudBackend = class {
   }
   async writeSkill(input) {
     const source = input.source ?? "manual";
-    const { data, error: error2 } = await this.supabase.from("skills").insert({
-      workspace_id: input.workspaceId,
-      name: input.name,
-      description: input.description ?? null,
-      content: input.content,
-      source,
-      github_url: input.githubUrl ?? null,
-      tags: input.tags ?? [],
-      created_by: this.userId,
-      last_edited_by: this.userId,
-      content_fetched_at: source === "github_ref" ? (/* @__PURE__ */ new Date()).toISOString() : null
-    }).select("*").single();
+    const { data, error: error2 } = await this.supabase.from("skills").upsert(
+      {
+        ...input.id ? { id: input.id } : {},
+        workspace_id: input.workspaceId,
+        name: input.name,
+        description: input.description ?? null,
+        content: input.content,
+        source,
+        github_url: input.githubUrl ?? null,
+        tags: input.tags ?? [],
+        created_by: this.userId,
+        last_edited_by: this.userId,
+        content_fetched_at: source === "github_ref" ? (/* @__PURE__ */ new Date()).toISOString() : null
+      },
+      input.id ? { onConflict: "id", ignoreDuplicates: false } : {}
+    ).select("*").single();
     if (error2 || !data) throw error2 ?? new Error("skill insert failed");
     const skill = this.toSkill(data);
     if (input.nodeId) {
@@ -30204,10 +30231,21 @@ var CloudBackend = class {
     if (error2) throw error2;
     return data ?? null;
   }
-  // Native Knowledge Compilation: fetch full bodies client-side and run the
-  // same pure assembler every backend uses, so compiled knowledge files are
+  // Native Knowledge Compilation: fetch full bodies client-side and run the same
+  // pure assemblers every backend uses, so compiled knowledge and the warehouse are
   // byte-identical across editions for the same content.
-  async buildKnowledgePayload(workspaceId, mode) {
+  //
+  // This is the cloud twin of LocalBackend.collectHookInput. It was previously inlined
+  // inside buildKnowledgePayload, which is why the warehouse had no cloud producer at
+  // all: buildWarehousePayload is optional in the contract, CloudBackend did not have
+  // it, and hook-index-writer skipped it silently — so M60 delta delivery degraded
+  // from full bodies to previews for every cloud user, with nothing reporting it.
+  //
+  // Kept as a data-only payload on purpose. The warehouse assembler lives in
+  // hook-index.ts, which imports node:crypto, and value-importing it here would drag
+  // node:crypto into the renderer bundle that reaches CloudBackend (see the note on
+  // the knowledge-compiler import above). The Node-only writer assembles it instead.
+  async buildHookInputPayload(workspaceId) {
     const [memoriesRes, rulesRes, nodeRulesRes, skillsRes, nodeSkillsRes] = await Promise.all([
       this.supabase.from("memories").select("id, title, content, nodes(relative_path)").eq("workspace_id", workspaceId),
       this.supabase.from("rules").select("id, name, content, scope_type, priority").eq("workspace_id", workspaceId),
@@ -30265,7 +30303,10 @@ var CloudBackend = class {
       pendingRefreshCount: 0,
       inProgressRefreshCount: 0
     };
-    return assembleKnowledgeNodes(input, { mode });
+    return input;
+  }
+  async buildKnowledgePayload(workspaceId, mode) {
+    return assembleKnowledgeNodes(await this.buildHookInputPayload(workspaceId), { mode });
   }
   // M65 — project the cloud's ready memory embeddings into the id→vector payload
   // (parity with LocalBackend's SQLite projection) so a cloud-attached workspace
@@ -30286,43 +30327,30 @@ var CloudBackend = class {
     }
     return Object.keys(payload).length > 0 ? payload : null;
   }
+  // Learned affinity weights for the hook's ranker. One float per memory: the MAX
+  // decayed weight across that memory's intent clusters, i.e. "has proven useful for at
+  // least one kind of ask". Best-effort: null on error/empty so the hook ranks on cosine
+  // alone, exactly as it did before.
+  //
+  // This exists because the affinity model had a single reader — the MCP semantic-candidate
+  // ranker — while the hook delivers most of the knowledge and never consulted it. A loop
+  // whose output changes nothing is not a loop.
+  async buildAffinityPayload(workspaceId) {
+    const { data, error: error2 } = await this.supabase.from("memory_intent_affinity").select("memory_id, decayed_weight").eq("workspace_id", workspaceId);
+    if (error2 || !Array.isArray(data)) return null;
+    const payload = {};
+    for (const row of data) {
+      const weight = typeof row.decayed_weight === "number" ? row.decayed_weight : null;
+      if (weight === null || !Number.isFinite(weight) || weight <= 0) continue;
+      const clamped = Math.min(1, weight);
+      const current = payload[row.memory_id];
+      if (current === void 0 || clamped > current) payload[row.memory_id] = clamped;
+    }
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
   // ── activity ───────────────────────────────────────────────────────────────────
   async logActivity(input) {
-    const subjects = [
-      ...new Set((input.subjects ?? []).map((s) => s.toLowerCase().trim()).filter(Boolean))
-    ].slice(0, 5);
-    const friction = normalizeActivityFriction(
-      input.friction ? {
-        toolCallCount: input.friction.toolCallCount,
-        toolFailureCount: input.friction.toolFailureCount,
-        toolFailureCodes: input.friction.toolFailureCodes
-      } : void 0
-    );
-    const teamIntelligenceSignal = normalizeActivityTeamIntelligenceSignal(
-      input.teamIntelligenceSignal
-    );
-    const { data, error: error2 } = await this.supabase.from("activity_logs").insert({
-      workspace_id: input.workspaceId,
-      user_id: this.userId,
-      node_path: input.nodePath || "/",
-      domain: input.domain,
-      action: input.action,
-      scope: input.scope,
-      subjects,
-      task_summary: input.taskSummary,
-      files_touched: input.filesTouched ?? { total: 0, by_area: {} },
-      ai_client: input.aiClient ?? "claude-code",
-      session_id: input.sessionId ?? null,
-      ...friction,
-      // M105 exploration-suppression signal (observational). NULL when the turn
-      // had no tool stream to judge (kept out of the weekly rate denominator).
-      explore_calls: input.exploreCalls ?? null,
-      edit_calls: input.editCalls ?? null,
-      context_sufficiency: input.contextSufficiency ?? null,
-      team_intelligence_score: teamIntelligenceSignal?.score ?? null,
-      team_intelligence_category: teamIntelligenceSignal?.category ?? null,
-      team_intelligence_surface: teamIntelligenceSignal?.surface ?? null
-    }).select().single();
+    const { data, error: error2 } = await this.supabase.from("activity_logs").insert(this.activityRow(input)).select().single();
     if (error2) throw error2;
     const row = data;
     const applied = (input.appliedMemoryIds ?? []).map((id) => id?.trim()).filter((id) => Boolean(id));
@@ -30363,6 +30391,51 @@ var CloudBackend = class {
       teamIntelligenceScore: row["team_intelligence_score"] ?? void 0,
       teamIntelligenceCategory: row["team_intelligence_category"] ?? void 0,
       teamIntelligenceSurface: row["team_intelligence_surface"] ?? void 0
+    };
+  }
+  /**
+   * The `activity_logs` row for one activity.
+   *
+   * Extracted and used by the direct insert AND by the offline replay path. An activity queued
+   * during an outage is inserted later by a different process, and a second copy of this shape
+   * would fail that insert at replay time, long after anyone could connect the failure to the
+   * change that caused it.
+   */
+  activityRow(input) {
+    const subjects = [
+      ...new Set((input.subjects ?? []).map((s) => s.toLowerCase().trim()).filter(Boolean))
+    ].slice(0, 5);
+    const friction = normalizeActivityFriction(
+      input.friction ? {
+        toolCallCount: input.friction.toolCallCount,
+        toolFailureCount: input.friction.toolFailureCount,
+        toolFailureCodes: input.friction.toolFailureCodes
+      } : void 0
+    );
+    const teamIntelligenceSignal = normalizeActivityTeamIntelligenceSignal(
+      input.teamIntelligenceSignal
+    );
+    return {
+      workspace_id: input.workspaceId,
+      user_id: this.userId,
+      node_path: input.nodePath || "/",
+      domain: input.domain,
+      action: input.action,
+      scope: input.scope,
+      subjects,
+      task_summary: input.taskSummary,
+      files_touched: input.filesTouched ?? { total: 0, by_area: {} },
+      ai_client: input.aiClient ?? "claude-code",
+      session_id: input.sessionId ?? null,
+      ...friction,
+      // M105 exploration-suppression signal (observational). NULL when the turn
+      // had no tool stream to judge (kept out of the weekly rate denominator).
+      explore_calls: input.exploreCalls ?? null,
+      edit_calls: input.editCalls ?? null,
+      context_sufficiency: input.contextSufficiency ?? null,
+      team_intelligence_score: teamIntelligenceSignal?.score ?? null,
+      team_intelligence_category: teamIntelligenceSignal?.category ?? null,
+      team_intelligence_surface: teamIntelligenceSignal?.surface ?? null
     };
   }
   async recentActivities(scope, limit) {
