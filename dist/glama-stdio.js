@@ -28914,6 +28914,23 @@ var SALT = new TextEncoder().encode("pathrule-relay-v1");
 var INFO = new TextEncoder().encode("studio");
 var subtle = globalThis.crypto.subtle;
 
+// ../shared/src/studio/worktree-disk.ts
+var VOLUME_NOISE_FLOOR_BYTES = 32 * 1024 * 1024;
+var PROBE_NOISE_FLOOR_BYTES = 4 * 1024 * 1024;
+var MIN_PROBE_BYTES = 16 * 1024 * 1024;
+var SHARED_DEPENDENCY_DIRS = [
+  "node_modules",
+  ".pnpm-store",
+  ".yarn",
+  ".venv",
+  "vendor/bundle",
+  ".gradle",
+  "Pods",
+  ".build",
+  "target"
+];
+var SHARED_DEPENDENCY_DIR_SET = new Set(SHARED_DEPENDENCY_DIRS);
+
 // ../shared/src/studio/design-prompt.ts
 var STUDIO_DESIGN_CONTENT_IDENTITY_RULE = [
   "SAMPLE CONTENT IDENTITY.",

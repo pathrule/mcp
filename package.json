@@ -1,6 +1,6 @@
 {
   "name": "@pathrule/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pathrule Remote MCP server",
   "license": "MIT",
   "type": "module",
