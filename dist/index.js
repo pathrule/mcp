@@ -12619,13 +12619,13 @@ var WebSocketFactory = class {
     if (env.constructor) {
       return env.constructor;
     }
-    let errorMessage = env.error || "WebSocket not supported in this environment.";
+    let errorMessage2 = env.error || "WebSocket not supported in this environment.";
     if (env.workaround) {
-      errorMessage += `
+      errorMessage2 += `
 
 Suggested solution: ${env.workaround}`;
     }
-    throw new Error(errorMessage);
+    throw new Error(errorMessage2);
   }
   /**
    * Detects whether the runtime can establish WebSocket connections.
@@ -15377,13 +15377,13 @@ var RealtimeChannel = class _RealtimeChannel {
     if (response.status === 202) {
       return { success: true };
     }
-    let errorMessage = response.statusText;
+    let errorMessage2 = response.statusText;
     try {
       const errorBody = await response.json();
-      errorMessage = errorBody.error || errorBody.message || errorMessage;
+      errorMessage2 = errorBody.error || errorBody.message || errorMessage2;
     } catch (_b) {
     }
-    return Promise.reject(new Error(errorMessage));
+    return Promise.reject(new Error(errorMessage2));
   }
   /**
    * Sends a message into the channel.
@@ -15890,9 +15890,9 @@ var RealtimeClient = class {
     try {
       this.socketAdapter.connect();
     } catch (error2) {
-      const errorMessage = error2.message;
-      if (errorMessage.includes("Node.js")) {
-        throw new Error(`${errorMessage}
+      const errorMessage2 = error2.message;
+      if (errorMessage2.includes("Node.js")) {
+        throw new Error(`${errorMessage2}
 
 To use Realtime in Node.js, you need to provide a WebSocket implementation:
 
@@ -15907,7 +15907,7 @@ Option 2: Install and provide the "ws" package:
     transport: ws
   })`);
       }
-      throw new Error(`WebSocket not available: ${errorMessage}`);
+      throw new Error(`WebSocket not available: ${errorMessage2}`);
     }
     this._handleNodeJsRaceCondition();
   }
@@ -28081,6 +28081,112 @@ async function deleteSkillHandler(ctx, args) {
   }
 }
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/angular.js
+var angular = {
+  "slug": "angular",
+  "version": "1.0.0",
+  "name": "Angular",
+  "tagline": "Write signal-first, zoneless Angular with standalone components and no manual subscriptions.",
+  "description": "Modern Angular looks almost nothing like the Angular most training data remembers. On the current line, standalone components are the default and NgModule is gone from new code, signals are the primary reactive primitive, and zoneless change detection is the default for new apps rather than an experiment. This bundle keeps an assistant on that surface: signals and computed for state, the built-in control flow blocks with a required track, inject() and functional interceptors, and resource-based data loading instead of hand-rolled subscription bookkeeping.",
+  "category": "Framework",
+  "icon": "shield",
+  "color": "bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Angular signals pattern for AI coding agents",
+  "metaDescription": "Angular pattern for AI coding agents: signals and computed state, standalone components, zoneless change detection, and the built-in control flow blocks.",
+  "problem": "AI agents write Angular the way it looked five years ago: NgModule declarations, constructor injection, manual subscribe calls with no teardown, and ngIf and ngFor in templates.",
+  "audience": "Frontend teams on the current Angular line, migrating off NgModule and RxJS-only state",
+  "prevents": [
+    "Generating NgModule boilerplate for components that should be standalone",
+    "Calling subscribe in a component with no teardown, leaking on every navigation",
+    "Assuming Zone.js will notice a change, which never happens in a zoneless app",
+    "Rendering a list with no track expression and re-creating every DOM node"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/app",
+      "/src/app/core"
+    ],
+    "stacks": [
+      "angular",
+      "typescript",
+      "signals",
+      "rxjs",
+      "spa"
+    ],
+    "packages": [
+      "@angular/core",
+      "@angular/router",
+      "@angular/common",
+      "rxjs"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Hold component state in signals, not in fields updated by subscribe",
+      "summary": "Use signal, computed, and linkedSignal for state, derive instead of recompute, and convert streams with toSignal rather than subscribing by hand.",
+      "body": "Signals are Angular's reactive primitive now, and they are what makes zoneless change detection precise. A component that stores state in plain fields and updates them from a subscription is invisible to that machinery.\n\n- Declare mutable state with `signal()`, derived state with `computed()`, and inputs with the `input()` / `model()` signal APIs. Never recompute a derived value in a lifecycle hook.\n- Convert an observable at the edge with `toSignal()` instead of subscribing in the component. If you must subscribe (a side effect, not a value), pipe through `takeUntilDestroyed()` so teardown is automatic.\n- Do not write to a signal inside a `computed()`. Use `effect()` only for genuine side effects (analytics, DOM APIs, storage), never to sync one signal into another; that is what `computed` and `linkedSignal` are for.\n- Read signals as function calls in the template (`count()`), and keep the reads shallow: a template that calls a method which loops is a re-render cost on every check.\n- Keep RxJS for what it is genuinely good at (event streams, debouncing, cancellation) and let signals hold the state those streams produce.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Standalone components only, with lazy routes",
+      "summary": "No new NgModule: components, directives, and pipes are standalone, dependencies are declared in imports, and routes lazy-load components.",
+      "body": "Standalone is the default in current Angular, and mixed-mode projects pay the cost of both worlds. New code declares its own dependencies.\n\n- Write components, directives, and pipes as standalone and list what a template uses in that component's `imports`. Do not create an NgModule for new code, and do not import a barrel module that pulls in half the app.\n- Bootstrap with `bootstrapApplication` and configure the app through `ApplicationConfig` providers (`provideRouter`, `provideHttpClient`, `provideAnimationsAsync`), not through module metadata.\n- Lazy-load at the route with `loadComponent` (or `loadChildren` pointing at a route array). A route that imports its component eagerly puts it in the initial bundle.\n- Prefer `providedIn: 'root'` services so they tree-shake, and scope a provider to a route or component only when you genuinely need a separate instance.\n- When migrating, move leaves first: convert a component to standalone, delete it from the module's declarations, and repeat. `ng generate @angular/core:standalone` does most of the mechanical work.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Write zoneless-safe code",
+      "summary": "Never rely on Zone.js to notice a change: state changes go through signals, and manual detectChanges or markForCheck calls are a smell.",
+      "body": "New Angular apps run without Zone.js, so the framework no longer patches timers, promises, and event handlers to guess when something changed. Code that assumed it did will render stale UI.\n\n- Route every state change through a signal (or an explicitly `markForCheck`-ed OnPush component). Mutating a plain field inside a `setTimeout`, a promise callback, or a third-party library callback updates nothing on screen in a zoneless app.\n- Assume `OnPush` semantics everywhere and stop reaching for `ChangeDetectorRef.detectChanges()` to force a paint. If a value needs to be visible, it needs to be a signal.\n- Do not depend on `NgZone.onMicrotaskEmpty`, `whenStable`, or zone-based stability for logic. For tests, use `await fixture.whenStable()` with the modern harness rather than `fakeAsync` tick tricks.\n- Third-party callbacks (charts, maps, web components, WebSocket clients) are the usual breakage point: set a signal inside the callback and let the framework do the rest.\n- Keep it enabled deliberately: `provideZonelessChangeDetection()` on versions where it is opt-in, and no `zone.js` import creeping back into polyfills.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Use the built-in control flow with a real track expression",
+      "summary": "Templates use the block syntax, every loop tracks a stable identity, and templates never call functions that compute.",
+      "body": "The block control flow (`@if`, `@for`, `@switch`, `@defer`) is the current template surface. It is not sugar over the old directives: it ships less runtime and behaves better under signal-driven rendering.\n\n- Use `@if` / `@else if`, `@for` with a mandatory `track`, and `@switch`. Do not add `NgIf`, `NgFor`, or `NgSwitch` to a new component's imports.\n- `track` must be a stable identity (`track item.id`), not `$index`, unless the list is genuinely positional. Tracking by index re-creates DOM and destroys focus and animation state when the list reorders.\n- Use `@empty` for the empty state rather than a second `@if` over the same collection.\n- Defer expensive, below-the-fold subtrees with `@defer (on viewport)` and give them a `@placeholder`. This is the cheapest real win on initial load.\n- Never call a function or getter that filters, sorts, or maps in a template. Compute it once in a `computed()`; a template expression can run on every change detection pass.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/app/core",
+      "title": "Injection and the functional APIs that replaced classes",
+      "summary": "inject() in field initializers, functional guards, resolvers, and interceptors, and DI tokens for configuration instead of ambient imports.",
+      "body": "Angular's DI surface moved from class-based to functional, and the class-based variants are either deprecated or legacy. New code should not reintroduce them.\n\n- Use `inject()` in a field initializer instead of constructor parameters. It composes into helper functions, works in functional guards and interceptors, and keeps subclass constructors free of super-call plumbing.\n- Guards and resolvers are plain functions (`CanActivateFn`, `ResolveFn`). The class-based `CanActivate` interface is deprecated: a guard is a function that injects what it needs and returns a boolean, a redirect, or an observable of one.\n- HTTP interceptors are functions registered with `provideHttpClient(withInterceptors([...]))`. Use them for auth headers, correlation ids, and retry policy, and keep them small and ordered deliberately.\n- Pass configuration through an `InjectionToken` provided at bootstrap rather than importing a config object. It keeps the app testable and lets an environment override one value without a rebuild.\n- Prefer `providedIn: 'root'` for stateless services. A service that holds state should hold it in signals so consumers get change detection for free.\n\nSee /src/app for the signal and zoneless rules these APIs assume."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/app/core",
+      "title": "Loading data with resources instead of subscription bookkeeping",
+      "summary": "Signal-based resource APIs give you value, status, and error in one place, with request cancellation, so components stop tracking loading flags by hand.",
+      "body": "Most Angular data code is the same three fields written by hand: value, loading, error. The signal-based resource APIs replace that, and they cancel in-flight requests when their inputs change.\n\n- Fetch with `httpResource()` for a plain HTTP read, or `resource()` when the loader wraps something else (an SDK, several calls, a reshaped payload). Both expose signals for the value and the request status, so the template reads them directly.\n- Make the request reactive by deriving it from signals: when the id signal changes, the resource reloads and the previous request is cancelled. That is the part hand-rolled subscriptions almost always get wrong.\n- Render status from the resource itself rather than a separate `isLoading` signal you keep in sync. Two sources of truth for one request is how spinners get stuck.\n- Keep mutations explicit: a POST or PATCH is an action that calls `HttpClient` and then reloads or updates the resource. Do not model a write as a resource.\n- For anything that needs a cache across components, put the resource in a `providedIn: 'root'` service and expose read-only signals. Reach for a full state library only when you have real cross-cutting state, not to store one list.\n\nSee /src/app for the state rule; the tanstack-query pattern covers the same problem for React if you share a monorepo."
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/astro.js
 var astro = {
   "slug": "astro",
@@ -28202,10 +28308,128 @@ var astro = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/django.js
+var django = {
+  "slug": "django",
+  "version": "1.0.0",
+  "name": "Django",
+  "tagline": "Write Django apps with a query-efficient ORM, safe settings, and async views that do not block.",
+  "description": "An opinionated bundle for Django on the 6.x line, where 6.1 is current and 5.2 is the LTS most teams run in production. It targets the three places Django projects actually break: N+1 queries that pass every test and fall over under load, settings and secrets that leak because DEBUG and ALLOWED_HOSTS were never split per environment, and async views that call the sync ORM and raise SynchronousOnlyOperation. Where the fastapi pattern covers pure Python APIs, this one covers the full framework: models, migrations, templates, and the settings module.",
+  "category": "Framework",
+  "icon": "server-cog",
+  "color": "bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Django ORM and async pattern for AI agents",
+  "metaDescription": "Django pattern for AI coding agents: kill N+1 queries with select_related, keep settings and secrets per environment, and write async views the ORM allows.",
+  "problem": "AI agents write Django views that loop over related objects and fire hundreds of queries, hardcode settings that belong in the environment, and put sync ORM calls inside async views.",
+  "audience": "Python teams running Django 5.2 LTS or 6.x in production",
+  "prevents": [
+    "Iterating a queryset and touching related objects, firing one query per row",
+    "Leaving DEBUG True or a literal SECRET_KEY in a settings file that ships",
+    "Calling the sync ORM inside an async view and raising SynchronousOnlyOperation",
+    "Writing a migration that locks a large table or cannot be rolled back"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/apps",
+      "/config",
+      "/tests"
+    ],
+    "stacks": [
+      "django",
+      "python",
+      "orm",
+      "asgi",
+      "postgres"
+    ],
+    "packages": [
+      "django",
+      "djangorestframework",
+      "psycopg",
+      "celery"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/apps",
+      "title": "Fetch related data explicitly; never let a loop generate queries",
+      "summary": "Every queryset that touches related objects must declare select_related or prefetch_related, and aggregates belong in the database.",
+      "body": "Django's lazy relations are the single most common performance bug in the framework: the code reads fine, the tests pass on ten rows, and production fires one query per row.\n\n- Declare traversal up front: `select_related` for forward `ForeignKey` and `OneToOneField`, `prefetch_related` for reverse and `ManyToManyField`. If a template or serializer walks a relation, the queryset that feeds it must already include it.\n- Count and sum in the database with `Count`, `Sum`, and `annotate`, not by loading rows into Python. `len(qs)` loads every row; `qs.count()` does not.\n- Narrow the columns you actually read with `only()` or `values()`, and stream large result sets with `.iterator()` so a single request does not hold the whole table in memory.\n- Never issue queries inside a loop or a template tag. If you need per-row data, build a dict keyed by id in one query and look it up.\n- When you must drop to SQL, use `raw()` with parameters or `django.db.connection` with placeholders. String-formatted SQL and `.extra()` are injection surfaces.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/config",
+      "title": "Split settings per environment and read every secret from the environment",
+      "summary": "DEBUG, SECRET_KEY, ALLOWED_HOSTS, and database credentials come from the environment, and production sets the security headers explicitly.",
+      "body": "Django's default settings module is built for a first run on localhost, not for production. Shipping it unchanged is how a project ends up with `DEBUG = True` in front of real users, which prints stack traces and settings to anyone who triggers an error.\n\n- Keep a base settings module plus per-environment overrides (or one module driven entirely by environment variables). Nothing environment-specific is committed.\n- Read `SECRET_KEY`, database URL, and every third-party credential from the environment and fail loudly at startup when one is missing. A default value for a secret is a production incident waiting for a deploy.\n- Set `DEBUG = False` and a real `ALLOWED_HOSTS` list in production, and turn on `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SESSION_COOKIE_SECURE`, and `CSRF_COOKIE_SECURE`.\n- Run `python manage.py check --deploy` in CI and treat its warnings as failures.\n\nSee the secrets-env-management pattern for how the values are stored and rotated.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/apps",
+      "title": "Keep migrations reversible and non-blocking",
+      "summary": "Schema and data changes ship as separate migrations, columns arrive nullable before they are populated, and every RunPython has a reverse.",
+      "body": "A migration that works on an empty dev database can hold an exclusive lock on a large production table for minutes. Treat migrations as deploys of their own.\n\n- Split schema changes from data backfills. A schema migration should be fast and lock-light; a backfill runs in batches and can be re-run.\n- Add columns as nullable (or with no default that requires a table rewrite), deploy the code that writes them, backfill, then add the constraint. Never do all four in one migration.\n- Give every `RunPython` a `reverse_code` (or `migrations.RunPython.noop`) so the migration is reversible, and never import models directly; use `apps.get_model` inside the function.\n- Do not edit a migration that has already run in any shared environment. Add a new one.\n- Review generated migrations before committing them; `makemigrations` will happily drop and recreate a column when a field is renamed.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/apps",
+      "title": "Async views and the ORM: what is safe to await",
+      "summary": "Async views run under ASGI and must use the ORM's async API; a sync query inside an async view raises SynchronousOnlyOperation.",
+      "body": "Django's async story is real but partial, and the boundary is where projects get hurt. The rule of thumb: an `async def` view may only touch the ORM through its async API.\n\n- The ORM exposes async variants (`aget`, `acreate`, `asave`, `adelete`, `afirst`, `acount`, `aupdate_or_create`) and supports `async for` over a queryset. A plain sync call inside an async context raises `SynchronousOnlyOperation`.\n- Evaluation is still where the query happens. `qs.filter(...)` builds; `async for` or an `a`-prefixed method executes.\n- Wrap unavoidable sync work (a third-party library, a sync-only ORM path) in `sync_to_async(..., thread_sensitive=True)` rather than calling it directly.\n- Async only pays off when the view actually waits on I/O it can overlap: several outbound HTTP calls, a slow external API, streaming. A single query per request is faster in a plain sync view.\n- Async views need an ASGI server (uvicorn, daphne, hypercorn) in front. Under WSGI they are run in a thread and you get the complexity without the benefit.\n\nSee /apps for the query rule and /config for the settings rule."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/apps",
+      "title": "Where logic lives: fat models, thin views, explicit services",
+      "summary": "Query logic belongs in managers and querysets, multi-model workflows in a service function, and views stay request-and-response only.",
+      "body": "Django gives you many places to put behaviour, and the difference between a maintainable project and a pile of views is choosing deliberately.\n\n- Row-level behaviour goes on the model. Reusable query logic goes on a custom `Manager` or `QuerySet` so it composes (`Order.objects.paid().recent()`) instead of being copy-pasted into views.\n- A workflow that spans several models, sends mail, or calls a third party goes in a plain service function under the app, called by the view. It is testable without a request and reusable from a management command or a task.\n- Views translate a request into a call and a response. If a view is longer than a screen, the logic belongs elsewhere.\n- Use signals sparingly and never for business rules. `post_save` side effects are invisible at the call site and fire in tests, fixtures, and bulk operations you did not think about. Call the service explicitly.\n- Bulk paths (`bulk_create`, `bulk_update`, `queryset.update()`) skip `save()` and signals by design. If a rule must always hold, enforce it in the database or in the service, not in `save()`.\n\nSee /apps for the migration rule; the rest-api-design pattern covers the HTTP surface when you add DRF."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/tests",
+      "title": "Test setup that stays fast as the suite grows",
+      "summary": "Build objects with factories instead of fixtures, reuse the test database, and assert query counts on the endpoints that matter.",
+      "body": "Django's test tooling is fast if you let it be, and a slow suite is the reason teams stop running it.\n\n- Prefer factories (`factory_boy`) over JSON fixtures. Fixtures rot silently as the schema changes and force every test to carry rows it does not use.\n- Reuse the test database between runs (`--reuse-db` with pytest-django, `--keepdb` with the Django runner) and only rebuild when migrations change.\n- Use `pytest.mark.django_db` (or `TestCase`) so each test runs in a transaction that rolls back. Reach for `TransactionTestCase` only when you genuinely test commit behaviour, because it truncates tables and is much slower.\n- Guard the N+1 rule with `assertNumQueries` (or `django_assert_num_queries`) on your highest-traffic endpoints. It is the only test that fails when someone removes a `select_related`.\n- Test at the boundary you care about: services with plain function calls, views through the test client, and templates only where rendering logic is real.\n\nSee /apps for the query rule this suite protects."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "django-query-review",
+      "summary": "Pre-merge checklist for any Django change that adds a view, serializer, template, or migration.",
+      "body": "---\nname: django-query-review\ndescription: Django review checklist for query efficiency, settings safety, async correctness, and migration risk. Run before merging any change that adds a view, serializer, template, or migration.\n---\n\n# Django review\n\n## Queries\n- [ ] Every relation a view, serializer, or template touches is in `select_related` or `prefetch_related`.\n- [ ] No query inside a loop, template tag, or property called per row.\n- [ ] Counts and aggregates run in the database (`count()`, `annotate`, `Sum`), not in Python.\n- [ ] Large reads use `only()`/`values()` and `.iterator()` where the result set is unbounded.\n- [ ] Any raw SQL is parameterized; no f-strings, no `.extra()`.\n- [ ] A high-traffic endpoint has an `assertNumQueries` guard.\n\n## Settings and security\n- [ ] No new setting hardcodes an environment value or a secret.\n- [ ] `manage.py check --deploy` still passes.\n- [ ] User input reaches the database through a form or serializer, not straight from `request`.\n\n## Async\n- [ ] `async def` views use only the ORM's async API (`aget`, `async for`, ...).\n- [ ] Sync-only calls are wrapped in `sync_to_async(thread_sensitive=True)`.\n- [ ] The view actually overlaps I/O; otherwise it is a sync view.\n\n## Migrations\n- [ ] Schema change and data backfill are separate migrations.\n- [ ] New columns land nullable, are backfilled, then constrained.\n- [ ] Every `RunPython` has a reverse and uses `apps.get_model`.\n- [ ] No already-applied migration was edited.\n",
+      "skillTags": [
+        "django",
+        "python",
+        "orm",
+        "code-review",
+        "migrations"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/expo-react-native.js
 var expoReactNative = {
   "slug": "expo-react-native",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Expo (React Native)",
   "tagline": "Ship Expo apps with file-based routing, EAS Build, and safe OTA updates.",
   "description": "A guardrail bundle for modern Expo (SDK 56+) React Native projects on the New Architecture. It keeps Expo Router navigation typed and predictable, treats the app config as the single source of native truth via Continuous Native Generation, and prevents the classic OTA crash where a JavaScript update references native code that isn't in the installed binary. Built for teams shipping with EAS Build and EAS Update.",
@@ -28213,16 +28437,21 @@ var expoReactNative = {
   "icon": "smartphone",
   "color": "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Expo (React Native) AI Coding Pattern for Cursor & Claude",
-  "metaDescription": "Pathrule pattern that teaches AI agents Expo SDK 56 conventions: typed Expo Router, EAS Build via CNG, and runtimeVersion-safe OTA updates so generated code ships without crashing.",
+  "metaTitle": "Expo and React Native pattern for AI agents",
+  "metaDescription": "Expo pattern for AI coding agents: keep native changes CNG-safe, bump runtimeVersion before every OTA update, and route with typed Expo Router links.",
   "problem": "AI agents edit native files directly and push OTA updates that reference native modules missing from the installed binary, crashing production apps.",
   "audience": "Teams building cross-platform Expo apps with EAS Build and EAS Update.",
   "prevents": [
@@ -28326,7 +28555,7 @@ var expoReactNative = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/flutter.js
 var flutter = {
   "slug": "flutter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Flutter",
   "tagline": "Build Flutter apps that stay fast and leak-free with disciplined widgets and clear state boundaries.",
   "description": "A baseline for building maintainable Flutter apps in Dart 3. It keeps the widget tree cheap to rebuild with const constructors and small widgets, keeps business logic out of build(), disposes every controller and subscription so screens don't leak, and organizes state and navigation around Riverpod and go_router. These are the conventions that keep a Flutter codebase smooth at 60/120fps and readable as features pile up.",
@@ -28334,16 +28563,21 @@ var flutter = {
   "icon": "smartphone",
   "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Flutter pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for Flutter and Dart 3: const constructors and small widgets, logic out of build(), disposing controllers and subscriptions, plus Riverpod state and go_router navigation, tuned for AI coding agents.",
+  "metaTitle": "Flutter state and widget pattern for AI agents",
+  "metaDescription": "Flutter pattern for AI coding agents: dispose every controller and stream, keep build pure with const widgets, and hold app state in Riverpod providers.",
   "problem": "AI agents writing Flutter pile logic into build(), skip const, never dispose controllers, and scatter setState everywhere, producing janky, leaky, hard-to-test screens.",
   "audience": "Mobile teams building cross-platform apps with Flutter and Dart",
   "prevents": [
@@ -28426,10 +28660,121 @@ var flutter = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/laravel.js
+var laravel = {
+  "slug": "laravel",
+  "version": "1.0.0",
+  "name": "Laravel",
+  "tagline": "Build Laravel apps with lean Eloquent queries, validated requests, and queued work that retries safely.",
+  "description": "A bundle for teams on Laravel 12 and 13 that keeps agents on the framework's own idioms instead of generic PHP. It covers the four places Laravel apps rot: Eloquent relations that lazy-load inside a Blade loop, controllers that read straight from the request, jobs that are not idempotent and duplicate work on retry, and a production deploy that never caches config or routes. Written so each piece lands on the directory it governs rather than in one README nobody scopes.",
+  "category": "Framework",
+  "icon": "hammer",
+  "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Laravel Eloquent pattern for AI coding agents",
+  "metaDescription": "Laravel pattern for AI coding agents: eager-load Eloquent relations, validate with form requests, authorize with policies, and queue work that retries safely.",
+  "problem": "AI agents write Laravel code that lazy-loads relations inside Blade loops, validates inline in controllers, authorizes nowhere, and queues jobs that duplicate work when they retry.",
+  "audience": "PHP teams shipping Laravel 12 or 13 applications",
+  "prevents": [
+    "Lazy-loading a relation inside a Blade or collection loop and firing N queries",
+    "Reading request input directly in a controller with no validation or authorization",
+    "Queueing a job that repeats its side effect every time the queue retries it",
+    "Deploying without caching config, routes, views, and events"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/app",
+      "/app/Http",
+      "/app/Jobs",
+      "/database"
+    ],
+    "stacks": [
+      "laravel",
+      "php",
+      "eloquent",
+      "queues",
+      "mysql"
+    ],
+    "packages": [
+      "laravel/framework",
+      "laravel/horizon",
+      "laravel/pint"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/app",
+      "title": "Eager-load every relation a view or resource reads",
+      "summary": "Declare `with()` on the query that feeds a view, resource, or export, and fail loudly on lazy loading in local and CI.",
+      "body": "Eloquent will happily run one query per row, and Blade makes it invisible: the loop reads `$order->customer->name` and the page fires 200 queries.\n\n- Load relations on the query, not in the template: `Order::with(['customer', 'items.product'])`. If a Blade view, API resource, or export touches a relation, the query that feeds it declares it.\n- Turn lazy loading into an error outside production with `Model::preventLazyLoading(! app()->isProduction())` in a service provider. This is the single highest-value line in a Laravel app.\n- Use `withCount` for counts, `chunk`/`lazy`/`cursor` for large sets, and `select` the columns you need. Loading full models to count them is wasted memory.\n- Never call a query inside an accessor or a `map` over a collection. Load what you need in one query and key it by id.\n- Watch the inverse too: `whereHas` on a deep relation can be slower than a join with an index. Read the query log before optimising by feel.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/app/Http",
+      "title": "Validate in a form request and authorize with a policy",
+      "summary": "Every write endpoint takes a typed FormRequest and checks a policy or gate; controllers never read unvalidated input or trust a route id.",
+      "body": "Laravel gives you validation and authorization as first-class layers. Skipping them is what turns a mass-assignment convenience into a privilege escalation.\n\n- Put validation in a `FormRequest` per endpoint. The controller receives validated data, never `$request->all()`. Rules live with the endpoint, not scattered across the action.\n- Authorize with a policy or gate for every action on a model, and check ownership of the specific record. A route model binding proves the record exists, not that this user may touch it.\n- Keep `$fillable` (or `$guarded`) accurate on every model and pass only validated data to `create`/`update`. `Model::unguard()` in application code is a bug.\n- Return an API resource rather than the model, so a new database column never leaks into a public response by accident.\n- Rate-limit authentication and other abuse-prone routes with the framework's throttle middleware.\n\nSee the web-security pattern for the app-level authorization and input rules this mirrors.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/app/Jobs",
+      "title": "Make queued jobs idempotent and bounded",
+      "summary": "Queues deliver at least once: give every job a retry budget, a unique lock where it must not overlap, and a side effect that is safe to repeat.",
+      "body": "A queued job will run twice eventually: a worker is killed mid-run, a deploy restarts the pool, a transient failure triggers a retry. Design for the second run.\n\n- Set `$tries` and `$backoff` (or `retryUntil`) on every job. A job with unlimited retries and a permanent failure is an infinite loop that burns the queue.\n- Make the side effect idempotent: check state before acting, or key it on something stable so a repeat is a no-op. Charging a card, sending an email, or incrementing a counter twice must be impossible.\n- Use `ShouldBeUnique` (or an explicit cache lock) for jobs that must not overlap for the same subject, and `ShouldBeUniqueUntilProcessing` where only the queued window matters.\n- Dispatch after the transaction commits (`dispatch()->afterCommit()` or `after_commit` on the connection). A job that reads a row the transaction has not committed yet fails intermittently and is a nightmare to reproduce.\n- Pass ids, not serialized models, and handle the row being gone. Implement `failed()` so a dead job leaves a trace instead of silence.\n\nSee the background-jobs-queues pattern for the queue-agnostic version of these constraints.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app",
+      "title": "Where code goes in a Laravel app, and what stays out of the container",
+      "summary": "Actions and services hold workflows, models hold scopes and casts, and anything expensive is resolved lazily rather than in a provider boot.",
+      "body": "Laravel's structure is loose enough that two developers produce two architectures. Pick the conventional one and stay in it.\n\n- Controllers stay thin: resolve, delegate, respond. Multi-step workflows go in a single-purpose action or service class under `App\\Actions` or `App\\Services`, which is testable without HTTP and reusable from a command or job.\n- Models own their query vocabulary: local scopes for reusable filters, casts for value conversion, accessors for derived display values. Business decisions that span models do not belong there.\n- Avoid heavy work in a service provider's `boot()`. It runs on every request, including artisan commands and health checks. Bind lazily and let the container resolve on demand.\n- Prefer explicit event listeners over model events for anything a reader needs to know about, and never rely on model events in bulk paths: `Model::query()->update()` bypasses them entirely, exactly like Eloquent's docs say.\n- Keep Blade for presentation. A view that queries, formats money, or decides permissions is a view that cannot be tested.\n\nSee /app/Http for the request rules and /app/Jobs for the queue rules."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/database",
+      "title": "Migrations, seeders, and the production deploy sequence",
+      "summary": "Migrations are forward-only in production, seeders stay idempotent, and every deploy caches config, routes, views, and events.",
+      "body": "Most Laravel production surprises come from the deploy, not the code.\n\n- Cache everything the framework can precompute on deploy: `config:cache`, `route:cache`, `view:cache`, `event:cache`. Without config caching, every request re-reads your config tree, and `env()` calls outside config files return null once caching is on. Read config, never `env()`, at runtime.\n- Run `migrate --force` as part of the release, and treat migrations as forward-only in production. Rolling back a shipped migration is a data decision, not a command.\n- Keep destructive schema changes multi-step: add nullable, deploy writers, backfill, then constrain or drop. On MySQL, an added index or a changed column type can lock a large table.\n- Seeders are for reference data and must be idempotent (`upsert`/`firstOrCreate`), so re-running one does not duplicate rows. Test data belongs in factories.\n- Restart the queue workers after every deploy (`queue:restart`); long-lived workers keep the old code in memory until they cycle.\n\nSee /app/Jobs for the job design that makes a worker restart safe."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "laravel-pre-merge-review",
+      "summary": "Checklist for any Laravel change that adds a controller, model query, job, or migration.",
+      "body": "---\nname: laravel-pre-merge-review\ndescription: Laravel review checklist covering Eloquent query efficiency, request validation and authorization, queued job safety, and deploy-time caching. Run before merging.\n---\n\n# Laravel review\n\n## Eloquent\n- [ ] Every relation the view, resource, or export reads is eager-loaded on the query.\n- [ ] No query inside a loop, accessor, or collection callback.\n- [ ] `preventLazyLoading` is on outside production and the change does not trip it.\n- [ ] Large reads use `chunk`, `lazy`, or `cursor`; counts use `withCount`.\n\n## Request handling\n- [ ] Writes take a `FormRequest`; the controller never reads `$request->all()`.\n- [ ] A policy or gate authorizes the action on the specific record.\n- [ ] Responses go through an API resource; `$fillable` is accurate.\n\n## Jobs and events\n- [ ] `$tries` and `$backoff` are set; the side effect is safe to repeat.\n- [ ] Overlap-sensitive jobs use `ShouldBeUnique` or an explicit lock.\n- [ ] Dispatch happens after commit; the job takes ids, not models, and handles a missing row.\n\n## Migrations and deploy\n- [ ] Schema change is additive, or split into add, backfill, constrain.\n- [ ] No runtime `env()` call outside a config file.\n- [ ] Seeder changes are idempotent.\n",
+      "skillTags": [
+        "laravel",
+        "php",
+        "eloquent",
+        "code-review",
+        "queues"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/nextjs-app-router.js
 var nextjsAppRouter = {
   "slug": "nextjs-app-router",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Next.js App Router",
   "tagline": "Battle-tested conventions for a Next.js App Router codebase, scoped to the paths they belong to.",
   "description": "Rules, memories, and a review skill for teams building on the Next.js App Router. Each piece is pre-scoped so your AI assistant applies it only where it is relevant: server and client boundaries, caching, and secret safety in the app directory, plus a route review checklist at the root.",
@@ -28437,16 +28782,21 @@ var nextjsAppRouter = {
   "icon": "layout-panel-left",
   "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Next.js App Router patterns for AI coding agents",
-  "metaDescription": "A ready-to-use Pathrule pattern for Next.js App Router projects: server-component defaults, caching policy, secret safety, and a route review skill, scoped to the right paths.",
+  "metaTitle": "Next.js App Router pattern for AI agents",
+  "metaDescription": "Next.js App Router pattern for AI coding agents: await params and cookies, keep Server Components the default, and treat caching as opt-in with use cache.",
   "problem": "App Router teams keep relitigating the same server/client and caching decisions, and AI assistants guess them differently every time.",
   "audience": "teams building product UI and routes on the Next.js App Router",
   "prevents": [
@@ -28541,24 +28891,29 @@ var nextjsAppRouter = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/nuxt.js
 var nuxt = {
   "slug": "nuxt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Nuxt",
   "tagline": "Ship Nuxt 4 apps with correct data fetching, server routes, and SSR-safe code.",
-  "description": "An opinionated bundle for Nuxt 4 on Vue 3 that keeps agents on the current API surface. It covers when to use useFetch, useAsyncData, and $fetch, how to write Nitro server routes, and how to keep secrets and client-only code out of the universal render.",
+  "description": "An opinionated bundle for Nuxt 4 on Vue 3 that keeps agents on the current API surface. It covers when to use useFetch, useAsyncData, and $fetch, how to write Nitro server routes, and how to keep secrets and client-only code out of the universal render. Each piece lands on the directory it governs, so the rules about server routes never leak into component code.",
   "category": "Framework",
   "icon": "hexagon",
   "color": "bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Nuxt 4 AI Coding Pattern: Data Fetching and SSR Rules",
-  "metaDescription": "Pathrule pattern for Nuxt 4 and Vue 3. Teaches AI agents correct useFetch and useAsyncData usage, Nitro server routes, runtimeConfig secrets, and SSR-safe code.",
+  "metaTitle": "Nuxt 4 data fetching pattern for AI agents",
+  "metaDescription": "Nuxt 4 pattern for AI coding agents: useFetch and useAsyncData over raw $fetch, Nitro event handlers, runtimeConfig secrets, and SSR-safe component code.",
   "problem": "AI agents reach for stale Nuxt 2 and 3 habits, misuse the data-fetching composables, and leak secrets or break hydration in the universal render.",
   "audience": "Teams building full-stack Nuxt 4 apps on Vue 3 with Nitro",
   "prevents": [
@@ -28679,7 +29034,7 @@ var nuxt = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/react-router.js
 var reactRouter = {
   "slug": "react-router",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "React Router 7",
   "tagline": "Build full-stack React apps with framework mode loaders, actions, and generated route types.",
   "description": "React Router 7 merges Remix into a single multi-strategy router with a full framework mode for SSR, data loading, and mutations. This pattern keeps your data flow on loaders and actions, your routes type-safe through codegen, and your navigation fast with single-fetch and prefetching. It is tuned for the 7.17+ API surface and the framework-mode conventions teams ship in 2026.",
@@ -28687,8 +29042,13 @@ var reactRouter = {
   "icon": "route",
   "color": "bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
@@ -28711,11 +29071,11 @@ var reactRouter = {
       "/src"
     ],
     "stacks": [
-      "React",
-      "React Router 7",
-      "TypeScript",
-      "Vite",
-      "SSR"
+      "react",
+      "react-router",
+      "typescript",
+      "vite",
+      "ssr"
     ],
     "packages": [
       "react-router",
@@ -28787,10 +29147,121 @@ var reactRouter = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/rails.js
+var rails = {
+  "slug": "rails",
+  "version": "1.0.0",
+  "name": "Ruby on Rails",
+  "tagline": "Work with Rails 8 as it ships today: the Solid stack, Hotwire views, and queries that do not multiply.",
+  "description": "Rails 8 changed the defaults that matter, and assistants trained on older Rails keep reaching for the old ones. Background jobs, caching, and WebSockets now run on the database through Solid Queue, Solid Cache, and Solid Cable instead of assuming Redis. Deploys go out with Kamal and Thruster, assets go through Propshaft, and the view layer is Hotwire rather than a JavaScript build. This bundle captures those defaults, plus the two things that break Rails apps at scale: N+1 queries and migrations that lock a table.",
+  "category": "Framework",
+  "icon": "gem",
+  "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Ruby on Rails pattern for AI coding agents",
+  "metaDescription": "Rails 8 pattern for AI coding agents: Solid Queue and Solid Cache defaults, Hotwire views, strict eager loading, and migrations that do not lock a table.",
+  "problem": "AI agents write Rails as if it were 2019: Redis and Sidekiq assumed for every queue, Sprockets for assets, a JavaScript framework in the view, and querysets that fire one query per row.",
+  "audience": "Ruby teams on Rails 8 who deploy with Kamal and want the framework's own defaults",
+  "prevents": [
+    "Adding Redis and Sidekiq when Solid Queue and Solid Cache are the framework default",
+    "Rendering a collection that lazy-loads an association once per row",
+    "Writing a migration that adds an index or a NOT NULL column and locks a large table",
+    "Reaching for a JavaScript framework where Turbo Frames and Streams already fit"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/app",
+      "/app/models",
+      "/app/views",
+      "/config",
+      "/db"
+    ],
+    "stacks": [
+      "rails",
+      "ruby",
+      "hotwire",
+      "activerecord",
+      "postgres"
+    ],
+    "packages": [
+      "rails",
+      "solid_queue",
+      "solid_cache",
+      "turbo-rails",
+      "stimulus-rails"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/app/models",
+      "title": "Declare associations you traverse and let strict loading catch the rest",
+      "summary": "Every collection that renders an association loads it with includes or preload, and models opt into strict_loading so a missed one fails in development.",
+      "body": "Active Record's lazy associations turn a clean partial into hundreds of queries. Rails gives you the tools to make that impossible rather than to notice it in production.\n\n- Load what the view renders: `includes` when you want Rails to pick the strategy, `preload` to force separate queries, `eager_load` to force one join (needed when you filter or order on the joined table).\n- Turn misses into errors, not latency: `config.active_record.strict_loading_by_default = true`, or `strict_loading` on the specific association. A `StrictLoadingViolationError` in development is cheaper than a slow query log in production.\n- Use `counter_cache` or `size` on a loaded association instead of `count`, which issues a query every call, and `exists?` instead of `present?` on an unloaded relation.\n- Batch large reads with `in_batches` or `find_each` so one request never materialises the whole table, and select only the columns you use with `select` or `pluck`.\n- Never query inside a view, helper, or serializer method that runs per row. Build a hash keyed by id in the controller and look it up.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/app",
+      "title": "Permit parameters explicitly and authorize the specific record",
+      "summary": "Controllers use strong parameters with an explicit allow list, and every action checks that this user may act on this record.",
+      "body": "Rails hands you the request as a convenient hash, and mass assignment plus a missing authorization check is the classic Rails privilege escalation.\n\n- Permit an explicit list per action (`params.expect(post: [:title, :body])` or `params.require(:post).permit(...)`). Never permit everything, and never permit a foreign key or a role column that lets a caller reassign ownership.\n- Authorize the record, not the route: load the object through the current user's scope (`current_user.posts.find(params[:id])`) or check a policy. `Post.find` plus a logged-in user is not authorization.\n- Keep validations in the model AND the matching constraint in the database. A uniqueness validation without a unique index is a race, not a rule.\n- Return a filtered representation (a serializer, a view partial, `as_json` with an explicit allow list) so a new column never leaks into an API response.\n- Rate-limit sensitive endpoints with the framework's built-in `rate_limit` in the controller rather than rolling your own counter.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/config",
+      "title": "The Solid stack is the default: database-backed queue, cache, and cable",
+      "summary": "Rails 8 runs jobs, cache, and WebSockets on the database through Solid Queue, Solid Cache, and Solid Cable, so a new app needs no Redis.",
+      "body": "Rails 8 shipped the Solid stack as the default adapters, which removes Redis from the dependency list for most applications. Adding it back is a decision that needs a reason.\n\n- Background jobs run on Solid Queue (an Active Job backend that stores jobs in the database), the cache store is Solid Cache, and Action Cable uses Solid Cable. All three are configured in the generated app and deploy with it.\n- Keep the queue on its own database (the generated `queue` database) so job churn does not compete with application traffic for connections or vacuum.\n- Redis is still the right answer for genuinely high-throughput queues and for cache workloads that need sub-millisecond reads at high concurrency. Below that, the operational win of one fewer service is larger than the latency difference.\n- Solid Cache is disk-backed and designed for a much larger cache than a memory store, so cache more aggressively than Redis habits suggest, and set TTLs deliberately.\n- SQLite is a supported production database in Rails 8 for single-server apps, and the Solid stack is what makes that viable.\n\nSee /db for the migration rules the queue and cache tables also obey, and the background-jobs-queues pattern for queue design that is not Rails specific."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app/models",
+      "title": "Callbacks, concerns, and where a workflow actually belongs",
+      "summary": "Callbacks are for keeping a record consistent; anything that touches another system belongs in an explicit object the caller can see.",
+      "body": "The Rails model is the easiest place to put behaviour and the hardest place to find it later. Draw the line by side effect.\n\n- A callback may normalise or derive a value on the record being saved. It should not send email, enqueue a job that depends on other systems, call an API, or update unrelated records. Those fire in tests, fixtures, seeds, and bulk operations you did not plan for.\n- Multi-step workflows go in a plain command or service object called from the controller or job. It is readable at the call site, testable without a save, and reusable from a rake task.\n- Reusable query vocabulary goes in scopes on the model or in a query object. Long chains rebuilt in three controllers are a scope waiting to be named.\n- Concerns are for genuinely shared behaviour, not for splitting one large model into files. A concern that only one model includes is just indirection.\n- Bulk paths (`update_all`, `insert_all`, `delete_all`) skip validations and callbacks by design. If a rule must always hold, put it in the database as a constraint.\n\nSee /app for the controller rules and /db for the constraint that backs each validation."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/app/views",
+      "title": "Hotwire first: Turbo Frames, Streams, and Stimulus for behaviour",
+      "summary": "Rails 8 renders HTML and updates it over the wire; reach for Turbo Frames and Streams before adding a client-side framework.",
+      "body": "The default Rails view layer is server-rendered HTML plus Hotwire. Most interactive requirements are solved without a JSON API or a build step.\n\n- Scope a partial update with a Turbo Frame: wrap the region, link or submit into it, and the response replaces just that frame. This covers inline edit, pagination, tabs, and modals.\n- Push updates from the server with Turbo Streams (append, prepend, replace, remove), including from a background job over Action Cable. This is how you get live updates without polling.\n- Add behaviour with a Stimulus controller attached to markup via data attributes. It survives Turbo navigation, which is exactly where ad hoc `DOMContentLoaded` scripts break.\n- Assets go through Propshaft with import maps (or a bundler only if you genuinely need one). Sprockets and a Node build pipeline are legacy for a new Rails 8 app.\n- Introduce a client-side framework only for genuinely stateful, offline-ish, or highly interactive surfaces, and keep it to that surface rather than the whole app.\n\nSee /app for the controller rules that these views call into."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/config",
+      "title": "Credentials and the Kamal deploy path",
+      "summary": "Secrets live in encrypted credentials or the environment, and deploys run through Kamal with Thruster in front of the app container.",
+      "body": "Rails 8 generates a container-first deploy, and the parts fit together in a specific way.\n\n- Keep secrets in encrypted credentials (`rails credentials:edit`, per-environment files) or in environment variables injected at deploy. The master key never lands in the repo, and `config/master.key` stays gitignored.\n- Read configuration through `Rails.application.config` or credentials, not by scattering `ENV[...]` calls through the code. One place to see what an environment must provide.\n- Kamal deploys the app image to your own servers over SSH with zero-downtime container swaps; Thruster sits in front of Puma to handle TLS, HTTP/2, compression, and static file serving with X-Sendfile semantics.\n- Run migrations as part of the release, restart job workers after a deploy so they pick up new code, and keep the health check endpoint fast and dependency-free so a slow database does not fail the deploy.\n- Log in the container to stdout as structured lines, and let the platform ship them. Do not write log files inside an immutable image.\n\nSee the docker-containers and secrets-env-management patterns for the parts that are not Rails specific."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/db",
+      "title": "Migrations that do not take the site down",
+      "summary": "Schema changes are additive and multi-step, indexes are added concurrently, and destructive changes wait for a deploy that no longer needs the column.",
+      "body": "A migration is a deploy against a live database. On a table with millions of rows, the wrong one holds a lock long enough to time out every request.\n\n- Add columns nullable, backfill in batches, then add the constraint. Adding a NOT NULL column with a default rewrites the table on older engines and still needs care on new ones.\n- Add and remove indexes concurrently on PostgreSQL (`add_index ..., algorithm: :concurrently`) and disable the wrapping transaction for that migration (`disable_ddl_transaction!`), because a concurrent index cannot run inside one.\n- Removing a column is a two-deploy operation: stop referencing it (and add it to `ignored_columns` so Active Record stops selecting it), ship, then drop it.\n- Backfill in a separate migration or a job with batching (`in_batches`), never in the schema migration itself, and make it re-runnable.\n- Keep `db/schema.rb` as the source of truth of the current schema and regenerate it rather than hand-editing; resolve conflicts by re-running migrations, not by merging the file.\n\nSee /app/models for the eager loading rule and the postgres-schema pattern for index and constraint design."
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/sveltekit.js
 var sveltekit = {
   "slug": "sveltekit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "SvelteKit",
   "tagline": "Keep server secrets, load data, and mutations correct across SvelteKit 2 and Svelte 5.",
   "description": "A pattern bundle for SvelteKit 2 apps built on Svelte 5 runes. It encodes where data loading belongs, how to keep secrets server-side, and how form actions and remote functions stay type-safe and progressively enhanced. Use it so AI agents stop leaking private values into the client bundle and stop reaching for stores when runes are the right tool.",
@@ -28798,16 +29269,21 @@ var sveltekit = {
   "icon": "flame",
   "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "SvelteKit pattern for AI coding agents | Pathrule",
-  "metaDescription": "Pathrule rules, memories, and a review skill that keep AI coding agents correct on SvelteKit 2 and Svelte 5 runes: load functions, form actions, secrets, and remote functions.",
+  "metaTitle": "SvelteKit and Svelte 5 pattern for AI agents",
+  "metaDescription": "SvelteKit 2 pattern for AI coding agents: server-only data in page.server files, mutations through form actions, and Svelte 5 runes in place of stores.",
   "problem": "AI agents leak private values into the client bundle and pick the wrong data-loading or reactivity primitive in SvelteKit.",
   "audience": "Teams shipping full-stack apps on SvelteKit 2 with Svelte 5",
   "prevents": [
@@ -28842,7 +29318,10 @@ var sveltekit = {
       "nodePath": "/src/routes",
       "title": "Server-only data and secrets live in +page.server.ts",
       "summary": "Put auth, DB access, and private env in server load; keep universal load for public, serializable data.",
-      "body": "Any data that needs secrets, cookies, a database, or private APIs belongs in a server load function, not a universal one.\n\n- Use `+page.server.ts` / `+layout.server.ts` for `load` that touches `$env/static/private`, `$env/dynamic/private`, `cookies`, or `locals`.\n- Reserve `+page.ts` / `+layout.ts` (universal) for public external APIs and non-serializable returns like component constructors.\n- Never import anything from `$lib/server`, a `*.server.ts` module, or a `$env/.../private` module into universal load or any client-reachable code. SvelteKit treats the whole import chain as unsafe and Vite refuses to build it; that build error is the signal the logic is in the wrong file, not something to work around.\n- When both load functions exist on a route, the server load runs first and its result reaches the universal load via the `data` property. Universal output cannot flow back to the server.\n- Server load runs only on the server. Universal load runs on the server during SSR, then again in the browser on hydration and on client-side navigation, so it must never assume a server-only global is present."
+      "body": "Any data that needs secrets, cookies, a database, or private APIs belongs in a server load function, not a universal one.\n\n- Use `+page.server.ts` / `+layout.server.ts` for `load` that touches `$env/static/private`, `$env/dynamic/private`, `cookies`, or `locals`.\n- Reserve `+page.ts` / `+layout.ts` (universal) for public external APIs and non-serializable returns like component constructors.\n- Never import anything from `$lib/server`, a `*.server.ts` module, or a `$env/.../private` module into universal load or any client-reachable code. SvelteKit treats the whole import chain as unsafe and Vite refuses to build it; that build error is the signal the logic is in the wrong file, not something to work around.\n- When both load functions exist on a route, the server load runs first and its result reaches the universal load via the `data` property. Universal output cannot flow back to the server.\n- Server load runs only on the server. Universal load runs on the server during SSR, then again in the browser on hydration and on client-side navigation, so it must never assume a server-only global is present.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
     },
     {
       "kind": "rule",
@@ -28900,10 +29379,240 @@ var sveltekit = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/swiftui.js
+var swiftui = {
+  "slug": "swiftui",
+  "version": "1.0.0",
+  "name": "SwiftUI",
+  "tagline": "Build SwiftUI apps that compile under Swift 6 strict concurrency and keep state in one owner.",
+  "description": "The modern Apple stack is narrow and opinionated: SwiftUI for views, the @Observable macro for state, SwiftData for persistence, NavigationStack for routing, and a compiler that now rejects data races instead of letting them crash at runtime. Assistants keep generating the previous generation of that stack, which either fails to build under Swift 6 or compiles into a view that reloads on every keystroke. This bundle fixes the state ownership, concurrency isolation, view body discipline, and SwiftData context rules that decide whether an app stays responsive.",
+  "category": "Framework",
+  "icon": "apple",
+  "color": "bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "SwiftUI and SwiftData pattern for AI agents",
+  "metaDescription": "SwiftUI pattern for AI coding agents: Observable state with MainActor, Swift 6 strict concurrency, SwiftData contexts, and view bodies that stay cheap.",
+  "problem": "AI agents write SwiftUI with ObservableObject and published properties, do work inside view bodies, and cross actor boundaries in ways Swift 6 strict concurrency rejects.",
+  "audience": "iOS and macOS teams on Swift 6 with SwiftUI and SwiftData",
+  "prevents": [
+    "Generating ObservableObject and published wrappers where the Observable macro is the current API",
+    "Doing network or formatting work inside a view body so it reruns on every render",
+    "Passing a SwiftData model between actors instead of its persistent identifier",
+    "Silencing a concurrency error with unchecked Sendable instead of fixing the isolation"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/App",
+      "/Features",
+      "/Models"
+    ],
+    "stacks": [
+      "swift",
+      "swiftui",
+      "swiftdata",
+      "ios",
+      "concurrency"
+    ],
+    "packages": [
+      "swift-collections",
+      "swift-async-algorithms"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/Features",
+      "title": "One owner per piece of state, expressed with the Observable macro",
+      "summary": "View-local state uses State, shared state uses an Observable class on the MainActor, and no new code uses ObservableObject or published wrappers.",
+      "body": "SwiftUI redraws based on what a view actually reads. The Observation framework tracks that per property, which is why the old protocol-plus-wrapper approach is both more code and slower.\n\n- Mark shared state classes with `@Observable` and annotate them `@MainActor`. Views read their properties directly; there is no `@Published`, no `objectWillChange`, and no `@StateObject`.\n- Own the instance where its lifetime belongs: `@State private var model = Model()` in the view that creates it, `@Environment` for something app-wide, and a plain `let` for a model passed in. Never create an observable model in a computed property or in `body`.\n- Use `@Bindable` when a child needs two-way access to an observable's property, and `@Binding` for value types owned by a parent.\n- Keep `@State` for genuinely view-local values (a text field's draft, a sheet flag). If two views need it, it belongs to a model, not to a parent's binding chain.\n- Do not mirror the same value in two owners and sync them in `onChange`. Derive it with a computed property instead.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/App",
+      "title": "Satisfy Swift 6 isolation instead of silencing it",
+      "summary": "UI types stay on the MainActor, shared mutable state lives in an actor, values crossing boundaries are Sendable, and unchecked Sendable is not a fix.",
+      "body": "Swift 6 turns data races into compile errors. Every warning it raises is a race the old code had and nobody noticed.\n\n- Annotate UI-facing types `@MainActor` (views already are) and let the compiler push background work outward, rather than sprinkling `DispatchQueue.main.async` at the call sites.\n- Put shared mutable state in an `actor` and reach it with `await`. A class with a lock that you promise is safe is exactly what `@unchecked Sendable` hides; use it only for a type you have genuinely audited, and write down why.\n- Make types that cross a boundary `Sendable`. Prefer value types and immutable stored properties, since that makes conformance automatic.\n- Prefer structured concurrency: `async let` and `TaskGroup` for parallel work, `.task` for view-scoped work. An unstructured `Task { }` inherits no cancellation and no isolation guarantees, so reserve it for genuine fire-and-forget and store the handle if it must be cancellable.\n- Never block a thread waiting for async work (no semaphores around `Task`), and never call a synchronous API that blocks on the main actor.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/Features",
+      "title": "Keep view bodies cheap and identities stable",
+      "summary": "A body only describes UI: no I/O, no formatting work, no sorting; lists use stable ids and async work runs in task with cancellation.",
+      "body": '`body` can be evaluated many times per second. Anything expensive in it is multiplied by every render, and unstable identity throws away the view state SwiftUI was preserving.\n\n- Do no work in `body` beyond reading state and composing views. Precompute derived collections, formatted strings, and date math in the model (a computed property on an `@Observable` type is fine, a network call is not).\n- Start async work with `.task { }` (or `.task(id:)` when it should restart on a value change), never `onAppear` plus an unstructured `Task`. `.task` is cancelled automatically when the view goes away, which is what prevents the classic "update after dismiss" crash.\n- Give `ForEach` a genuinely stable identity: an `Identifiable` model or an explicit `id:` keyed to a real identifier. Using an array index reuses the wrong state when the collection reorders.\n- Extract subviews so state changes redraw the smallest region that changed, and pass the narrowest data a subview needs rather than the whole model.\n- Watch the modifier order (`frame` before `background`, `padding` before `border`), because in SwiftUI order is semantics, not style.',
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/Models",
+      "title": "Respect SwiftData context boundaries",
+      "summary": "The UI reads through the main context, writes off the main thread go through a background context or ModelActor, and identifiers cross boundaries instead of models.",
+      "body": "SwiftData models are not `Sendable`. A model object belongs to the context that fetched it, and moving one across an isolation boundary is the source of the crashes people blame on SwiftData being immature.\n\n- Configure one `ModelContainer` at the app entry and inject it with `.modelContainer(...)`. Views fetch with `@Query` and mutate through `@Environment(\\.modelContext)`.\n- Do bulk or long-running work in a background context (a `ModelActor`, or a context created on the actor doing the work) and save there. Do not hand a fetched model to a `Task` on another actor.\n- Pass a `PersistentIdentifier` across boundaries and re-fetch on the other side. That is the only safe way to refer to the same row from another context.\n- Keep `@Query` predicates and sort descriptors in the query itself so the store does the filtering. Fetching everything and filtering in Swift defeats the index and loads the whole table.\n- Model relationships explicitly with `@Relationship`, choose the delete rule deliberately, and mark unique constraints; SwiftData will not guess your integrity rules.\n\nSee /App for the concurrency rule this depends on.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/Features",
+      "title": "Navigation is data: NavigationStack with a typed path",
+      "summary": "Routing state is an array of values a model owns, so deep links, restoration, and programmatic pops are the same mechanism.",
+      "body": "`NavigationStack` replaced the deprecated `NavigationView`, and the point of the replacement is that navigation became state you can inspect.\n\n- Drive the stack with `NavigationStack(path: $router.path)` where `path` is an array of route values, and register destinations with `navigationDestination(for:)`. Pushing is appending; popping is removing; going home is emptying the array.\n- Make the route type a small `Hashable` enum or a value struct, not a view. A route carries an id, not a rendered screen.\n- Own the path in an `@Observable` router when more than one screen needs to navigate, and keep it `@MainActor` like the rest of the UI state.\n- Deep links and state restoration become a decode into that array, which is why this design is worth it: one code path for a tap, a notification, and a universal link.\n- Use `NavigationSplitView` for multi-column layouts on iPad and Mac rather than reimplementing a sidebar, and let it collapse on compact widths.\n\nSee /Features for the state ownership rule the router follows."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/App",
+      "title": "Dependencies, previews, and tests without a hidden singleton",
+      "summary": "Inject services through the environment or initialisers so previews and Swift Testing runs get fakes instead of the network.",
+      "body": "The main reason SwiftUI code becomes untestable is a view or model that reaches for a shared singleton. Injecting instead costs nothing and pays for itself in previews.\n\n- Define a protocol for anything that leaves the process (network, keychain, notifications, analytics), inject it into the observable model, and default to the live implementation at the app entry.\n- Expose app-wide dependencies through a custom `EnvironmentKey` (or `@Entry`) so a view subtree can be re-pointed at a fake. Reading a global `.shared` inside a view makes every preview a live request.\n- Give each screen a `#Preview` with a fake model in a fixed state, including the loading and error states. A preview that only shows the happy path is the reason nobody notices the empty state is broken.\n- Write tests with Swift Testing (`@Test`, `#expect`, `@Suite`) for new code, and keep XCTest for UI tests and existing suites. Both can coexist in a project.\n- Test the model, not the view body: given a fake service, assert the state the view will render. Snapshot or UI tests cover layout, not logic.\n\nSee /Features for state ownership and /Models for the SwiftData boundary these fakes stand in for."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "swiftui-concurrency-review",
+      "summary": "Pre-merge checklist for SwiftUI changes under Swift 6 strict concurrency and SwiftData.",
+      "body": "---\nname: swiftui-concurrency-review\ndescription: Review checklist for SwiftUI code under Swift 6 strict concurrency: state ownership, actor isolation, view body cost, SwiftData context boundaries, and navigation state. Run before merging.\n---\n\n# SwiftUI review\n\n## State\n- [ ] Shared state is an `@Observable` `@MainActor` class; no new `ObservableObject` or `@Published`.\n- [ ] Each value has exactly one owner; no mirrored copies synced in `onChange`.\n- [ ] Models are not constructed inside `body` or a computed view property.\n\n## Concurrency\n- [ ] No new `@unchecked Sendable`; shared mutable state is in an actor.\n- [ ] Async work uses `.task` (or `.task(id:)`) and is cancellable; no detached `Task` for view work.\n- [ ] Nothing blocks a thread waiting on async work; no semaphores around `Task`.\n- [ ] The build is clean under strict concurrency, with no suppressed warnings.\n\n## Views\n- [ ] `body` does no I/O, formatting, or sorting.\n- [ ] `ForEach` uses a stable identifier, not an array index.\n- [ ] Subviews are extracted so a change redraws the smallest region.\n\n## SwiftData\n- [ ] Models never cross an isolation boundary; `PersistentIdentifier` does.\n- [ ] Bulk writes run in a background context or `ModelActor`.\n- [ ] `@Query` filters and sorts in the query, not in Swift.\n\n## Navigation\n- [ ] Routing is a typed path array owned by a model; no `NavigationView`.\n- [ ] Deep link and restoration go through the same path decode.\n",
+      "skillTags": [
+        "swift",
+        "swiftui",
+        "concurrency",
+        "swiftdata",
+        "code-review"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/core-web-vitals.js
+var coreWebVitals = {
+  "slug": "core-web-vitals",
+  "version": "1.0.0",
+  "name": "Core Web Vitals",
+  "tagline": "Hit LCP under 2.5 seconds, INP under 200 milliseconds, and CLS under 0.1 on real traffic.",
+  "description": "The three thresholds have not moved: LCP 2.5 seconds, INP 200 milliseconds, CLS 0.1, all measured at the 75th percentile of real visits rather than in a lab run on your laptop. What changes is which mistakes cost you them, and assistants reliably make the same ones: a hero image that is lazy-loaded, a click handler that blocks the main thread for half a second, and content that jumps because nothing reserved space. This bundle covers the fixes per metric, how to measure the number that actually counts, and the review gate that keeps a fast page fast.",
+  "category": "Frontend",
+  "icon": "zap",
+  "color": "bg-yellow-500/10 text-yellow-600 dark:bg-yellow-400/15 dark:text-yellow-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Core Web Vitals pattern for AI coding agents",
+  "metaDescription": "Core Web Vitals pattern for AI coding agents: fix LCP with image and font priority, keep INP under 200ms by splitting long tasks, and eliminate layout shift.",
+  "problem": "AI agents lazy-load the hero image, ship blocking scripts and unbounded client bundles, run expensive work inside event handlers, and render content with no reserved space.",
+  "audience": "Frontend teams whose search ranking and conversion depend on real-user performance",
+  "prevents": [
+    "Lazy-loading or deferring the largest above-the-fold image, delaying LCP",
+    "Blocking the main thread inside a click or input handler so INP exceeds 200ms",
+    "Inserting banners, ads, or late-loading fonts that push content down",
+    "Chasing a Lighthouse score while field data at the 75th percentile stays red"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/src/app",
+      "/"
+    ],
+    "stacks": [
+      "web",
+      "performance",
+      "react",
+      "nextjs",
+      "seo"
+    ],
+    "packages": [
+      "web-vitals",
+      "lighthouse"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/app",
+      "title": "Give the LCP element priority and remove what blocks it",
+      "summary": "The largest above-the-fold element loads eagerly with high priority, its origin is preconnected, fonts are preloaded, and nothing render-blocking sits in front of it.",
+      "body": 'LCP is a race between the browser discovering the largest element and everything else you asked it to do first. Most bad LCP is self-inflicted ordering.\n\n- Identify the LCP element (usually a hero image, sometimes a heading or video poster) and load it eagerly with a high fetch priority. Never `loading="lazy"` above the fold, and never behind a client-side component that must hydrate before the image is requested.\n- Serve it at the size it renders, in a modern format, with explicit dimensions, and with a responsive `srcset`. An oversized hero is the single most common LCP regression.\n- Preconnect to the origins the critical path needs (image CDN, font host) and preload the fonts used above the fold. Self-host fonts where you can, use `font-display: swap`, and subset them.\n- Keep render-blocking work out of the head: inline the critical CSS, defer the rest, and load non-essential scripts with `defer` or after interaction. A third-party tag manager in the head delays every metric.\n- Server-render the above-the-fold content. If the first meaningful paint waits for a client fetch, LCP includes that round trip, and no image optimisation will save it.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Keep the main thread free so interactions stay under 200ms",
+      "summary": "Split long tasks, keep handlers cheap, ship less JavaScript, and let the browser paint feedback before doing the work.",
+      "body": "INP measures the worst realistic interaction: from the input to the next paint. Anything occupying the main thread at that moment is added to the number.\n\n- Do the minimum inside the handler: update the state that renders feedback, yield to the browser, then do the expensive part. Breaking a long task into chunks (yielding with `scheduler.yield` where available, or a task boundary) turns one blocking second into responsive frames.\n- Move genuinely heavy computation off the main thread (a web worker) or to the server. Parsing a large payload, sorting thousands of rows, or running a diff in a click handler is what makes an app feel broken.\n- Ship less JavaScript: split by route, load below-the-fold and rarely used components on demand, and audit the bundle for a dependency that costs more than the feature. Hydration cost is proportional to what you sent.\n- Keep third-party scripts off the critical path and out of the interaction path. Load them after interaction or in a worker-based sandbox, and measure their main-thread time before accepting them.\n- Prefer CSS transitions and transforms over JavaScript animation, and avoid layout thrashing (reading a layout property, writing, then reading again inside a loop).",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Layout shift comes from unreserved space",
+      "summary": "Every element whose size arrives late needs its space reserved up front: images, embeds, fonts, banners, and anything inserted above existing content.",
+      "body": "CLS is not a mystery metric. It is the sum of content moving after the user could already see it, and each source has a mechanical fix.\n\n- Set explicit `width` and `height` (or `aspect-ratio`) on every image, video, iframe, and embed so the box exists before the resource arrives.\n- Reserve space for anything that loads late: ads, consent banners, promotional bars, dynamically injected components. Render a placeholder of the final size rather than letting the element appear and push the page down.\n- Never insert content above existing content after paint. If a notification or banner must appear, either reserve its slot in the initial render or overlay it without affecting layout.\n- Match fallback and web font metrics (size-adjust and the local fallback descriptors) so the swap does not reflow text, and preload fonts used above the fold.\n- Animate with `transform` and `opacity`, which do not trigger layout. Animating `top`, `height`, or `margin` moves everything after the element.\n\nSee /src/app for the LCP rule and / for how these are measured."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Measure the field number, not the lab number",
+      "summary": "The score that counts is real-user data at the 75th percentile per page type; Lighthouse is a diagnostic, and single-page apps need soft navigation awareness.",
+      "body": "Lab and field metrics answer different questions, and optimising the wrong one is how teams stay red while their scores go green.\n\n- The thresholds are LCP 2.5s, INP 200ms, CLS 0.1, evaluated at the 75th percentile of real visits. That means a quarter of your users can be slower and you still pass, and it also means your fast laptop tells you almost nothing.\n- Collect field data continuously: the `web-vitals` library reporting to your own analytics, plus public field data for context. Segment by page template, device class, and country, because one slow template can drag a whole property.\n- Use Lighthouse and traces to diagnose a specific regression, not as the target. A lab score can improve while the field regresses (and vice versa) because the lab has no real network, no real CPU throttling, and no real interactions.\n- In a single-page app, a route change is not a document load. Instrument soft navigations so the metrics reflect what the user experienced, and remember that a slow client transition never shows up in a naive document-level measurement.\n- Treat TTFB as a diagnostic for LCP rather than a goal in itself: it explains where LCP time went (server, redirect chain, cache miss) even though it is not a Core Web Vital.\n\nSee /src for the INP rule and /src/app for the LCP rule these numbers grade."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "web-vitals-triage",
+      "summary": "Diagnostic procedure for a failing metric: identify which one, find the cause, then fix in the order that pays.",
+      "body": "---\nname: web-vitals-triage\ndescription: Triage procedure for a failing Core Web Vital. Start from field data, identify the metric and page template, find the specific cause, and fix in order of impact. Use when LCP, INP, or CLS is failing or has regressed.\n---\n\n# Web Vitals triage\n\n## 0. Start from the field\n1. Which metric fails, on which page template, on which device class, at the 75th percentile?\n2. Is it a regression (compare to last week) or a long-standing failure? A regression means bisecting recent deploys.\n3. Only then open a lab tool, and reproduce with CPU and network throttling matching the failing segment.\n\n## LCP failing\n- [ ] Identify the LCP element in a trace. Is it the element you expected?\n- [ ] When is it discovered? Late discovery means it is behind JavaScript, a client fetch, or a lazy attribute.\n- [ ] Break down the time: TTFB, resource load delay, resource load time, render delay. Fix the largest slice first.\n- [ ] Check size and format against rendered dimensions; check preconnect and font preload; check for render-blocking head resources.\n\n## INP failing\n- [ ] Which interaction is worst, and on which element? Field data should name it.\n- [ ] Record a performance profile of that interaction; find the long task and its script.\n- [ ] Split the handler: paint feedback first, yield, then do the work; move computation to a worker or the server.\n- [ ] Audit third-party scripts and hydration cost on that route.\n\n## CLS failing\n- [ ] Find the shifting element in a trace, with its shift score and timing.\n- [ ] Missing dimensions, late-loading embed, injected banner, or font swap? Each has its own fix.\n- [ ] Verify no animation touches layout properties.\n\n## Close the loop\n- [ ] Ship the fix, then confirm in field data (allow for the reporting window) rather than in the lab.\n- [ ] Add a budget or check so the same regression fails CI next time.\n",
+      "skillTags": [
+        "performance",
+        "core-web-vitals",
+        "debugging",
+        "frontend"
+      ]
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "performance-budget-review",
+      "summary": "Pre-merge check that a change does not spend the page's performance budget.",
+      "body": "---\nname: performance-budget-review\ndescription: Pre-merge performance review for frontend changes: bundle and dependency cost, image and font handling, third-party additions, and layout stability. Run on any change that adds JavaScript, images, or third-party scripts.\n---\n\n# Performance budget review\n\n## JavaScript\n- [ ] Bundle size delta is known and justified; no dependency added for a one-line utility.\n- [ ] New code is route-split; below-the-fold and rarely used components load on demand.\n- [ ] No new synchronous work in an interaction path; long tasks are chunked.\n- [ ] No new client component doing what the server could render.\n\n## Media and fonts\n- [ ] Images have explicit dimensions, a modern format, and a correct responsive set.\n- [ ] Above-the-fold images are eager and high priority; below-the-fold are lazy.\n- [ ] No new font family or weight without measuring the cost; fonts preloaded and subset.\n\n## Third parties\n- [ ] Every added script has an owner, a purpose, and a measured main-thread cost.\n- [ ] It loads after interaction or off the critical path, and failure to load degrades gracefully.\n\n## Stability\n- [ ] Anything that loads late reserves its space.\n- [ ] Nothing is inserted above existing content after paint.\n- [ ] Animations use transform and opacity only.\n\n## Gate\n- [ ] The CI performance budget (bundle size, Lighthouse assertions) still passes.\n- [ ] For a risky change, field metrics are checked after release rather than assumed.\n",
+      "skillTags": [
+        "performance",
+        "code-review",
+        "bundle-size",
+        "frontend"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/forms-rhf-zod.js
 var formsRhfZod = {
   "slug": "forms-rhf-zod",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Forms with React Hook Form + Zod",
   "tagline": "Schema-first, type-safe forms with shared client and server validation.",
   "description": "A pattern for building forms with React Hook Form and a Zod resolver where one schema is the single source of truth for types, client validation, and server validation. It keeps inputs uncontrolled for performance, infers TypeScript types directly from the schema, and reuses the same schema in Server Actions or API routes so client and server never drift. Built for Zod 4 and React Hook Form 7.",
@@ -28911,16 +29620,21 @@ var formsRhfZod = {
   "icon": "clipboard-list",
   "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Forms with React Hook Form + Zod \u2014 AI coding pattern",
-  "metaDescription": "A Pathrule pattern that teaches AI agents to build type-safe React Hook Form + Zod forms with one shared schema for client and server validation.",
+  "metaTitle": "React Hook Form and Zod pattern for agents",
+  "metaDescription": "Forms pattern for AI coding agents: one Zod schema drives the types, the resolver, and the server re-parse, so client and server validation cannot drift.",
   "problem": "Form types, client validation, and server validation drift apart and re-render the whole form on every keystroke.",
   "audience": "Frontend and full-stack teams building React or Next.js forms with TypeScript",
   "prevents": [
@@ -29004,24 +29718,29 @@ var formsRhfZod = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/react-typescript.js
 var reactTypescript = {
   "slug": "react-typescript",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "React + TypeScript",
   "tagline": "Pragmatic React and TypeScript conventions: typed props, accessible UI, and predictable hooks.",
-  "description": "Rules, memories, and a review skill for React codebases written in TypeScript. Pre-scoped to your source and component directories so your AI assistant writes typed, accessible, and predictable components.",
+  "description": "Rules, memories, and a review skill for React codebases written in TypeScript. Pre-scoped to your source and component directories so your AI assistant writes typed, accessible, and predictable components. The pieces are scoped to the directories they govern, so component conventions, hook rules, and accessibility requirements land where the code actually lives.",
   "category": "Frontend",
   "icon": "component",
   "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "React and TypeScript patterns for AI coding agents",
-  "metaDescription": "A ready-to-use Pathrule pattern for React with TypeScript: typed props without any, accessible interactive elements, hook discipline, and a component review skill.",
+  "metaTitle": "React and TypeScript pattern for AI agents",
+  "metaDescription": "React pattern for AI coding agents: typed component props, no data fetching or derived state in effects, accessible controls, and React Compiler memoization.",
   "problem": "React and TypeScript components drift into any-typed props, inaccessible controls, and effect-driven data fetching.",
   "audience": "frontend teams writing React in TypeScript",
   "prevents": [
@@ -29103,118 +29822,10 @@ var reactTypescript = {
   ]
 };
 
-// ../../node_modules/@pathrule/patterns/dist/patterns/typescript-strict.js
-var typescriptStrict = {
-  "slug": "typescript-strict",
-  "version": "1.0.0",
-  "name": "TypeScript Strict",
-  "tagline": "Make the compiler do the work: no any, no escape hatches, types that model reality.",
-  "description": "A type-safety baseline for any TypeScript codebase. TypeScript only protects you as far as you let it, and the most impactful conventions are about not opting out: strict mode on, no any, no unchecked casts, and types that make illegal states unrepresentable. This pattern turns on the full strict surface, bans the escape hatches, models variant data with discriminated unions, and validates untrusted input at the boundary so the types inside the program are actually true.",
-  "category": "Frontend",
-  "icon": "component",
-  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "TypeScript Strict pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for strict TypeScript: full strict mode, no any or unchecked casts, discriminated unions for variant state, and validating untrusted input at the boundary, tuned for AI coding agents.",
-  "problem": "AI agents reach for any, as casts, and non-null assertions to make the compiler quiet, which throws away the exact type safety TypeScript exists to provide.",
-  "audience": "Teams that want their TypeScript to actually catch bugs at compile time",
-  "prevents": [
-    "Using any (or implicit any) to silence the compiler instead of typing the value",
-    "Forcing types with as casts and ! non-null assertions that lie to the compiler",
-    "Modeling variant state as optional fields instead of a discriminated union",
-    "Trusting external JSON as a typed object without validating it"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/src",
-      "/tsconfig.json"
-    ],
-    "stacks": [
-      "typescript"
-    ],
-    "packages": [
-      "typescript",
-      "zod"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/",
-      "title": "Turn on full strict mode and keep it on",
-      "summary": "Enable strict plus the extra safety flags in tsconfig; do not relax them to make existing code compile.",
-      "body": 'Strict mode is where almost all of TypeScript\'s bug-catching lives. A codebase with strict off is using a fraction of the tool.\n\n- Set `"strict": true` in tsconfig, and add the flags strict does not cover: `noUncheckedIndexedAccess` (array/object index access may be undefined), `exactOptionalPropertyTypes`, and `noImplicitOverride`.\n- Do not turn strict flags off to make legacy code compile. Fix the code, or isolate the legacy area, but keep the default for new code strict. Loosening the global config quietly disables safety everywhere.\n- Enable `noImplicitAny` (part of strict) so a value with no inferable type is an error, not a silent `any`. An unfixable inference gap should be an explicit, searchable annotation, not an implicit hole.\n- Treat type errors as build failures in CI (`tsc --noEmit` as a gate); a green build should mean the types actually check.',
-      "scopeType": "project",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src",
-      "title": "Ban any and the escape hatches",
-      "summary": "No any (use unknown + narrowing), no as casts to force types, no non-null ! assertions; these silence the compiler instead of satisfying it.",
-      "body": "`any`, `as`, and `!` all tell the compiler to stop checking. Each one is a place a runtime bug can walk straight through a green build.\n\n- Do not use `any`. For a value whose type you do not know, use `unknown` and narrow it with checks before use. `unknown` forces you to prove the type; `any` lets you skip it.\n- Avoid `as` type assertions, especially `as SomeType` and the `as unknown as T` double-cast. An assertion overrides the compiler's judgment with yours, and yours can be wrong. Prefer a type guard or a validated parse.\n- Avoid the non-null assertion `!`. If a value can be null/undefined, handle that case; asserting it away is exactly how `cannot read property of undefined` reaches production.\n- When you genuinely must use an escape hatch (interop, a library type gap), isolate it behind a small, well-named, commented function so the unsafe surface is one reviewable spot, not scattered through the code.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src",
-      "title": "Model variant state with discriminated unions",
-      "summary": "Represent mutually exclusive states as a discriminated union with a literal tag, not a bag of optional fields, so impossible states do not typecheck.",
-      "body": "When several fields are 'sometimes present together', optional fields let the compiler accept combinations that can never actually happen. A discriminated union makes the illegal states unrepresentable.\n\n- Model mutually exclusive states as a union with a common literal discriminant: `type State = { status: 'loading' } | { status: 'error'; error: Error } | { status: 'success'; data: Data }`. The presence of `data` or `error` is tied to the status, so you cannot have an error with data.\n- Switch on the discriminant; TypeScript narrows each branch to exactly the fields that exist there. No optional-field guessing, no `data!`.\n- Add an exhaustiveness check (a `never` default case) so adding a new state forces every switch to handle it, turning a missed case into a compile error.\n- Prefer making bad data unrepresentable over validating it at runtime everywhere: if the type cannot express the illegal combination, you do not need a check for it.",
-      "scopeType": "folder",
-      "priority": "medium",
-      "enforcement": "advisory"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src",
-      "title": "Validate untrusted input at the boundary",
-      "summary": "Parse external data (API responses, JSON, form input, env) with a runtime validator and infer the type from it; a type annotation is not validation.",
-      "body": "Types are erased at runtime. Declaring that a fetch returns `User` does not make the data a `User`; it just tells the compiler to assume so. At any boundary with the outside world, that assumption is a lie waiting to break.\n\n- Validate data crossing a trust boundary (HTTP responses, request bodies, `JSON.parse` results, `localStorage`, environment variables, message payloads) with a runtime schema validator (Zod, Valibot, or similar). Parse, then use the parsed result.\n- Infer the static type from the schema (`type User = z.infer<typeof UserSchema>`) so there is one source of truth and the runtime check and the compile-time type can never drift apart.\n- Do not cast an `await res.json()` to a type and move on; that is an `as` in disguise across the most dangerous boundary. Parse it.\n- Inside the program, after the boundary, you can trust the types; the validation at the edge is what earns that trust.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "advisory"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src",
-      "title": "Type conventions: inference, readonly, and narrow types",
-      "summary": "Let inference work, prefer readonly and precise types, use type for unions and interface for object shapes, and avoid enums in favor of literal unions.",
-      "body": "Beyond the hard rules, a few conventions keep the types honest and readable.\n\n- Let inference do its job: annotate function parameters, return types of exported/public functions, and boundaries; do not annotate every local variable the compiler can infer correctly.\n- Prefer the narrowest type that fits: literal unions (`'sm' | 'md' | 'lg'`) over `string`, `readonly` arrays and properties for data that should not be mutated, and `as const` for fixed literal data.\n- Use `type` aliases for unions, intersections, and function types; `interface` for object shapes that may be extended or implemented. Pick one convention and stay consistent.\n- Avoid TypeScript `enum`; prefer a union of string literals (optionally with `as const` objects), which is simpler, tree-shakeable, and does not emit runtime code.\n- Use utility types (`Pick`, `Omit`, `Partial`, `Record`) to derive related types from a single source rather than redeclaring shapes that can drift.\n\nSee /src for the no-any, discriminated-union, and boundary-validation rules and / for the strict-config rule. For React-specific typing see the react-typescript pattern."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "typescript-strict-review",
-      "summary": "Pre-merge type-safety checklist: strict config, no escape hatches, unions, and boundary validation.",
-      "body": "---\nname: typescript-strict-review\ndescription: Type-safety review checklist for TypeScript changes. Run before merging code that adds types, handles external data, or models state.\n---\n\n# TypeScript strict review\n\n- [ ] `tsc --noEmit` passes; `strict` is on plus `noUncheckedIndexedAccess` (and `exactOptionalPropertyTypes` where feasible); no strict flag was relaxed to compile.\n- [ ] No `any` (or implicit any): unknown values use `unknown` + narrowing.\n- [ ] No `as` casts forcing a type and no `!` non-null assertions; any unavoidable escape hatch is isolated behind one commented helper.\n- [ ] Mutually exclusive state is a discriminated union with a literal tag; switches narrow on it and have a `never` exhaustiveness default.\n- [ ] External data (API/JSON/form/env/storage) is parsed with a runtime validator; static types are inferred from the schema, not asserted.\n- [ ] No `await res.json()` cast straight to a type without parsing.\n- [ ] Types are as narrow as practical (literal unions over string, `readonly`/`as const` where appropriate); enums avoided in favor of literal unions.\n- [ ] Inference is used for locals; annotations focus on parameters, public return types, and boundaries.\n",
-      "skillTags": [
-        "typescript",
-        "type-safety",
-        "strict",
-        "discriminated-unions",
-        "zod",
-        "code-review"
-      ]
-    }
-  ]
-};
-
 // ../../node_modules/@pathrule/patterns/dist/patterns/shadcn-ui.js
 var shadcnUi = {
   "slug": "shadcn-ui",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "shadcn/ui",
   "tagline": "Own your component code and theme it with CSS variables instead of installing a black-box UI library.",
   "description": "shadcn/ui is a code distribution system that copies accessible, Tailwind-styled React components straight into your repo via a CLI and registries, so you own and edit every line. This pattern keeps your team aligned on theming through CSS variables, safe component composition, and the CLI and registry workflow. It encodes the current 2026 conventions: Tailwind v4, the unified Radix UI package, namespaced registries, and the shadcn MCP server.",
@@ -29222,16 +29833,21 @@ var shadcnUi = {
   "icon": "blocks",
   "color": "bg-zinc-500/10 text-zinc-700 dark:bg-zinc-400/15 dark:text-zinc-300",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "shadcn/ui pattern for AI coding agents | Pathrule",
-  "metaDescription": "Teach your AI agent the right shadcn/ui workflow: CSS-variable theming, component composition, the shadcn CLI v4, and namespaced registries for Tailwind v4 projects.",
+  "metaTitle": "shadcn/ui and Tailwind pattern for AI agents",
+  "metaDescription": "shadcn/ui pattern for AI coding agents: own the registry code in components/ui, theme only through semantic CSS variables, and survive the Tailwind v4 setup.",
   "problem": "AI agents treat shadcn/ui like an npm package, hand-editing generated primitives and hardcoding colors instead of theming through CSS variables.",
   "audience": "React and Next.js teams using shadcn/ui with Tailwind v4",
   "prevents": [
@@ -29325,7 +29941,7 @@ var shadcnUi = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/tailwind-css.js
 var tailwindCss = {
   "slug": "tailwind-css",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Tailwind CSS",
   "tagline": "Keep Tailwind v4 utility code clean, token-driven, and free of arbitrary-value sprawl.",
   "description": "A pattern bundle for teams building UIs with Tailwind CSS v4. It encodes the CSS-first workflow (configure in CSS with @theme, no tailwind.config.js), enforces design tokens over arbitrary values, and standardizes class ordering and conditional-class handling. Use it so AI agents and humans write Tailwind that matches your design system instead of one-off magic numbers.",
@@ -29333,16 +29949,21 @@ var tailwindCss = {
   "icon": "wind",
   "color": "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/15 dark:text-cyan-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Tailwind CSS rules for AI coding agents | Pathrule",
-  "metaDescription": "Pathrule pattern for Tailwind CSS v4: CSS-first @theme tokens, no arbitrary-value sprawl, sorted classes, and a review skill so AI agents ship on-system UI.",
+  "metaTitle": "Tailwind CSS v4 pattern for AI coding agents",
+  "metaDescription": "Tailwind v4 pattern for AI coding agents: no dynamic class strings, design tokens over arbitrary values, and CSS-first theming through @theme, not a config.",
   "problem": "AI agents and rushed PRs fill Tailwind markup with arbitrary values and ad-hoc classes that drift from the design system and bloat the CSS bundle.",
   "audience": "Frontend and product teams building component-driven UIs with Tailwind CSS v4 and React or other JSX frameworks.",
   "prevents": [
@@ -29435,7 +30056,7 @@ var tailwindCss = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/tanstack-query.js
 var tanstackQuery = {
   "slug": "tanstack-query",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "TanStack Query",
   "tagline": "Treat the server as the source of truth and let the cache do the work.",
   "description": "A guardrail bundle for TanStack Query v5 in React apps. It enforces structured query key factories, deliberate staleTime, and mutation-driven invalidation so server state stays consistent. The rules keep data fetching out of effects and push every query through reusable queryOptions.",
@@ -29443,16 +30064,21 @@ var tanstackQuery = {
   "icon": "refresh-cw",
   "color": "bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "TanStack Query Pattern for AI Coding Agents",
-  "metaDescription": "Pathrule pattern that teaches AI coding agents to use TanStack Query v5 correctly: query key factories, staleTime, mutation invalidation, and no fetching in useEffect.",
+  "metaTitle": "TanStack Query pattern for AI coding agents",
+  "metaDescription": "TanStack Query pattern for AI coding agents: never fetch server state in an effect, invalidate related queries after a mutation, and key the cache in factories.",
   "problem": "Server state drifts out of sync because queries use ad-hoc keys, fetch inside effects, and never invalidate after mutations.",
   "audience": "React and Next.js teams using TanStack Query v5 for server state",
   "prevents": [
@@ -29537,10 +30163,126 @@ var tanstackQuery = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/typescript-strict.js
+var typescriptStrict = {
+  "slug": "typescript-strict",
+  "version": "1.0.1",
+  "name": "TypeScript Strict",
+  "tagline": "Make the compiler do the work: no any, no escape hatches, types that model reality.",
+  "description": "A type-safety baseline for any TypeScript codebase. TypeScript only protects you as far as you let it, and the most impactful conventions are about not opting out: strict mode on, no any, no unchecked casts, and types that make illegal states unrepresentable. This pattern turns on the full strict surface, bans the escape hatches, models variant data with discriminated unions, and validates untrusted input at the boundary so the types inside the program are actually true.",
+  "category": "Frontend",
+  "icon": "component",
+  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "TypeScript strict mode pattern for AI agents",
+  "metaDescription": "TypeScript pattern for AI coding agents: full strict mode, no any or escape hatches, discriminated unions for variant state, and validation at every boundary.",
+  "problem": "AI agents reach for any, as casts, and non-null assertions to make the compiler quiet, which throws away the exact type safety TypeScript exists to provide.",
+  "audience": "Teams that want their TypeScript to actually catch bugs at compile time",
+  "prevents": [
+    "Using any (or implicit any) to silence the compiler instead of typing the value",
+    "Forcing types with as casts and ! non-null assertions that lie to the compiler",
+    "Modeling variant state as optional fields instead of a discriminated union",
+    "Trusting external JSON as a typed object without validating it"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/tsconfig.json"
+    ],
+    "stacks": [
+      "typescript",
+      "types",
+      "node",
+      "strict-mode"
+    ],
+    "packages": [
+      "typescript",
+      "zod"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Turn on full strict mode and keep it on",
+      "summary": "Enable strict plus the extra safety flags in tsconfig; do not relax them to make existing code compile.",
+      "body": 'Strict mode is where almost all of TypeScript\'s bug-catching lives. A codebase with strict off is using a fraction of the tool.\n\n- Set `"strict": true` in tsconfig, and add the flags strict does not cover: `noUncheckedIndexedAccess` (array/object index access may be undefined), `exactOptionalPropertyTypes`, and `noImplicitOverride`.\n- Do not turn strict flags off to make legacy code compile. Fix the code, or isolate the legacy area, but keep the default for new code strict. Loosening the global config quietly disables safety everywhere.\n- Enable `noImplicitAny` (part of strict) so a value with no inferable type is an error, not a silent `any`. An unfixable inference gap should be an explicit, searchable annotation, not an implicit hole.\n- Treat type errors as build failures in CI (`tsc --noEmit` as a gate); a green build should mean the types actually check.',
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Ban any and the escape hatches",
+      "summary": "No any (use unknown + narrowing), no as casts to force types, no non-null ! assertions; these silence the compiler instead of satisfying it.",
+      "body": "`any`, `as`, and `!` all tell the compiler to stop checking. Each one is a place a runtime bug can walk straight through a green build.\n\n- Do not use `any`. For a value whose type you do not know, use `unknown` and narrow it with checks before use. `unknown` forces you to prove the type; `any` lets you skip it.\n- Avoid `as` type assertions, especially `as SomeType` and the `as unknown as T` double-cast. An assertion overrides the compiler's judgment with yours, and yours can be wrong. Prefer a type guard or a validated parse.\n- Avoid the non-null assertion `!`. If a value can be null/undefined, handle that case; asserting it away is exactly how `cannot read property of undefined` reaches production.\n- When you genuinely must use an escape hatch (interop, a library type gap), isolate it behind a small, well-named, commented function so the unsafe surface is one reviewable spot, not scattered through the code.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Model variant state with discriminated unions",
+      "summary": "Represent mutually exclusive states as a discriminated union with a literal tag, not a bag of optional fields, so impossible states do not typecheck.",
+      "body": "When several fields are 'sometimes present together', optional fields let the compiler accept combinations that can never actually happen. A discriminated union makes the illegal states unrepresentable.\n\n- Model mutually exclusive states as a union with a common literal discriminant: `type State = { status: 'loading' } | { status: 'error'; error: Error } | { status: 'success'; data: Data }`. The presence of `data` or `error` is tied to the status, so you cannot have an error with data.\n- Switch on the discriminant; TypeScript narrows each branch to exactly the fields that exist there. No optional-field guessing, no `data!`.\n- Add an exhaustiveness check (a `never` default case) so adding a new state forces every switch to handle it, turning a missed case into a compile error.\n- Prefer making bad data unrepresentable over validating it at runtime everywhere: if the type cannot express the illegal combination, you do not need a check for it.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Validate untrusted input at the boundary",
+      "summary": "Parse external data (API responses, JSON, form input, env) with a runtime validator and infer the type from it; a type annotation is not validation.",
+      "body": "Types are erased at runtime. Declaring that a fetch returns `User` does not make the data a `User`; it just tells the compiler to assume so. At any boundary with the outside world, that assumption is a lie waiting to break.\n\n- Validate data crossing a trust boundary (HTTP responses, request bodies, `JSON.parse` results, `localStorage`, environment variables, message payloads) with a runtime schema validator (Zod, Valibot, or similar). Parse, then use the parsed result.\n- Infer the static type from the schema (`type User = z.infer<typeof UserSchema>`) so there is one source of truth and the runtime check and the compile-time type can never drift apart.\n- Do not cast an `await res.json()` to a type and move on; that is an `as` in disguise across the most dangerous boundary. Parse it.\n- Inside the program, after the boundary, you can trust the types; the validation at the edge is what earns that trust.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Type conventions: inference, readonly, and narrow types",
+      "summary": "Let inference work, prefer readonly and precise types, use type for unions and interface for object shapes, and avoid enums in favor of literal unions.",
+      "body": "Beyond the hard rules, a few conventions keep the types honest and readable.\n\n- Let inference do its job: annotate function parameters, return types of exported/public functions, and boundaries; do not annotate every local variable the compiler can infer correctly.\n- Prefer the narrowest type that fits: literal unions (`'sm' | 'md' | 'lg'`) over `string`, `readonly` arrays and properties for data that should not be mutated, and `as const` for fixed literal data.\n- Use `type` aliases for unions, intersections, and function types; `interface` for object shapes that may be extended or implemented. Pick one convention and stay consistent.\n- Avoid TypeScript `enum`; prefer a union of string literals (optionally with `as const` objects), which is simpler, tree-shakeable, and does not emit runtime code.\n- Use utility types (`Pick`, `Omit`, `Partial`, `Record`) to derive related types from a single source rather than redeclaring shapes that can drift.\n\nSee /src for the no-any, discriminated-union, and boundary-validation rules and / for the strict-config rule. For React-specific typing see the react-typescript pattern."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "typescript-strict-review",
+      "summary": "Pre-merge type-safety checklist: strict config, no escape hatches, unions, and boundary validation.",
+      "body": "---\nname: typescript-strict-review\ndescription: Type-safety review checklist for TypeScript changes. Run before merging code that adds types, handles external data, or models state.\n---\n\n# TypeScript strict review\n\n- [ ] `tsc --noEmit` passes; `strict` is on plus `noUncheckedIndexedAccess` (and `exactOptionalPropertyTypes` where feasible); no strict flag was relaxed to compile.\n- [ ] No `any` (or implicit any): unknown values use `unknown` + narrowing.\n- [ ] No `as` casts forcing a type and no `!` non-null assertions; any unavoidable escape hatch is isolated behind one commented helper.\n- [ ] Mutually exclusive state is a discriminated union with a literal tag; switches narrow on it and have a `never` exhaustiveness default.\n- [ ] External data (API/JSON/form/env/storage) is parsed with a runtime validator; static types are inferred from the schema, not asserted.\n- [ ] No `await res.json()` cast straight to a type without parsing.\n- [ ] Types are as narrow as practical (literal unions over string, `readonly`/`as const` where appropriate); enums avoided in favor of literal unions.\n- [ ] Inference is used for locals; annotations focus on parameters, public return types, and boundaries.\n",
+      "skillTags": [
+        "typescript",
+        "type-safety",
+        "strict",
+        "discriminated-unions",
+        "zod",
+        "code-review"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/web-accessibility.js
 var webAccessibility = {
   "slug": "web-accessibility",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Web Accessibility",
   "tagline": "Ship interfaces that work for keyboard, screen reader, and low-vision users by default.",
   "description": "A WCAG 2.2 AA pattern for frontend teams that keeps accessibility correct without slowing delivery. It enforces a semantic-HTML-first approach, reserves ARIA for genuine custom widgets, and ships a review checklist so every component is keyboard operable, properly labeled, and visibly focusable before merge.",
@@ -29548,16 +30290,21 @@ var webAccessibility = {
   "icon": "accessibility",
   "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Web Accessibility pattern for AI coding agents (WCAG 2.2)",
-  "metaDescription": "Teach your AI coding agent WCAG 2.2 AA: semantic HTML first, ARIA only when needed, keyboard support, visible focus, and a per-component review checklist.",
+  "metaTitle": "Web accessibility pattern for AI agents",
+  "metaDescription": "Accessibility pattern for AI coding agents: native HTML before ARIA, keyboard operability with visible focus, real accessible names, and labelled form errors.",
   "problem": "Agents reach for ARIA and div soup instead of native elements, shipping components that fail keyboard, focus, and screen-reader users.",
   "audience": "Frontend and product teams building React, Next.js, or component-library UIs to WCAG 2.2 AA.",
   "prevents": [
@@ -29650,7 +30397,7 @@ var webAccessibility = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/auth-sessions-jwt-oauth.js
 var authSessionsJwtOauth = {
   "slug": "auth-sessions-jwt-oauth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Auth (Sessions, JWT, OAuth)",
   "tagline": "Build authentication that resists XSS, CSRF, and token replay by default.",
   "description": "A backend auth pattern covering the decisions agents get wrong: when to use server sessions versus JWTs, how to store tokens safely in httpOnly cookies, and how to wire OAuth/OIDC with PKCE. It encodes 2026 OWASP guidance on Argon2id password hashing, refresh token rotation, and CSRF defense so generated auth code is secure on the first pass.",
@@ -29658,16 +30405,21 @@ var authSessionsJwtOauth = {
   "icon": "key-round",
   "color": "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Auth (Sessions, JWT, OAuth) pattern for AI coding agents",
-  "metaDescription": "A Pathrule pattern that teaches AI coding agents secure auth: session vs JWT tradeoffs, httpOnly cookies, OAuth/OIDC with PKCE, Argon2id hashing, CSRF, and token rotation.",
+  "metaTitle": "Auth sessions and JWT pattern for AI agents",
+  "metaDescription": "Auth pattern for AI coding agents: keep tokens out of localStorage, prefer server sessions, hash with Argon2id, and protect cookie auth against CSRF and replay.",
   "problem": "AI agents reach for localStorage JWTs, weak password hashing, and missing CSRF defenses, shipping auth that breaks under XSS and token replay.",
   "audience": "Backend and full-stack teams building Node, TypeScript, or Python services that own login, sessions, and OAuth flows.",
   "prevents": [
@@ -29702,7 +30454,7 @@ var authSessionsJwtOauth = {
       "nodePath": "/src/auth",
       "title": "Never store auth tokens in localStorage",
       "summary": "Session and refresh tokens must live in httpOnly cookies; never in web storage or non-httpOnly cookies.",
-      "body": "Any token that authenticates a request must be set as an httpOnly cookie so JavaScript cannot read it and XSS cannot exfiltrate it.\n\n- Set the session or refresh cookie with `httpOnly`, `secure`, `sameSite: 'lax'` (or `strict` for high-value actions), and the `__Host-` name prefix.\n- Never write access tokens, refresh tokens, or session IDs to `localStorage`, `sessionStorage`, or non-httpOnly cookies.\n- Keep access tokens short-lived (15 to 60 minutes) and refresh tokens long-lived (7 to 14 days) so a stolen access token expires quickly.\n- If a short-lived access token must reach the browser for direct API calls, hold it in memory only \u2014 never in persistent storage.",
+      "body": "Any token that authenticates a request must be set as an httpOnly cookie so JavaScript cannot read it and XSS cannot exfiltrate it.\n\n- Set the session or refresh cookie with `httpOnly`, `secure`, `sameSite: 'lax'` (or `strict` for high-value actions), and the `__Host-` name prefix.\n- Never write access tokens, refresh tokens, or session IDs to `localStorage`, `sessionStorage`, or non-httpOnly cookies.\n- Keep access tokens short-lived (15 to 60 minutes) and refresh tokens long-lived (7 to 14 days) so a stolen access token expires quickly.\n- If a short-lived access token must reach the browser for direct API calls, hold it in memory only, never in persistent storage.",
       "scopeType": "folder",
       "priority": "high",
       "enforcement": "strict"
@@ -29767,7 +30519,7 @@ var authSessionsJwtOauth = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/background-jobs-queues.js
 var backgroundJobsQueues = {
   "slug": "background-jobs-queues",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Background Jobs & Queues",
   "tagline": "Make every queued job safe to run twice so retries heal instead of corrupt.",
   "description": "Queue-backed work is delivered at-least-once, which means every job can and eventually will run more than once. This pattern bundles the rules, memories, and review checklist that keep your workers idempotent, retried with backoff and jitter, drained on dead-letter queues you actually watch, and enqueued atomically with the data they describe.",
@@ -29775,16 +30527,21 @@ var backgroundJobsQueues = {
   "icon": "list-todo",
   "color": "bg-fuchsia-500/10 text-fuchsia-600 dark:bg-fuchsia-400/15 dark:text-fuchsia-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Background Jobs & Queues pattern for AI coding agents",
-  "metaDescription": "Teach your AI coding agent to write idempotent jobs, exponential backoff with jitter, dead-letter queues, and atomic enqueue via the transactional outbox.",
+  "metaTitle": "Background job queue pattern for AI agents",
+  "metaDescription": "Queue pattern for AI coding agents: idempotent job handlers, retries bounded with jittered backoff, a monitored dead letter queue, and transactional enqueues.",
   "problem": "Queues deliver at-least-once, so naive jobs run twice and corrupt data, retry storms hammer dependencies, and failed jobs vanish silently.",
   "audience": "Backend and platform teams running Node.js queue workers (BullMQ, SQS, RabbitMQ) behind an API or event stream.",
   "prevents": [
@@ -29876,7 +30633,7 @@ var backgroundJobsQueues = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/drizzle-orm.js
 var drizzleOrm = {
   "slug": "drizzle-orm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Drizzle ORM",
   "tagline": "Keep your TypeScript schema, migrations, and typed queries honest with Drizzle.",
   "description": "Guardrails for teams using Drizzle ORM as their type-safe SQL layer. It keeps the TypeScript schema as the single source of truth, enforces a generate-then-migrate workflow with drizzle-kit, and steers queries toward inferred types, relations v2, and safe transactions. Use it to stop schema drift and silent N+1 patterns before they ship.",
@@ -29884,16 +30641,21 @@ var drizzleOrm = {
   "icon": "table-2",
   "color": "bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Drizzle ORM pattern for AI coding agents | Pathrule",
-  "metaDescription": "A Pathrule pattern that teaches AI coding agents the correct 2026 Drizzle ORM workflow: TypeScript schema source of truth, drizzle-kit migrations, typed queries, relations, and transactions.",
+  "metaTitle": "Drizzle ORM pattern for AI coding agents",
+  "metaDescription": "Drizzle pattern for AI coding agents: the schema is the source of truth, generate then migrate instead of pushing, and query through relations and transactions.",
   "problem": "AI agents drift Drizzle schemas out of sync with the database and write untyped, N+1-prone queries.",
   "audience": "Backend and full-stack teams running Drizzle ORM on Postgres, MySQL, or SQLite.",
   "prevents": [
@@ -29945,7 +30707,7 @@ var drizzleOrm = {
       "nodePath": "/src/db",
       "title": "Drizzle versions and config baseline (2026)",
       "summary": "Current package versions, dialect-based config, and shared db-client conventions.",
-      "body": 'Pin to the current Drizzle line and use the dialect-based config introduced in the 0.40+ releases.\n\n- Runtime is `drizzle-orm` and the CLI is `drizzle-kit`. The stable line as of mid-2026 is 0.4x; a v1.0.0 release is in progress \u2014 confirm the exact pinned version in `package.json` before relying on APIs documented only for v1.\n- `drizzle.config.ts` uses `dialect` (`"postgresql"`, `"mysql"`, or `"sqlite"`) plus `schema` and `out` paths; the older `driver` key is removed in the new config format.\n- Keep one shared `db` client instance per process. Pass the `db` (or a `tx`) into functions as a parameter rather than importing a singleton inside deeply nested modules, so transaction boundaries stay explicit.\n- For Postgres, create the client with `drizzle(pool, { schema })` where `pool` is a `node-postgres` Pool or `postgres` (postgres.js) instance. Passing the schema object enables the relational query API.\n\nSee /src/db for querying patterns and /src/db for relations v2 setup.'
+      "body": 'Pin to the current Drizzle line and use the dialect-based config introduced in the 0.40+ releases.\n\n- Runtime is `drizzle-orm` and the CLI is `drizzle-kit`. The stable line as of mid-2026 is 0.4x; a v1.0.0 release is in progress, so confirm the exact pinned version in `package.json` before relying on APIs documented only for v1.\n- `drizzle.config.ts` uses `dialect` (`"postgresql"`, `"mysql"`, or `"sqlite"`) plus `schema` and `out` paths; the older `driver` key is removed in the new config format.\n- Keep one shared `db` client instance per process. Pass the `db` (or a `tx`) into functions as a parameter rather than importing a singleton inside deeply nested modules, so transaction boundaries stay explicit.\n- For Postgres, create the client with `drizzle(pool, { schema })` where `pool` is a `node-postgres` Pool or `postgres` (postgres.js) instance. Passing the schema object enables the relational query API.\n\nSee /src/db for querying patterns and /src/db for relations v2 setup.'
     },
     {
       "kind": "memory",
@@ -29979,455 +30741,10 @@ var drizzleOrm = {
   ]
 };
 
-// ../../node_modules/@pathrule/patterns/dist/patterns/node-ts-api-hono.js
-var nodeTsApiHono = {
-  "slug": "node-ts-api-hono",
-  "version": "1.0.0",
-  "name": "Node + TypeScript API (Hono)",
-  "tagline": "Build type-safe Hono APIs with chained routes, schema validation, and a typed RPC client.",
-  "description": "An opinionated baseline for shipping Hono APIs on Node 22 with end-to-end type safety. It covers route chaining for RPC inference, Standard Schema validation at the edge of every handler, centralized error handling with HTTPException, and the conventions that keep the client and server in sync.",
-  "category": "Backend",
-  "icon": "server",
-  "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "Node + TypeScript API (Hono) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for Node + TypeScript APIs on Hono: chained routes for RPC, Standard Schema validation, HTTPException error handling, and a typed RPC client, tuned for AI coding agents.",
-  "problem": "AI agents writing Hono APIs break RPC type inference, scatter validation, and return inconsistent error shapes.",
-  "audience": "Backend teams building type-safe Hono APIs on Node or the edge",
-  "prevents": [
-    "Mounting sub-apps on separate lines so the RPC client infers responses as unknown",
-    "Reading untrusted req.json() or query params without a schema validator",
-    "Returning ad-hoc error objects instead of a consistent HTTPException shape"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/src",
-      "/src/routes",
-      "/src/index.ts"
-    ],
-    "stacks": [
-      "node",
-      "typescript",
-      "hono",
-      "edge"
-    ],
-    "packages": [
-      "hono",
-      "@hono/zod-validator",
-      "@hono/standard-validator",
-      "@hono/node-server",
-      "zod"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/src/routes",
-      "title": "Chain routes and export AppType for RPC",
-      "summary": "Define routes as one chained expression and export typeof the chained app so the RPC client infers types instead of unknown.",
-      "body": "The Hono RPC client only sees routes that belong to a single chained expression. Break the chain and `hc<AppType>` resolves responses to `unknown`.\n\n- Define handlers by chaining directly off `new Hono()`, for example `const routes = new Hono().get(...).post(...)`. Do not assign `app` and then call `app.get(...)` on later statements; reassigned, line-by-line definitions are not captured by `typeof`.\n- Mount sub-apps inline inside the same chain with `.route('/books', books)`, never as a standalone `app.route(...)` statement after the chain.\n- Export the route tree as a type at the top level: `export type AppType = typeof routes`. Import it with `import type { AppType }` on the client side.\n- Set `\"strict\": true` in the tsconfig of both the server and any client package. Hono RPC type inference depends on strict mode; without it inference silently degrades.\n- If you must split handlers out of the chain, use `factory.createHandlers()` from `hono/factory` so path-param and validator types still infer. Do not write Rails-style controller files that take a bare `Context`."
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src/routes",
-      "title": "Validate every handler input with a schema validator",
-      "summary": "Guard each handler with zValidator or sValidator and read only via c.req.valid(); never touch raw c.req.json() or query params.",
-      "body": "Untyped `c.req.json()` and raw query params are untrusted input and also produce no request types for the RPC client. Every handler reads validated data.\n\n- Validate the relevant targets (`json`, `query`, `param`, `form`, `header`, `cookie`) with `zValidator` from `@hono/zod-validator`, or `sValidator` from `@hono/standard-validator` when the team wants library-agnostic schemas (Zod, Valibot, or ArkType via Standard Schema).\n- Read validated data only with `c.req.valid('json')` (and the matching target). Do not call `c.req.json()` / `c.req.query()` directly in a handler that has a validator.\n- Place the validator middleware before the handler in the chain so its types flow into both `c.req.valid()` and the inferred RPC request type.\n- Supply the third hook argument to return a structured failure before business logic runs: `zValidator('json', schema, (result, c) => { if (!result.success) return c.json({ error: result.error }, 400) })`. Returning the error from the hook with an explicit status keeps the 400 in the RPC response union.\n- Note `@hono/zod-validator` 0.8.x supports Zod 3 and 4 (`zod ^3.25.0 || ^4.0.0`); pin one Zod major across the workspace to avoid duplicate-instance validation errors.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src",
-      "title": "Centralize errors through onError and HTTPException",
-      "summary": "Throw HTTPException for expected failures and serialize everything through a single root app.onError; never return ad-hoc error objects.",
-      "body": "Every failure returns one consistent shape, registered once on the root app.\n\n- Throw `HTTPException` from `hono/http-exception` for expected failures, e.g. `throw new HTTPException(404, { message: 'Not found' })`. Do not scatter ad-hoc `c.json({ error }, 4xx)` shapes across handlers for control-flow errors.\n- Register exactly one `app.onError((err, c) => ...)` on the root app. For an `HTTPException`, return `err.getResponse()`; for anything else, return a generic 500 and do not leak `err.stack` or internal messages to the client.\n- Register `app.notFound(...)` once on the root app as well. Inside a handler, avoid `c.notFound()` when the route is consumed by the RPC client, because it makes the client response type `unknown` (see the RPC footguns memory).\n- Keep `onError` and `notFound` as the last wiring on the root app, after global middleware and after all routes are mounted.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src",
-      "title": "Hono baseline: versions, runtime, and app wiring",
-      "summary": "Pinned stack and the canonical app/server bootstrap for Hono on Node 22.",
-      "body": "This API runs Hono v4 (4.12.x line, latest as of mid-2026) on Node 22 LTS with TypeScript 5.4+. The route-param and RPC type inference depends on TS 5.4+ const type parameters, so do not downgrade TypeScript.\n\n- Serve on Node with `@hono/node-server`'s `serve({ fetch: app.fetch, port })`. The same `app` deploys unchanged to Cloudflare Workers, Deno, or Bun because Hono targets Web Standards; keep handlers free of Node-only globals.\n- Keep `src/index.ts` thin: create the root app, attach global middleware (`logger`, `cors`, `secureHeaders`), mount feature routers via chained `.route()`, register `onError` + `notFound`, then `export default app` and `export type AppType`.\n- Return responses with `c.json()` / `c.text()` and read request-scoped state via typed `c.var` / `c.set()` context variables; never mutate Node req/res directly.\n- Order middleware deliberately: `logger` and `cors` outermost, then auth, then per-route validators, then the handler. Middleware runs top to bottom on the way in.\n\nSee /src/client for typed RPC client usage and /src for the RPC unknown-response footguns to avoid."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src/client",
-      "title": "Typed RPC client usage",
-      "summary": "How to consume the server's AppType with hc and the InferRequestType/InferResponseType helpers.",
-      "body": "The frontend and internal callers talk to the API through Hono's RPC client, which derives request and response types straight from `AppType` with no codegen step.\n\n- Build the client with `import { hc } from 'hono/client'` and `const client = hc<AppType>(baseUrl)`. Import the server type as `import type { AppType }` so it is erased at build time.\n- Call endpoints as method chains, for example `await client.books[':id'].$get({ param: { id } })`. The result of `await res.json()` is typed from the handler's `c.json()` return value and is a union across the handler's status codes.\n- Use `InferRequestType<typeof client.books[':id'].$get>` and `InferResponseType<...>` to lift the request/response shapes into shared types (form state, react-query keys, etc.) without re-declaring them.\n- Narrow on `res.status` (or `res.ok`) before reading the body when a handler returns multiple status codes; each branch is independently typed.\n\nSee /src for the RPC unknown-response footguns memory if responses come back as `unknown`."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src",
-      "title": "RPC unknown-response footguns and fixes",
-      "summary": "Why hc responses degrade to unknown and the concrete fixes: chaining, c.json status codes, ApplyGlobalResponse, monorepo type-compile.",
-      "body": "When the RPC client types resolve to `unknown`, it is almost always a server-side or build-config issue, not a client bug. The recurring causes, in rough order of frequency:\n\n- Route defined outside the chain: any `app.get(...)` written as a separate statement is invisible to `typeof routes`. Fold it back into the single chained expression.\n- `c.notFound()` inside a handler: it makes that route's response type `unknown` for the client. Return `c.json({ error: 'not found' }, 404)` with an explicit status instead, or augment `interface NotFoundResponse extends TypedResponse<...>` via module augmentation if you must keep `c.notFound()`.\n- Global error types are not auto-included: responses produced by `app.onError()` (and global middleware) are not inferred into the client by default. Merge them with the `ApplyGlobalResponse` type helper so the client union also carries the 500 shape, e.g. `type AppType = ApplyGlobalResponse<typeof app, { 500: { json: { error: string } } }>`.\n- Monorepo / turborepo regression: in workspace setups consuming the server as a package, Hono v4.11+ has shown the imported app type collapsing to `unknown` where v4.10.8 worked (honojs/hono#4638). Mitigations: ensure `\"strict\": true` in every package tsconfig, emit and consume proper `.d.ts` declarations across the workspace boundary, and prefer the compiled-client export below over importing the raw `typeof app` across packages.\n- IDE slowness on large apps: compile the client type once and re-export it rather than re-inferring per file: `export type Client = ReturnType<typeof hc<typeof app>>; export const hcWithType = (...args: Parameters<typeof hc>): Client => hc<typeof app>(...args)`."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "node-ts-api-hono-review",
-      "summary": "Pre-merge checklist for Hono API changes: RPC type safety, validation, errors, and runtime.",
-      "body": '---\nname: node-ts-api-hono-review\ndescription: Review checklist for Node + TypeScript Hono API changes. Run before merging any route, validator, error-handler, or RPC client change to keep types, validation, and error shapes consistent.\n---\n\n# Node + TypeScript API (Hono) review\n\n- [ ] Routes are one chained expression (`new Hono().get(...).post(...)`), not reassigned line by line, and `export type AppType = typeof routes` is present.\n- [ ] Sub-apps are mounted inline with `.route()` inside the chain, not as a standalone statement.\n- [ ] `"strict": true` is set in the tsconfig of both server and any client package.\n- [ ] Every handler reads input via `c.req.valid(...)` behind a `zValidator` / `sValidator`; no raw `c.req.json()` or `c.req.query()` in validated handlers.\n- [ ] Validator failure path returns a structured 400 from the `(result, c)` hook; no invalid data reaches business logic.\n- [ ] Expected failures throw `HTTPException`; a single root `app.onError` returns `err.getResponse()` for HTTPException and a stack-free 500 otherwise.\n- [ ] No `c.notFound()` on RPC-consumed routes (use `c.json(..., 404)`); `notFound` and `onError` registered once on the root app after middleware and routes.\n- [ ] Global error/onError response types are exposed to the client via `ApplyGlobalResponse` if the client needs to narrow on them.\n- [ ] Pinned to Hono v4 (4.12.x) on Node 22 LTS with TypeScript 5.4+; Node entry uses `@hono/node-server` `serve({ fetch: app.fetch })`.\n- [ ] RPC client uses `hc<AppType>` with `import type`; responses type-check with no `unknown` leaks (check monorepo .d.ts emission if they appear).\n- [ ] One Zod major pinned workspace-wide; `@hono/zod-validator` 0.8.x supports Zod 3 and 4.\n',
-      "skillTags": [
-        "hono",
-        "typescript",
-        "node",
-        "rpc",
-        "validation",
-        "api-review"
-      ]
-    }
-  ]
-};
-
-// ../../node_modules/@pathrule/patterns/dist/patterns/postgres-schema.js
-var postgresSchema = {
-  "slug": "postgres-schema",
-  "version": "1.0.0",
-  "name": "PostgreSQL Schema & Migrations",
-  "tagline": "Design normalized PostgreSQL schemas and ship lock-safe, forward-only migrations.",
-  "description": "A pattern bundle that teaches AI agents how to model PostgreSQL tables with correct types and constraints, and how to evolve them without downtime. It enforces forward-only, expand-contract migrations, concurrent index builds, and validated constraints so schema changes never lock production traffic. Tuned for PostgreSQL 18 with native UUIDv7 and identity columns.",
-  "category": "Backend",
-  "icon": "table-properties",
-  "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "PostgreSQL Schema & Migrations pattern for AI coding agents",
-  "metaDescription": "Teach AI coding agents to design normalized PostgreSQL schemas with correct types and constraints, and ship lock-safe forward-only migrations on PostgreSQL 18.",
-  "problem": "AI agents write migrations that rename columns in place, build indexes that lock the table, and pick types that cause silent data and timezone bugs.",
-  "audience": "Backend and platform teams running PostgreSQL in production",
-  "prevents": [
-    "Blocking ACCESS EXCLUSIVE locks from rewriting tables or building indexes inline during deploys",
-    "Destructive in-place column renames or retypes that break the previous app version mid-rollout",
-    "Wrong column types like timestamp without time zone, varchar(n), or serial that cause timezone and overflow bugs"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/db",
-      "/db/migrations",
-      "/src/db"
-    ],
-    "stacks": [
-      "postgresql",
-      "postgres-18",
-      "sql",
-      "migrations",
-      "backend"
-    ],
-    "packages": [
-      "pg",
-      "drizzle-orm",
-      "knex",
-      "node-pg-migrate",
-      "prisma"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/db/migrations",
-      "title": "Migrations are forward-only, no down steps",
-      "summary": "Never author down/rollback migrations; recover by shipping a new forward migration.",
-      "body": "Every migration moves the schema forward only. There are no `down` or rollback steps in this codebase.\n\n- Do not write a `down`, `rollback`, or reverse step in any migration. A migration that has touched production data cannot be cleanly reversed, and a `down` that drops a column destroys data the previous app version may still need.\n- Recover from a bad migration by shipping a new forward migration that corrects the state, not by reverting.\n- Keep each migration small and single-purpose so a follow-up fix is easy to reason about.\n- Migrations are immutable once merged. Never edit a migration file that has already run anywhere; add a new one.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/db/migrations",
-      "title": "DDL on populated tables must be lock-safe",
-      "summary": "Use CONCURRENTLY, lock_timeout, and NOT VALID so DDL never takes a long ACCESS EXCLUSIVE lock on a hot table.",
-      "body": "DDL against a table that already holds production rows must acquire only weak, short locks, so a deploy never blocks live traffic behind an `ACCESS EXCLUSIVE` lock.\n\n- Build and drop indexes with `CREATE INDEX CONCURRENTLY` / `DROP INDEX CONCURRENTLY`. These take only a `SHARE UPDATE EXCLUSIVE` lock but cannot run inside a transaction block, so the migration tool must run that statement outside any wrapping transaction.\n- Set `SET lock_timeout = '5s'` (or similar) before DDL on a populated table. A statement that cannot get its lock then fails fast instead of queuing every subsequent query behind it.\n- Add foreign keys and `CHECK` constraints as `NOT VALID` first, then run `VALIDATE CONSTRAINT` in a separate statement. The `NOT VALID` step takes a brief strong lock to add the catalog entry; `VALIDATE` scans the table under a weaker `SHARE UPDATE EXCLUSIVE` lock that allows concurrent reads and writes.\n- Add a unique constraint without a long lock by running `CREATE UNIQUE INDEX CONCURRENTLY`, then `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE USING INDEX <name>`.\n- If a `CREATE INDEX CONCURRENTLY` fails, it leaves an `INVALID` index behind; drop it (`DROP INDEX CONCURRENTLY`) before retrying.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/db/migrations",
-      "title": "Evolve columns with expand-contract, never in place",
-      "summary": "Rename and retype across multiple deploys so old and new app versions both keep working.",
-      "body": "Schema changes that affect existing data run as separate expand, backfill, and contract migrations so every deployed app version stays compatible during a rolling deploy.\n\n- Never `RENAME` or `ALTER ... TYPE` a column in a single step while the old app version is still running. Add the new column, dual-write from the app, backfill, switch reads to the new column, then drop the old column in a later deploy.\n- Add new columns as nullable or with a NON-volatile constant `DEFAULT`. PostgreSQL stores a constant default in catalog metadata (`pg_attribute.attmissingval`) so the `ALTER TABLE` is instant with no table rewrite. A VOLATILE default (such as `clock_timestamp()`), a stored generated column, or an identity column DOES force a full rewrite under a strong lock; avoid those on large populated tables.\n- Backfill large tables in bounded batches (for example a few thousand rows per statement), each batch in its own transaction, not one giant `UPDATE` that holds locks and bloats WAL.\n- Apply `NOT NULL` on a backfilled column safely: add a `CHECK (col IS NOT NULL) NOT VALID`, `VALIDATE` it, then `SET NOT NULL` (which can use the validated check to skip a scan), instead of `SET NOT NULL` directly on a large table.\n- Drop the old column or table only after every running app version has stopped reading and writing it.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/db",
-      "title": "Default column types for new tables (PostgreSQL 18)",
-      "summary": "The canonical type and key choices for new PostgreSQL 18 tables and why.",
-      "body": "Pick the same correct types on every new table so the schema stays consistent and bug-free on PostgreSQL 18.\n\n- Primary keys: `bigint GENERATED ALWAYS AS IDENTITY` for internal rows, or `uuid DEFAULT uuidv7()` (native function added in PG 18) when ids are exposed externally or generated client-side. UUIDv7 is time-ordered so it indexes far better than random UUIDv4. Never use `serial`/`bigserial` (they leave the sequence ownership and grants in a surprising state and are effectively legacy).\n- Timestamps: always `timestamptz`, never `timestamp` (without time zone). `timestamptz` records a single absolute moment; `timestamp` silently drops the offset and causes timezone bugs. Default audit columns to `now()`.\n- Strings: use `text`. `text` and `varchar(n)` share identical storage and performance in PostgreSQL; `varchar(n)` only adds a length check. Enforce a real maximum with a `CHECK` constraint when the limit is a genuine business rule, not a guess.\n- Money and exact decimals: `numeric`, never `float`/`double precision` (binary floats cannot represent decimal cents exactly). Use `boolean` for flags and `jsonb` (not `json`) for semi-structured data, since `jsonb` is indexable and `json` only stores reparsed text.\n\nSee /db/migrations for the lock-safe and expand-contract rules that govern how these tables are changed after creation."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/db",
-      "title": "Index and constraint design checklist",
-      "summary": "Where indexes and constraints belong, and how to add unique/FK safely.",
-      "body": "Model integrity at the database, and index for the queries that actually run.\n\n- Index every foreign key column on the CHILD side. PostgreSQL does NOT create that index automatically, and without it a delete or update of a parent row scans the whole child table to check references, which is the classic cause of mysteriously slow parent deletes and `ON DELETE CASCADE` operations.\n- Use partial indexes (for example `WHERE deleted_at IS NULL`) and expression indexes when queries only filter a subset or a computed value, instead of indexing the whole column. Smaller indexes mean less write amplification and a higher chance the planner uses them.\n- Enforce business rules with `NOT NULL`, `UNIQUE`, `CHECK`, and foreign keys in the schema rather than trusting application code; the database is the only layer every writer goes through.\n- Avoid redundant indexes: a B-tree on `(a, b)` already serves queries filtering on `a` alone, so a separate index on `(a)` is usually wasted write cost.\n- For low-cardinality columns the planner will ignore the index, so do not add one just because a column is in a WHERE clause.\n\nSee /db/migrations for how to add these indexes and constraints concurrently without locking production."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "postgres-schema-review",
-      "summary": "Pre-merge checklist for any PostgreSQL schema change or migration.",
-      "body": "---\nname: postgres-schema-review\ndescription: Review a PostgreSQL schema change or migration before merge. Use when adding or altering tables, columns, indexes, or constraints, or when writing a migration file, to confirm correct types, sound integrity, and lock-safe forward-only DDL on PostgreSQL 18.\n---\n\n# PostgreSQL schema and migration review\n\n## Types and keys\n\n- [ ] Primary key is `bigint GENERATED ALWAYS AS IDENTITY` or `uuid DEFAULT uuidv7()`, not `serial`/`bigserial`.\n- [ ] All point-in-time columns are `timestamptz`, not `timestamp`.\n- [ ] Strings use `text` (length enforced via `CHECK` only when a real limit exists); money/decimals use `numeric`; structured data uses `jsonb`, not `json`.\n\n## Integrity and indexes\n\n- [ ] `NOT NULL`, `UNIQUE`, `CHECK`, and foreign keys express the real business rules at the database level.\n- [ ] Every foreign key column has a covering index on the child side.\n- [ ] Partial or expression indexes are used where queries filter a subset, instead of broad full-column indexes; no redundant indexes were added.\n\n## Forward-only\n\n- [ ] Migration has no `down`/rollback step.\n- [ ] No already-merged migration file was edited; this is a new file.\n\n## Lock-safe DDL\n\n- [ ] `lock_timeout` is set before DDL on any populated table.\n- [ ] Indexes are built/dropped `CONCURRENTLY`, and that statement runs outside a transaction block.\n- [ ] New foreign keys and check constraints are added `NOT VALID`, then `VALIDATE`d in a separate statement.\n- [ ] New columns are nullable or use a NON-volatile constant `DEFAULT` so no table rewrite is triggered (no volatile default, identity, or stored generated column added to a large table).\n- [ ] A unique constraint is added via `CREATE UNIQUE INDEX CONCURRENTLY` + `ADD CONSTRAINT ... USING INDEX`.\n\n## Expand-contract\n\n- [ ] Renames and type changes are split into expand, backfill, and contract deploys; nothing is renamed/retyped in place.\n- [ ] Backfills run in bounded batches, each in its own transaction.\n- [ ] `NOT NULL` on a backfilled column is applied via a validated `CHECK`, not a direct `SET NOT NULL` scan on a large table.\n- [ ] Old columns or tables are dropped only after no running app version uses them.\n",
-      "skillTags": [
-        "postgresql",
-        "migrations",
-        "schema",
-        "review",
-        "backend",
-        "ddl"
-      ]
-    }
-  ]
-};
-
-// ../../node_modules/@pathrule/patterns/dist/patterns/rest-api-design.js
-var restApiDesign = {
-  "slug": "rest-api-design",
-  "version": "1.0.0",
-  "name": "REST / HTTP API Design",
-  "tagline": "Design HTTP APIs that stay predictable, safe to retry, and easy to evolve.",
-  "description": "A 2026 HTTP API design pattern for backend teams shipping REST endpoints. It standardizes resource naming and status codes, mandates RFC 9457 problem details for errors, cursor pagination for collections, idempotency keys for unsafe writes, and a deprecation discipline so versions retire cleanly instead of breaking clients.",
-  "category": "Backend",
-  "icon": "network",
-  "color": "bg-teal-500/10 text-teal-600 dark:bg-teal-400/15 dark:text-teal-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "REST / HTTP API Design pattern for AI coding agents",
-  "metaDescription": "Teach your AI coding agent modern HTTP API design: resource naming, correct status codes, RFC 9457 errors, cursor pagination, idempotency keys, and clean versioning.",
-  "problem": "Agents ship inconsistent endpoints with ad-hoc error shapes, offset pagination, no retry safety, and breaking version changes that silently break clients.",
-  "audience": "Backend and platform teams building or maintaining public and internal REST/HTTP APIs.",
-  "prevents": [
-    "Verb-in-path endpoints and 200 responses that hide failures behind a body field",
-    "Bespoke per-endpoint error JSON instead of one machine-readable envelope",
-    "Duplicate charges and double-creates when a client retries an unsafe POST"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/src/api",
-      "/src/routes",
-      "/app/api"
-    ],
-    "stacks": [
-      "nodejs",
-      "typescript",
-      "rest",
-      "http",
-      "openapi"
-    ],
-    "packages": [
-      "express",
-      "fastify",
-      "zod",
-      "@hono/hono",
-      "openapi-typescript"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/src/api",
-      "title": "Resource naming and HTTP semantics",
-      "summary": "Model nouns as resources, map verbs to HTTP methods, and return the status code that matches the outcome.",
-      "body": 'URLs name resources with plural nouns; the HTTP method carries the verb and the status code carries the result. Never tunnel an action through a path segment or hide a failure inside a 200 body.\n\n- Use plural noun collections (`/orders`, `/users/{id}/invoices`) and keep nesting at most two levels deep; never `POST /createOrder` or `/orders/get`.\n- Map methods correctly: `GET` reads (safe), `POST` creates, `PUT` replaces, `PATCH` partially updates, `DELETE` removes. `GET`, `PUT`, and `DELETE` must be idempotent.\n- Return the precise status: `201` with a `Location` header on create, `200` on read/update, `204` on a body-less delete, `400`/`422` for invalid input, `401`/`403` for auth, `404` for missing, `409` for conflicts, `429` when rate limited.\n- Never return `200` with `{ "success": false }`; let the status line signal failure so clients and proxies can react without parsing the body.',
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src/api",
-      "title": "Idempotency keys on unsafe writes",
-      "summary": "Every non-idempotent mutation accepts an Idempotency-Key header and deduplicates safely on retry.",
-      "body": "Networks drop responses, so clients retry; without deduplication a retried `POST` charges twice or creates duplicate rows. Make unsafe writes safe to retry with a client-supplied key.\n\n- Accept an `Idempotency-Key` request header on every `POST` (and any non-idempotent endpoint) that creates resources, involves money movement, or triggers external side effects.\n- Persist the key with the request fingerprint and the stored response. A replay with the same key returns the original result without re-executing the operation.\n- Scope keys per endpoint and per authenticated principal; set a retention TTL (commonly 24 hours); return `409` if the same key arrives with a different request body.\n- While the first request is still in flight, return `409` (or `425 Too Early`) for a concurrent replay rather than running the operation twice.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src/api",
-      "title": "Error envelope: RFC 9457 problem details",
-      "summary": "How every error response is shaped so clients get one consistent, machine-readable contract.",
-      "body": "Every error returns an RFC 9457 problem document (the successor to RFC 7807), served as `application/problem+json`. One envelope across the whole API means clients write error handling once.\n\n- Always include `type` (a stable URI identifying the problem class), `title`, and `status`; add `detail` for a human-readable specific message and `instance` for the affected resource URI.\n- Make `type` a real, documented URI per problem class (for example `https://api.example.com/problems/insufficient-funds`). Reuse it consistently so clients can branch on `type` instead of parsing prose.\n- Add custom extension members for machine use (`errors` array for field-level validation failures, `traceId` for correlation, `balance` for domain context); never repurpose the standard members.\n- Keep `status` in the body equal to the HTTP status line, and never leak stack traces or internal identifiers into `detail`."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src/api",
-      "title": "Collection pagination and list contracts",
-      "summary": "Opaque cursor pagination with consistent parameters and a clear last-page signal.",
-      "body": "Collections are paginated with cursor (keyset) pagination, the pattern used by Stripe, GitHub, and Slack. Offset-based `OFFSET` pagination drifts when rows are inserted or deleted and degrades as the database counts and skips rows at scale.\n\n- Accept `limit` plus an opaque `cursor` (or `after`/`before`). The cursor encodes the sort key and ID of the last item so clients cannot tamper with or reverse-engineer it.\n- Enforce a default and a hard maximum page size (for example default `20`, max `100`); clamp oversized `limit` values instead of honoring `limit=1000000`.\n- Return a stable envelope: a `data` array plus a `next_cursor` (null on the last page) or a `has_more` boolean; never make clients guess where the list ends.\n- Sort on a deterministic, indexed tiebreaker (such as `(created_at, id)`) so the cursor maps to a single position and page boundaries stay consistent even when rows share the same `created_at`."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src/api",
-      "title": "API versioning and deprecation discipline",
-      "summary": "Breaking changes get a new version; old versions signal sunset with standard headers and retire with 410 Gone.",
-      "body": "API versions must retire cleanly so clients have time to migrate and are never silently broken.\n\n- Ship breaking changes (removing or renaming a field, changing semantics, tightening validation) under a new version path (for example `/v2/orders`). Additive changes (new optional fields, new endpoints) are non-breaking and do not require a new version.\n- When a version is scheduled for removal, add `Deprecation` (RFC 9745) and `Sunset` (RFC 8594) response headers to every response from that version. These are machine-readable, not just documentation.\n- On the sunset date, return `410 Gone` with a problem detail body that includes a `Link` header pointing to the migration guide. Return `410` consistently, not `404` or `500`, so clients can detect the retirement programmatically.\n- Document the deprecation timeline (announcement date, sunset date) in the API changelog and notify API consumers via email or webhook before the sunset date, not after.\n- Avoid URL-version sprawl: deprecate and retire versions on a schedule (for example 12 months after a replacement ships) rather than letting old versions accumulate indefinitely."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "rest-api-design-review",
-      "summary": "Pre-merge checklist for any new or changed HTTP endpoint covering naming, status codes, errors, pagination, idempotency, and versioning.",
-      "body": "---\nname: rest-api-design-review\ndescription: Run this checklist before merging any new or changed HTTP/REST endpoint. Covers resource naming, HTTP method and status semantics, RFC 9457 error envelopes, cursor pagination, idempotency keys, and deprecation discipline.\n---\n\n# REST / HTTP API design review\n\n- [ ] Paths name resources with plural nouns and nest at most two levels; no verbs in the path.\n- [ ] HTTP method matches intent and `GET`/`PUT`/`DELETE` are idempotent; safe methods cause no side effects.\n- [ ] Status codes are precise: `201`+`Location` on create, `204` on empty delete, `400`/`422`, `401`/`403`, `404`, `409`, `429`; no `200` wrapping a failure.\n- [ ] All errors return an RFC 9457 `application/problem+json` document with `type`, `title`, `status`, and a stable documented `type` URI.\n- [ ] Field-level validation errors and a `traceId` are carried as problem-detail extension members, with no stack traces leaked.\n- [ ] Collection endpoints use opaque cursor pagination with `limit`, a clamped max page size, a deterministic sort tiebreaker, and a `next_cursor`/`has_more` last-page signal.\n- [ ] Unsafe `POST` mutations accept an `Idempotency-Key` and return the stored result on replay instead of re-executing.\n- [ ] Breaking changes ship under a new version path; the old version sends `Deprecation` and `Sunset` headers (RFC 9745 / RFC 8594).\n- [ ] Retired versions return `410 Gone` with a problem detail body linking to the migration guide, not `404` or `500`.\n- [ ] The endpoint is documented in the OpenAPI spec with request/response schemas and example error payloads.\n",
-      "skillTags": [
-        "rest",
-        "http",
-        "api-design",
-        "backend",
-        "review"
-      ]
-    }
-  ]
-};
-
-// ../../node_modules/@pathrule/patterns/dist/patterns/supabase-rls.js
-var supabaseRls = {
-  "slug": "supabase-rls",
-  "version": "1.0.0",
-  "name": "Supabase + RLS",
-  "tagline": "Row Level Security done right: deny by default, user JWT only, and a clean migration workflow.",
-  "description": "Rules, memories, and a review skill for Supabase Postgres projects that take Row Level Security seriously. Pre-scoped to your supabase directory so your AI assistant enforces RLS, keeps the service role out of clients, and follows a disciplined migration flow.",
-  "category": "Backend",
-  "icon": "database",
-  "color": "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "Supabase Row Level Security patterns for AI coding agents",
-  "metaDescription": "A ready-to-use Pathrule pattern for Supabase: RLS enabled by default, user JWT instead of the service role, a helper-function access model, and a migration review skill.",
-  "problem": "Postgres tables ship without Row Level Security, or the service role key sneaks into client paths, leaving data open to anyone.",
-  "audience": "teams building on Supabase Postgres with multi-tenant or per-user data",
-  "prevents": [
-    "Creating a table without RLS enabled and policies",
-    "Using the service role key where the user's JWT belongs",
-    "Ad hoc access checks that drift apart across tables"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/supabase",
-      "/supabase/migrations",
-      "/supabase/functions"
-    ],
-    "stacks": [
-      "supabase",
-      "postgres"
-    ],
-    "packages": [
-      "@supabase/supabase-js"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/supabase",
-      "title": "RLS enabled on every table, deny by default",
-      "summary": "No table ships without Row Level Security enabled and explicit per-operation policies.",
-      "body": "Every user-facing table in the public schema must have Row Level Security enabled with a deny-by-default posture. A table with RLS disabled is readable and writable by any authenticated user.\n\n- Enable RLS in the same migration that creates the table: `ALTER TABLE <name> ENABLE ROW LEVEL SECURITY`. Never rely on the application layer to enforce access at the row level.\n- Start from no policies (which denies everything) and add the minimum set of policies per operation (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) that the feature actually requires. A catch-all `USING (true)` policy is equivalent to no RLS.\n- A migration that creates a table without enabling RLS and adding policies is incomplete and must not merge to a shared environment.\n- Internal or log tables used only by server-side jobs that run as the service role may skip per-user policies, but must still have RLS enabled and an explicit `USING` expression that allows only the service role, not a blanket bypass.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/supabase",
-      "title": "Service role key stays server-side; never in client paths",
-      "summary": "The service role key bypasses RLS entirely and must never appear in browser code, client environment variables, or per-request edge function logic acting on behalf of a user.",
-      "body": "The Supabase service role key grants full unrestricted access to every row in every table, bypassing all RLS policies. Leaking it to a browser or a client-accessible path renders all RLS useless.\n\n- Never include the service role key in any environment variable exposed to the browser (for example `NEXT_PUBLIC_*` in Next.js, or any variable bundled by Vite/webpack for the client).\n- Edge functions that handle per-user requests must create their Supabase client with the user's JWT from the `Authorization` header, not the service role: `createClient(url, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') } } })`. This ensures RLS evaluates under the correct user identity.\n- Use the service role key only in trusted server-side contexts (scheduled functions, admin scripts, server-to-server calls) where bypassing RLS is the deliberate intent and the scope is understood.\n- Never derive or reconstruct the service role key from a client request, environment variable pattern, or any value accessible to end users.",
-      "scopeType": "project",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/supabase/migrations",
-      "title": "Index every column used in RLS policy predicates",
-      "summary": "An unindexed column in a USING or WITH CHECK expression causes a full-table scan on every row-level check.",
-      "body": "Postgres evaluates each RLS policy's `USING` and `WITH CHECK` expressions once per row that the query touches. An expression that references an unindexed column forces a sequential scan on every row access, not just on the query plan \u2014 the cost is invisible in `EXPLAIN` for the outer query but shows up as degraded performance under load.\n\n- Add a B-tree index on every column that appears in a `USING (...)` or `WITH CHECK (...)` expression, particularly `user_id`, `workspace_id`, `tenant_id`, and any other access-boundary column.\n- For policies that call `auth.uid()`, the `user_id` column they compare against must be indexed; the `auth.uid()` itself is a function call that Postgres inlines as a constant per statement, so it is not the bottleneck, but the column scan is.\n- If using a `SECURITY DEFINER` helper function (see the access-helper memory), index the columns inside that function's WHERE clause, not just the surface-level expression in the policy.\n- Run `EXPLAIN ANALYZE` on representative queries before and after adding RLS to confirm the policy predicates are not adding full-table sequential scans.",
-      "scopeType": "folder",
-      "priority": "medium",
-      "enforcement": "advisory"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/supabase",
-      "title": "Centralize access checks in a SECURITY DEFINER helper",
-      "summary": "One SQL function that expresses membership or ownership, reused by all policies across tables.",
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/supabase",
-      "title": "auth.uid(), auth.jwt(), and custom claims in policies",
-      "summary": "How to use Supabase JWT claims in RLS expressions and how to attach custom claims via a hook without performance footguns.",
-      "body": "Supabase injects the authenticated user's identity into the Postgres session so RLS policies can reference it without a subquery to `auth.users`.\n\n- `auth.uid()` returns the `sub` claim of the JWT as a `uuid`. Use it directly in policy `USING` expressions: `USING (user_id = auth.uid())`.\n- `auth.jwt()` returns the full decoded JWT as `jsonb`. Access top-level claims with `->>`: `auth.jwt() ->> 'role'`. For nested claims (for example `app_metadata`): `(auth.jwt() -> 'app_metadata') ->> 'plan'`.\n- Custom claims (roles, plan tier, org ID) are the recommended way to encode authorization context without an extra DB lookup per row. Add them via a Supabase Auth Hook (the `custom_access_token` hook in the Dashboard), which runs a Postgres function that appends claims to every JWT before it is issued.\n- Never call `SELECT ... FROM auth.users` inside a policy `USING` expression just to read a claim that is already in the JWT. It issues a subquery per row. Use `auth.jwt()` to read the claim from the already-present token instead.\n- When a custom claim must be refreshed (for example after a plan upgrade), call `supabase.auth.refreshSession()` on the client to force a new token with updated claims; old tokens keep the stale claims until they expire."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/supabase/migrations",
-      "title": "Supabase migration workflow",
-      "summary": "Forward-only timestamped SQL, RLS and policies in the same migration as the table, TypeScript types regenerated after each change.",
-      "body": "Supabase migrations are plain SQL files managed by the Supabase CLI. The workflow keeps the database and generated types in sync.\n\n- Generate a new migration with `supabase migration new <description>`, which creates a timestamped file in `supabase/migrations/`. Write forward-only SQL; there are no down steps.\n- Enable RLS and add all required policies in the same migration file that creates the table. Never leave the table in a state where it exists but RLS is not yet enabled, even briefly across separate migrations.\n- After applying a migration that changes the schema, regenerate TypeScript types: `supabase gen types typescript --linked > src/types/supabase.ts` (or equivalent). Commit the updated types file in the same PR as the migration.\n- Apply locally with `supabase db reset` (for local dev) or `supabase db push` (for remote preview branches). Never edit a migration file that has already been applied to any shared environment; add a new migration instead.\n- For Supabase hosted projects, use branching (`supabase branches`) to develop and test schema changes on an isolated preview branch before merging to production."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "supabase-rls-review",
-      "summary": "Checklist for reviewing a Supabase schema or migration change for RLS correctness, performance, and workflow safety.",
-      "body": "---\nname: supabase-rls-review\ndescription: Review a Supabase migration or schema change for RLS correctness, JWT claim usage, access-helper design, policy-predicate indexing, and migration workflow safety.\n---\n\n# Supabase RLS review\n\n## RLS and policies\n- [ ] RLS is enabled on every new table in the same migration that creates it.\n- [ ] Policies exist per operation (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) and the default is deny (no `USING (true)` catch-all).\n- [ ] Policies use the shared `SECURITY DEFINER` access helper, not ad-hoc inline subqueries that would differ across tables.\n- [ ] Internal/job tables accessed only via the service role have explicit `USING` expressions limiting to the service role, not a blanket bypass.\n\n## Performance\n- [ ] Every column referenced in a `USING` or `WITH CHECK` expression (especially `user_id`, `workspace_id`, `tenant_id`) has a B-tree index.\n- [ ] No policy calls `SELECT ... FROM auth.users` per row to read a claim that is already available via `auth.jwt()`.\n\n## JWT and custom claims\n- [ ] Policies use `auth.uid()` for user identity and `auth.jwt()` for custom claims; no unnecessary subqueries to `auth.users`.\n- [ ] Custom claims added via the Auth Hook are documented and the client calls `refreshSession()` after claim-changing events (plan upgrade, role change).\n\n## Service role\n- [ ] No service role key appears in any browser-accessible environment variable or in edge function code acting on behalf of a user.\n- [ ] Edge functions acting on behalf of a user forward the `Authorization: Bearer <user_jwt>` header to the Supabase client, not the service role key.\n\n## Migration workflow\n- [ ] TypeScript types are regenerated and committed alongside the migration.\n- [ ] Migration is forward-only and no already-applied file was edited; a new file was added.\n",
-      "skillTags": [
-        "supabase",
-        "postgres",
-        "rls",
-        "security",
-        "review"
-      ]
-    }
-  ]
-};
-
 // ../../node_modules/@pathrule/patterns/dist/patterns/fastapi.js
 var fastapi = {
   "slug": "fastapi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "FastAPI (Python)",
   "tagline": "Build type-safe async Python APIs with Pydantic validation and dependency injection.",
   "description": "An opinionated baseline for shipping FastAPI services on Python 3.12+. It keeps request and response bodies behind Pydantic v2 models, runs I/O routes as async without blocking the event loop, wires auth, database sessions, and configuration through dependency injection instead of globals, and manages schema changes with forward-only Alembic migrations. These are the conventions that keep a FastAPI app fast, typed, and testable as it grows past the tutorial.",
@@ -30435,16 +30752,21 @@ var fastapi = {
   "icon": "rocket",
   "color": "bg-teal-500/10 text-teal-600 dark:bg-teal-400/15 dark:text-teal-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "FastAPI (Python) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for FastAPI on Python 3.12+: Pydantic v2 request/response models, non-blocking async routes, dependency injection for auth and DB sessions, and forward-only Alembic migrations, tuned for AI coding agents.",
+  "metaTitle": "FastAPI and Pydantic pattern for AI agents",
+  "metaDescription": "FastAPI pattern for AI coding agents: Pydantic models on every request and response, nothing blocking inside async routes, and forward-only Alembic migrations.",
   "problem": "AI agents writing FastAPI accept untyped dict bodies, run blocking calls inside async routes, reach for module globals instead of dependencies, and edit the schema without a migration.",
   "audience": "Python teams building and maintaining FastAPI services",
   "prevents": [
@@ -30550,7 +30872,7 @@ var fastapi = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/go-api.js
 var goApi = {
   "slug": "go-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Go API (Gin / Echo)",
   "tagline": "Build idiomatic Go HTTP services with honest errors, context propagation, and validated input.",
   "description": "An opinionated baseline for HTTP APIs in Go with Gin or Echo. It leans into what makes Go services reliable: errors are values you handle and wrap rather than swallow, context flows through every call for cancellation and deadlines, and request bodies are bound and validated before they reach business logic. It also keeps the layering clean so handlers stay thin and the database, not the framework, owns the data. Go's draw for cloud-native and high-performance backends is exactly this kind of boring reliability.",
@@ -30558,16 +30880,21 @@ var goApi = {
   "icon": "hexagon",
   "color": "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/15 dark:text-cyan-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Go API (Gin / Echo) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for Go HTTP APIs on Gin or Echo: error values handled and wrapped, context propagation for cancellation, struct-tag request validation, and clean handler/service/repository layering, tuned for AI coding agents.",
+  "metaTitle": "Go HTTP API pattern for AI coding agents",
+  "metaDescription": "Go API pattern for AI coding agents: handle and wrap every error, propagate context deadlines, validate input at the handler, and keep handlers thin.",
   "problem": "AI agents writing Go ignore returned errors, drop the request context, bind request bodies without validating, and pile database calls into handlers.",
   "audience": "Backend teams building HTTP services in Go with Gin or Echo",
   "prevents": [
@@ -30656,10 +30983,811 @@ var goApi = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/graphql-api.js
+var graphqlApi = {
+  "slug": "graphql-api",
+  "version": "1.0.0",
+  "name": "GraphQL API",
+  "tagline": "Ship a GraphQL API that batches its queries, authorizes per field, and cannot be walked by a stranger.",
+  "description": "A GraphQL endpoint fails in ways REST does not: one nested query becomes hundreds of database round trips, a resolver deep in the graph returns data the caller was never allowed to see, and a public schema hands an attacker a map of your domain. This bundle covers the four defences that matter (batched loading, per-resolver authorization, cost and operation limits, and disciplined schema evolution) and the conventions that keep a schema usable as it grows. Where rest-api-design covers HTTP semantics, this covers the graph.",
+  "category": "Backend",
+  "icon": "share-2",
+  "color": "bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "GraphQL API pattern for AI coding agents",
+  "metaDescription": "GraphQL pattern for AI coding agents: batch resolvers with DataLoader, authorize per field, cap query depth and cost, and evolve schemas without breakage.",
+  "problem": "AI agents write resolvers that query per parent object, authorize only at the entry point, ship introspection and unbounded queries to production, and change field nullability without noticing it breaks clients.",
+  "audience": "Backend teams running a GraphQL API for web, mobile, or federated services",
+  "prevents": [
+    "Resolving a list field with one database query per parent object",
+    "Authorizing only the top-level query while nested resolvers return anything",
+    "Leaving introspection and unbounded query depth open on a public endpoint",
+    "Making a nullable field non-null, or renaming one, and breaking live clients"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/graphql",
+      "/src/graphql/resolvers",
+      "/src/server"
+    ],
+    "stacks": [
+      "graphql",
+      "typescript",
+      "node",
+      "apollo",
+      "api"
+    ],
+    "packages": [
+      "graphql",
+      "dataloader",
+      "@apollo/server",
+      "graphql-yoga"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/graphql/resolvers",
+      "title": "Batch every relation through a per-request loader",
+      "summary": "A resolver never queries per parent object: relations go through a DataLoader created per request, and lists are fetched in one round trip.",
+      "body": "The N+1 problem is structural in GraphQL, not accidental: the engine calls a field resolver once per parent, so a list of 100 posts calls the author resolver 100 times.\n\n- Put every by-id or by-foreign-key lookup behind a loader that batches keys collected during one tick and returns them in key order. Resolvers ask the loader; they never touch the database directly.\n- Create loaders per request, in the context factory. A loader shared across requests is a cache that leaks one user's data into another user's response.\n- Batch functions must return results in the same order as the keys they were given, with a null or an error placeholder for misses. Returning a filtered list silently misaligns every field.\n- Loaders solve fan-out, not projection: a batched query that selects every column of a wide table is still slow. Select the fields the query actually asked for where your data layer supports it.\n- Watch mutations too. A mutation that returns a payload triggering the same resolvers needs the loader primed or cleared, or it will serve the pre-mutation value.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/graphql",
+      "title": "Authorize inside the resolver that returns the data",
+      "summary": "Every field that exposes protected data checks the caller against that specific object; entry-point checks do not protect the graph.",
+      "body": "In a graph, the same object is reachable through many paths. An authorization check on the top-level query protects exactly one of them.\n\n- Check permission where the data is produced: the field resolver (or the service it calls) verifies that the caller may see this object, not merely that they are logged in.\n- Never trust an id from the query as proof of access. `node(id:)`, a nested relation, and a mutation input are all attacker-controlled.\n- Put the authenticated identity in the request context and pass it down explicitly. A resolver that reads a global or re-parses the token is a resolver that will be called from a path you did not audit.\n- Return an authorization failure as a typed error with a stable code, and be deliberate about whether a forbidden field nulls out or fails the whole query, since nullability decides that.\n- Field-level directives or a policy layer are fine as a mechanism, but the guarantee must be enforced server-side per object, not in a client-selected shape.\n\nSee the web-security pattern for the deny-by-default posture this applies inside the graph.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/server",
+      "title": "Cap what a single operation can cost",
+      "summary": "Production disables introspection, prefers persisted operations, and rejects queries over a depth, complexity, and time budget.",
+      "body": "A GraphQL endpoint accepts arbitrary programs. Without limits, one request can traverse a recursive relation until the process dies.\n\n- Reject queries past a maximum depth, and score complexity per field (higher for list fields, which multiply) with a rejection budget. Depth stops recursion; complexity stops wide, expensive selections.\n- Prefer persisted (allow-listed) operations for first-party clients: the server executes only known operation hashes, which removes both arbitrary queries and most of the introspection attack surface, and shrinks request payloads.\n- Disable introspection and field suggestions on public production endpoints. Treat this as defence in depth, not a substitute for authorization; a determined attacker can still probe.\n- Set a server-side execution timeout and a request size limit, disable or bound query batching, and rate-limit by identity rather than by IP alone.\n- Return errors that do not leak internals: a stable code and a safe message, with stack traces and database errors logged server-side only.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/graphql",
+      "title": "Evolve the schema additively and be intentional about nullability",
+      "summary": "Add fields, never repurpose them: no renames or type changes on a live schema, deprecate before removal, and treat non-null as a promise.",
+      "body": 'GraphQL has no versioned URLs, so the schema itself is the compatibility contract. Every breaking change is a breaking change for clients you cannot see.\n\n- Additive changes are safe: new types, new optional arguments, new nullable fields. Renaming a field, removing one, changing its type, or making a nullable field non-null are all breaking.\n- Mark the old field `@deprecated(reason: "...")` with a migration note, keep it working, and remove it only after usage tracking shows nobody asks for it.\n- Choose nullability deliberately: a non-null field that fails propagates the null upward and can wipe out a whole response branch. Non-null for things that genuinely always exist (ids, timestamps); nullable for anything that can fail independently.\n- Model expected failures in the schema (a result union or a payload with `errors`) rather than throwing for business outcomes. Reserve GraphQL errors for genuine faults.\n- Run a schema diff in CI against the deployed schema and fail the build on a breaking change unless it is explicitly approved.',
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/graphql",
+      "title": "Schema conventions that survive growth",
+      "summary": "Design the graph around client use cases with cursor-paginated connections and mutation payload types, not as a mirror of database tables.",
+      "body": "A schema that mirrors your tables ages badly: every storage change becomes a client change, and every list becomes an unbounded read.\n\n- Model the domain the client asks about. Fields exist because a screen needs them, not because a column exists. Keep storage details (join tables, denormalised columns) out of the graph.\n- Paginate every list that can grow, with cursor-based connections (`edges`, `node`, `pageInfo`) and a maximum page size enforced server-side. An unpaginated list field is a future incident.\n- Give each mutation a single input object and a payload type that returns the affected entities plus a typed error field. That shape stays compatible as the mutation grows.\n- Name for the domain and stay consistent: verbs for mutations (`publishPost`), nouns for types, and no abbreviations that only the backend team knows. Enums for closed sets, so clients get exhaustiveness.\n- If you federate, draw subgraph boundaries along ownership, keep entity keys stable, and let one service own each entity's canonical fields. A shared type that two teams both write is where federation goes wrong.\n\nSee /src/graphql/resolvers for the batching rule and /src/server for the limits that protect these lists."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "graphql-schema-review",
+      "summary": "Checklist for any change that adds a type, field, resolver, or mutation to a GraphQL API.",
+      "body": "---\nname: graphql-schema-review\ndescription: GraphQL review checklist covering resolver batching, per-object authorization, operation cost limits, and backward-compatible schema evolution. Run before merging a schema or resolver change.\n---\n\n# GraphQL review\n\n## Resolvers\n- [ ] Every relation resolves through a per-request loader; no query per parent.\n- [ ] Batch functions return results in key order with placeholders for misses.\n- [ ] Loaders are created per request, never shared across requests.\n- [ ] Mutation payloads do not serve stale loader values.\n\n## Authorization\n- [ ] The resolver that returns protected data checks the caller against that object.\n- [ ] No id from the query is treated as proof of access.\n- [ ] Identity comes from the request context, not a global.\n\n## Cost and exposure\n- [ ] Depth and complexity limits still reject the worst query this change enables.\n- [ ] New list fields are paginated with a server-enforced maximum page size.\n- [ ] Introspection stays off in production; persisted operations cover new client queries.\n- [ ] Errors expose a code and a safe message only.\n\n## Compatibility\n- [ ] The change is additive; nothing renamed, removed, or retyped.\n- [ ] Nullability is deliberate, and non-null fields genuinely cannot fail alone.\n- [ ] Anything being retired is `@deprecated` with a reason, not deleted.\n- [ ] The CI schema diff passes.\n",
+      "skillTags": [
+        "graphql",
+        "api-design",
+        "code-review",
+        "security",
+        "performance"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/kafka-event-driven.js
+var kafkaEventDriven = {
+  "slug": "kafka-event-driven",
+  "version": "1.0.0",
+  "name": "Kafka Event-Driven Services",
+  "tagline": "Produce and consume Kafka events with keys that preserve order and handlers that survive redelivery.",
+  "description": "Kafka 4 removed ZooKeeper entirely and runs only in KRaft mode, the new consumer group protocol from KIP-848 ended stop-the-world rebalances, and idempotent producers are on by default. None of that saves a service that publishes inside a database transaction, picks a random partition key, or assumes a message arrives exactly once. This bundle covers the producer and consumer contracts, the outbox pattern that fixes the dual-write problem, event schema compatibility, and the operational settings that decide whether you lose data.",
+  "category": "Backend",
+  "icon": "radio-tower",
+  "color": "bg-slate-500/10 text-slate-600 dark:bg-slate-400/15 dark:text-slate-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Kafka event-driven pattern for AI agents",
+  "metaDescription": "Kafka pattern for AI coding agents: partition keys that keep order, idempotent consumers with a dead letter topic, the outbox pattern, and schema compatibility.",
+  "problem": "AI agents publish events inside the same transaction as the database write, key messages randomly so ordering is lost, and write consumers that assume each message arrives exactly once.",
+  "audience": "Backend teams running event-driven services on Kafka 4 in KRaft mode",
+  "prevents": [
+    "Writing to the database and publishing an event as if both could succeed together",
+    "Producing without a partition key, so events for one entity are processed out of order",
+    "Consuming with a handler that duplicates its side effect when the message is redelivered",
+    "Retrying a poison message forever instead of routing it to a dead letter topic"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/events",
+      "/src/consumers",
+      "/src/producers",
+      "/infra/kafka"
+    ],
+    "stacks": [
+      "kafka",
+      "event-driven",
+      "node",
+      "java",
+      "microservices"
+    ],
+    "packages": [
+      "kafkajs",
+      "@confluentinc/kafka-javascript"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/producers",
+      "title": "Key every event by its entity and produce with full durability",
+      "summary": "The partition key is the entity id whose order matters, acks are set to all with idempotence on, and retries must not reorder writes.",
+      "body": "Kafka guarantees order within a partition, and nothing more. A message with no key goes to a partition of the broker's choosing, which means two events about the same order can be processed in the wrong sequence by different consumers.\n\n- Set the key to the identity whose ordering you care about: the aggregate or entity id (order id, user id, device id). Same key, same partition, same order, forever.\n- Never key by something high-cardinality-but-meaningless (a random uuid per event) or by something so coarse it creates a hot partition (a tenant id where one tenant is 90% of traffic).\n- Produce with `acks=all` and idempotence enabled (the default in Kafka 4) so a retry cannot write a duplicate or reorder a batch. If you tune `max.in.flight.requests.per.connection`, keep it within what idempotence supports, or retries will reorder.\n- Handle the producer's error callback and treat a failed send as a failed operation: log it with the key, and let the caller retry or fall back to the outbox. Fire-and-forget sends lose data silently.\n- Include an event id, an event type, a schema version, and the producer's timestamp in every message so consumers can dedupe, route, and evolve.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/consumers",
+      "title": "Assume redelivery: idempotent handlers, bounded retries, dead letter topic",
+      "summary": "Commit offsets after processing, dedupe on the event id, retry with backoff a fixed number of times, then route the message to a dead letter topic.",
+      "body": "Kafka is at-least-once in practice. A rebalance, a crash after processing but before the commit, or a retry all deliver the same message twice.\n\n- Process, then commit. Auto-commit on a timer acknowledges messages you have not handled yet, which turns a crash into silent data loss. Disable it and commit explicitly after the work is durable.\n- Make the handler idempotent: check whether this event id was already processed (a processed-events table or a natural uniqueness constraint on the write), or make the effect naturally repeatable. Never send an email or charge a card without that guard.\n- Bound retries: a fixed number of attempts with exponential backoff, then publish the message plus the failure reason to a dead letter topic. An unbounded retry on a poison message stops the partition and every message behind it.\n- Keep the handler faster than the poll interval, or heartbeat and pause the partition explicitly. A long handler that blocks the poll loop triggers a rebalance, which triggers redelivery, which looks like a bug elsewhere.\n- Consume with `group.protocol=consumer` to use the KIP-848 protocol where the broker supports it; it removes the stop-the-world rebalance that made every deploy a latency spike.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/events",
+      "title": "Treat the event payload as a published contract",
+      "summary": "Events are versioned, backward-compatible, and carry no data the consumer is not allowed to see; a breaking change means a new event type.",
+      "body": "An event is an API with unknown consumers and an unknown replay window. Once it is in a topic, someone will read it a year from now.\n\n- Register schemas and enforce compatibility in CI (backward compatible by default): add optional fields, never remove or retype one, and never repurpose a field's meaning. A genuinely breaking change is a new event type or a new topic, not an edit.\n- Include `eventId`, `eventType`, `version`, `occurredAt`, and the entity id in every envelope, with the domain payload nested underneath. Consumers route on the envelope and only parse the payload they understand.\n- Publish facts, not commands, on shared topics: `OrderPlaced` rather than `SendConfirmationEmail`. A fact stays true and lets consumers decide; a command couples the producer to one consumer's behaviour.\n- Keep secrets and unnecessary personal data out of payloads. A topic is replicated, retained, replayable, and readable by every consumer group; treat it as a durable data store subject to your retention and privacy rules.\n- Send an id rather than a whole entity snapshot when the entity is large or sensitive, and let consumers fetch what they need, accepting the extra call.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/events",
+      "title": "The outbox pattern solves the dual write",
+      "summary": "A database commit and a Kafka publish cannot be atomic, so write the event to an outbox table in the same transaction and publish it from there.",
+      "body": "The most common event-driven bug is not in Kafka: it is a service that writes a row and publishes an event as two separate operations. Either can fail, and the system ends up inconsistent in a way no retry fixes.\n\n- In the same database transaction as the state change, insert the event into an `outbox` table (id, aggregate id, type, payload, created_at, published_at). The transaction guarantees both or neither.\n- A separate relay publishes unpublished rows to Kafka and marks them published: either a poller with a small batch and an index on `published_at`, or change data capture reading the log (Debezium-style). The relay is at-least-once, which is why consumers must dedupe.\n- Never publish from inside application code after commit and hope: a crash between commit and publish is exactly the case the outbox exists for.\n- Keep the outbox small: prune published rows on a schedule, and keep the payload the same envelope the topic carries so the relay is a dumb copy.\n- The inverse (inbox) is the consumer-side counterpart: record the processed event id in the same transaction as the write, which makes the handler idempotent with no extra bookkeeping.\n\nSee /src/consumers for the idempotency rule and /src/producers for the publish contract."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/infra/kafka",
+      "title": "Cluster and topic settings that decide whether you lose data",
+      "summary": "Kafka 4 is KRaft only; durability comes from replication factor with min.insync.replicas, and topic retention or compaction is a design decision.",
+      "body": "Most Kafka data loss is a configuration choice made by default rather than deliberately.\n\n- Kafka 4 removed ZooKeeper: clusters run in KRaft mode with controller quorum nodes. Any runbook, tool, or client setting that mentions ZooKeeper is stale and needs rewriting.\n- Durability is replication factor 3 with `min.insync.replicas=2` and producers using `acks=all`. With `min.insync.replicas=1`, a single broker failure at the wrong moment loses acknowledged writes. Leave unclean leader election disabled.\n- Choose partition count for consumer parallelism (one partition is consumed by at most one member of a group) and remember you can add partitions but not remove them, and adding them changes key-to-partition mapping for new writes.\n- Pick retention deliberately per topic: time or size retention for event streams, log compaction for topics that represent current state by key (compaction keeps the latest value per key forever). Replay windows are a product decision, not a default.\n- Monitor consumer lag per group and partition, plus rebalance frequency and dead letter topic volume. Lag is the single metric that tells you a consumer is failing, and a rising dead letter rate is the second.\n\nSee /src/consumers for the offset and retry rules, and the observability pattern for how these metrics reach your dashboards."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "kafka-topic-design",
+      "summary": "Decision procedure for introducing a new topic: naming, key, partitions, retention, and compatibility.",
+      "body": "---\nname: kafka-topic-design\ndescription: Procedure for introducing a new Kafka topic. Decide name, partition key, partition count, replication, retention or compaction, and schema compatibility before the first producer ships.\n---\n\n# New Kafka topic\n\nAnswer all six before writing the producer. A topic is hard to change later.\n\n1. **Name and ownership.** `<domain>.<entity>.<event>` (for example `orders.order.placed`), one owning service, documented consumers. Facts, not commands.\n2. **Partition key.** Which identity must stay ordered? Key by that entity id. Check cardinality (enough to spread) and skew (no single key dominating traffic).\n3. **Partition count.** Start from peak throughput divided by what one consumer instance handles, plus headroom. Remember: you can add partitions but never remove them, and adding them breaks key-to-partition stability for new writes.\n4. **Durability.** Replication factor 3, `min.insync.replicas=2`, producers `acks=all`, unclean leader election off.\n5. **Retention.** Is this a stream of events (time or size retention, sized to the longest replay you promise) or the current state per key (log compaction)? Write down the replay window consumers may rely on.\n6. **Schema.** Register the envelope and payload schema, set backward compatibility, and confirm no field carries secrets or unnecessary personal data.\n\n## Before merging\n- [ ] Topic created through infrastructure as code, not by hand or auto-creation.\n- [ ] A dead letter topic exists for every consumer group that will read it.\n- [ ] Lag and dead letter alerts are configured.\n",
+      "skillTags": [
+        "kafka",
+        "event-driven",
+        "topic-design",
+        "architecture"
+      ]
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "kafka-consumer-review",
+      "summary": "Pre-merge checklist for a new or changed Kafka consumer.",
+      "body": "---\nname: kafka-consumer-review\ndescription: Review checklist for Kafka consumer code: offset commits, idempotency, retry and dead letter handling, poll loop timing, and rebalance behaviour. Run before merging a consumer change.\n---\n\n# Kafka consumer review\n\n## Offsets and delivery\n- [ ] Auto-commit is off; offsets are committed after the work is durable.\n- [ ] The handler is idempotent: the event id is deduped, or the effect is naturally repeatable.\n- [ ] Redelivery of the last message before a crash produces no duplicate side effect.\n\n## Failure handling\n- [ ] Retries are bounded with backoff, then the message goes to a dead letter topic with its failure reason.\n- [ ] A poison message cannot block the partition indefinitely.\n- [ ] The dead letter topic has an owner and an alert, not just a name.\n\n## Timing and rebalances\n- [ ] Handler duration fits inside `max.poll.interval.ms`, or the partition is paused explicitly.\n- [ ] Long work is moved off the poll loop rather than blocking it.\n- [ ] `group.protocol=consumer` where the broker supports KIP-848.\n\n## Contract\n- [ ] The consumer routes on the envelope and tolerates unknown fields and future versions.\n- [ ] It does not assume ordering across partitions, only within a key.\n- [ ] Metrics expose lag, processing time, and failure count.\n",
+      "skillTags": [
+        "kafka",
+        "consumers",
+        "code-review",
+        "reliability"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/mongodb-mongoose.js
+var mongodbMongoose = {
+  "slug": "mongodb-mongoose",
+  "version": "1.0.0",
+  "name": "MongoDB + Mongoose",
+  "tagline": "Model MongoDB documents around the queries you run, then keep those queries indexed and lean.",
+  "description": "MongoDB punishes a schema copied from a relational design and rewards one built around access patterns. This bundle carries the decisions that actually determine whether a collection scales: embed or reference, which indexes exist and who creates them, why reads should come back as plain objects, and how to use transactions without turning every write into one. It also covers the connection lifecycle that breaks first in serverless, where a new pool per invocation exhausts the cluster.",
+  "category": "Backend",
+  "icon": "leaf",
+  "color": "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "MongoDB and Mongoose pattern for AI agents",
+  "metaDescription": "MongoDB pattern for AI coding agents: model documents for your queries, index what you filter, read with lean projections, and keep transactions short.",
+  "problem": "AI agents translate a relational schema into collections, add a reference for every relationship, never declare an index, and hydrate full documents for read-only endpoints.",
+  "audience": "Node and TypeScript teams running MongoDB with Mongoose",
+  "prevents": [
+    "Designing collections like normalized tables, then joining them with lookups on every read",
+    "Growing an unbounded array inside a document until it approaches the size limit",
+    "Relying on autoIndex in production instead of declaring and building indexes deliberately",
+    "Opening a new connection pool per serverless invocation"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/models",
+      "/src/db"
+    ],
+    "stacks": [
+      "mongodb",
+      "mongoose",
+      "node",
+      "typescript",
+      "nosql"
+    ],
+    "packages": [
+      "mongoose",
+      "mongodb"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/models",
+      "title": "Declare an index for every query shape you ship",
+      "summary": "Each filter, sort, and uniqueness requirement has a matching index declared in the schema and built deliberately, with autoIndex off in production.",
+      "body": 'MongoDB will happily scan a collection forever. The query works in development on a thousand documents and takes seconds on a million.\n\n- Every field combination you filter or sort on needs a compound index in the right order: equality fields first, then the sort field, then range fields. An index on the wrong order does not serve the query.\n- Declare indexes in the schema (or a migration) and turn `autoIndex` off in production. Automatic index builds on startup are a surprise write load on a live cluster, and on a large collection they block.\n- Back every uniqueness rule with a unique index. A Mongoose `unique: true` is only an index hint, and a validator alone loses the race between two concurrent writes.\n- Use partial or sparse indexes for fields present on a subset of documents, and TTL indexes for data that should expire, rather than a cron job that deletes rows.\n- Verify with `explain("executionStats")` that a new query uses an index (`IXSCAN`, not `COLLSCAN`) and that the examined-to-returned ratio is near one. Do not add indexes by feel: each one costs write throughput and memory.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/db",
+      "title": "Read lean with projections, write with targeted operators",
+      "summary": "Read-only queries use lean and a projection, updates use atomic operators instead of read-modify-write, and every list query is bounded.",
+      "body": 'Mongoose hydrates every result into a full document with getters, virtuals, and change tracking. For a read-only endpoint that is pure overhead.\n\n- Add `.lean()` to any query whose result is serialized and returned. It returns plain objects and is dramatically cheaper on large result sets. Keep hydration for paths that call document methods or save.\n- Project the fields you need (`.select("name email")`). Returning whole documents is how a password hash or an internal flag reaches a client.\n- Update with atomic operators (`$set`, `$inc`, `$push` with `$slice`, `findOneAndUpdate`) rather than loading a document, mutating it, and saving. Read-modify-write loses concurrent updates.\n- Bound every list: a filter plus a limit, paginated by an indexed cursor field (`_id` or a timestamp) rather than a growing `skip`.\n- Never use `$where` or pass raw user input into a query object without validating its shape; an object where a string is expected turns into an operator injection.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/models",
+      "title": "Embed or reference: decide from the read pattern",
+      "summary": "Embed data read together with its parent and bounded in size; reference data that grows without limit, is shared, or is queried on its own.",
+      "body": "This is the only schema decision that really matters in MongoDB, and it is a query decision, not a modelling-purity decision.\n\n- Embed when the child is always read with the parent, is bounded in count, and changes with it (an address on a user, line items on an order). One read, no join.\n- Reference when the set is unbounded (events, messages, audit entries), when it is shared by many parents, or when it is queried independently. Then the child collection carries the parent id and its own indexes.\n- Never let an array grow without bound inside a document. Documents have a hard size limit, and long arrays make every update rewrite the document and every index entry.\n- Duplicating a few fields for read speed (a denormalised author name next to a post) is normal here, as long as you decide who updates the copy and accept that it is eventually consistent.\n- `$lookup` exists but is not a join engine: on a hot path, prefer a shape that answers the query in one collection, or fetch by ids in a second query and join in memory.\n\nSee /src/models for the index rule and /src/db for the query rules that assume this shape."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/db",
+      "title": "Transactions are the exception, single-document atomicity is the rule",
+      "summary": "A write to one document is already atomic; multi-document transactions must stay short, be retried on transient errors, and never be the default path.",
+      "body": "MongoDB supports multi-document ACID transactions, and reaching for them constantly is a sign the schema is fighting the database.\n\n- A single document update is atomic on its own, including nested fields and arrays. Shape the document so the invariant you care about lives in one document, and you need no transaction at all.\n- When you do need one (money moving between two accounts, a two-collection invariant), keep it tiny: no network calls, no user input waiting, ideally sub-second. The server aborts long-running transactions, and open transactions hold resources and block other writers.\n- Wrap transactions in retry logic for `TransientTransactionError` and `UnknownTransactionCommitResult`. A transaction that is not retried is a transaction that fails under load.\n- Transactions require a replica set (or sharded cluster). Code that assumes them will fail against a standalone development instance, so run a single-node replica set locally.\n- Set read and write concern deliberately: `majority` for anything you must not lose or read stale, weaker only where you have decided the trade-off.\n\nSee /src/models for the embedding decision that removes most transactions."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/db",
+      "title": "Connection lifecycle, especially in serverless",
+      "summary": "Connect once per process and cache the connection across invocations; pool size, not request count, is what the cluster sees.",
+      "body": "The driver manages a connection pool. Most MongoDB outages in serverless apps are self-inflicted pool exhaustion.\n\n- Call `mongoose.connect` (or create the client) once per process, in a module that exports the promise, and await that promise in handlers. Never connect per request.\n- In serverless, cache the connection on `globalThis` so warm invocations reuse it, and keep `maxPoolSize` small (a handful of sockets per instance): concurrency there is the number of instances, not the number of requests. Never call `disconnect` at the end of a handler.\n- Set sensible timeouts (`serverSelectionTimeoutMS`, `socketTimeoutMS`) so a network problem fails fast instead of hanging every request behind a full pool.\n- Handle connection events for observability (`connected`, `error`, `disconnected`) and expose pool metrics; a rising checkout wait time is the earliest signal of trouble.\n- Register models once. Re-registering the same model name on hot reload throws, which is why the connection module and the model registry belong together.\n\nSee /src/db for the query rules that run on this pool, and the redis-caching pattern if reads need a cache in front."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "mongodb-query-review",
+      "summary": "Checklist for any change that adds a collection, query, or index in a MongoDB service.",
+      "body": '---\nname: mongodb-query-review\ndescription: MongoDB and Mongoose review checklist covering index coverage, lean reads, document growth, transaction scope, and connection reuse. Run before merging a schema or query change.\n---\n\n# MongoDB review\n\n## Indexes\n- [ ] Every new filter and sort is covered by an index, in equality, sort, range order.\n- [ ] `explain("executionStats")` shows an index scan and a sane examined-to-returned ratio.\n- [ ] Uniqueness is enforced by a unique index, not only a validator.\n- [ ] `autoIndex` is off in production; the index is built deliberately.\n\n## Queries\n- [ ] Read-only queries use `.lean()` and a projection.\n- [ ] Updates use atomic operators, not read-modify-write.\n- [ ] Every list is bounded and paginated on an indexed cursor field.\n- [ ] No `$where`; user input cannot become an operator.\n\n## Document design\n- [ ] Embedded data is read with its parent and bounded in size.\n- [ ] No array can grow without limit.\n- [ ] Denormalised copies have a named owner that updates them.\n\n## Transactions and connections\n- [ ] The invariant genuinely spans documents; otherwise no transaction.\n- [ ] Transactions are short, contain no network calls, and retry on transient errors.\n- [ ] The connection is created once per process and reused across invocations.\n',
+      "skillTags": [
+        "mongodb",
+        "mongoose",
+        "indexes",
+        "code-review",
+        "performance"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/multi-tenancy.js
+var multiTenancy = {
+  "slug": "multi-tenancy",
+  "version": "1.0.0",
+  "name": "Multi-Tenant SaaS",
+  "tagline": "Make cross-tenant data leaks structurally impossible instead of relying on every query being careful.",
+  "description": "In a multi-tenant product, one forgotten filter is a data breach. The teams that never leak do not write more careful queries; they make the unscoped query impossible to express, resolve the tenant from the authenticated session rather than from anything the client sends, and carry that context into jobs, caches, files, and logs. This bundle covers the isolation model decision, the four enforcement points where leaks actually happen, and the noisy-neighbour limits that keep one tenant from consuming the platform.",
+  "category": "Backend",
+  "icon": "building-2",
+  "color": "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/15 dark:text-cyan-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Multi-tenant SaaS pattern for AI coding agents",
+  "metaDescription": "Multi-tenancy pattern for AI coding agents: enforce tenant scoping in the data layer, resolve tenants from the session, and namespace caches, files, and jobs.",
+  "problem": "AI agents add a tenant filter to the queries they can see, read the tenant id from a header or subdomain the client controls, and forget it entirely in background jobs, cache keys, and file paths.",
+  "audience": "SaaS teams running one shared deployment for many customer organisations",
+  "prevents": [
+    "Writing a query with no tenant predicate and returning another customer's rows",
+    "Trusting a tenant id from a header, path, or JWT claim without checking membership",
+    "Running a background job or migration that silently spans every tenant",
+    "Caching a value under a key that two tenants share"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/db",
+      "/src/api",
+      "/src/jobs",
+      "/src/cache"
+    ],
+    "stacks": [
+      "saas",
+      "multi-tenancy",
+      "postgres",
+      "node",
+      "backend"
+    ],
+    "packages": []
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/db",
+      "title": "Enforce tenant scoping below the application code",
+      "summary": "The data layer refuses an unscoped query: row-level security, a mandatory tenant predicate in the repository, or both, and no raw client bypasses it.",
+      "body": "Application-level filtering fails the same way every time: one new query, one new report, one raw SQL fix, and the filter is missing. The enforcement has to sit under the code that forgets.\n\n- Put the guarantee in the database where you can: row-level security policies keyed on a session variable (`SET LOCAL app.tenant_id`) mean a query with no predicate returns nothing rather than everything. Make sure the application role is not the table owner and cannot bypass RLS.\n- Where RLS is not available, funnel all access through a repository or query builder that requires a tenant id as an argument and appends the predicate itself. No module may construct a query object directly.\n- Every tenant-owned table carries the tenant id as a real column with an index and a foreign key, and composite uniqueness includes it (`unique (tenant_id, slug)`, never `unique (slug)`).\n- Ban the escape hatches in application paths: no raw connection, no admin client, no `SET ROLE`, no query builder with the scope disabled. If an internal tool genuinely needs cross-tenant reads, it gets its own service, its own credentials, and an audit log.\n- Write the leak test, not just the happy-path test: seed two tenants, run every endpoint as tenant A asking for tenant B's ids, and assert not-found. This is the only test that catches the next missing filter.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/api",
+      "title": "Derive the tenant from the session, never from client input",
+      "summary": "Tenant identity comes from the authenticated principal and a verified membership check; a header, subdomain, or path segment is a hint at most.",
+      "body": "A tenant id in a request is attacker-controlled. Treating it as authoritative is the fastest path to a horizontal privilege escalation.\n\n- Resolve the tenant from the authenticated session or token, then verify that this principal is a member of that tenant with the role the action requires. Membership is a lookup, not a claim you trust because it is signed by you.\n- If the URL or subdomain names a tenant, use it only to select which of the caller's memberships is active, and reject the request when the caller is not a member. Never let it introduce a tenant the session does not have.\n- Put the resolved tenant id in a request-scoped context that the data layer reads, and derive it exactly once per request. Passing it around as a parameter that any layer can override defeats the point.\n- For machine-to-machine access, scope the API key or token to one tenant at issue time so the credential itself cannot address another.\n- Impersonation and support access are separate, audited flows with their own permission, an explicit expiry, and a log entry naming the operator and the tenant.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/jobs",
+      "title": "Carry tenant context into every asynchronous path",
+      "summary": "Jobs, webhooks, exports, and scheduled work take an explicit tenant id and set the same scope the request path would; nothing defaults to all tenants.",
+      "body": "Background work is where tenant scoping quietly disappears: there is no request, so there is no context, so the query runs unscoped.\n\n- Every job payload includes the tenant id, and the worker establishes the same scope as a request (set the session variable, build the scoped repository) before touching data.\n- A scheduled task that must run for all tenants iterates tenants explicitly and processes each in its own scoped unit of work. A single query across all tenants is a bug waiting to be a report emailed to the wrong customer.\n- Inbound webhooks resolve the tenant from the integration record the signature belongs to, not from a payload field. Verify the signature first, then map to the tenant.\n- Failures, retries, and dead letter records keep the tenant id so an operator can tell whose work failed without opening the payload.\n- Long-running exports and imports run under the tenant scope end to end, including the storage path they write to and the notification they send.\n\nSee /src/db for the enforcement layer these jobs must go through.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/cache",
+      "title": "Namespace every derived artifact by tenant",
+      "summary": "Cache keys, search indexes, object storage paths, exported files, and log fields all include the tenant id.",
+      "body": "The database is usually the layer people protect. The leak happens in the cache, the search index, or a signed URL.\n\n- Prefix every cache key with the tenant id (`t:<tenantId>:...`) and build keys through one helper so no caller can forget. A memoised list keyed only by page number will serve the wrong customer's data.\n- Scope search: either an index per tenant or a mandatory tenant filter applied by the same wrapper that runs every query. A filter that the caller supplies is a filter that will be omitted.\n- Store files under a tenant-prefixed path, and make signed URLs short-lived and specific to the object. Never generate a signature for a prefix a tenant does not own.\n- Include the tenant id as a structured field on every log line, metric, and trace so operational data is filterable and an incident can be scoped to one customer.\n- Rate limits, quotas, and idempotency keys are per tenant too; a global key lets one tenant lock out another.\n\nSee /src/db for the data-layer rule and the redis-caching pattern for cache invalidation design.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/db",
+      "title": "Choosing the isolation model, and living with it",
+      "summary": "Shared schema with a tenant column scales operationally, schema per tenant buys separation at migration cost, database per tenant is for compliance or a few large customers.",
+      "body": "This decision shapes migrations, backups, onboarding, and cost for the life of the product. Make it explicitly, and expect to support a hybrid eventually.\n\n- Shared tables with a tenant id column is the default for volume: one migration, one connection pool, cheap onboarding. Isolation depends entirely on enforcement (RLS or a mandatory predicate), and noisy neighbours are a real operational concern.\n- Schema per tenant gives clearer separation and per-tenant restore, at the cost of running every migration N times and holding many more relations. It stops scaling somewhere in the hundreds to low thousands of tenants, depending on the engine.\n- Database (or cluster) per tenant is for regulated or very large customers: strongest isolation, per-tenant residency and restore, and by far the highest operational cost. Reserve it for the accounts that pay for it.\n- A hybrid is normal: shared tables for the long tail, dedicated databases for enterprise accounts. Keep the application code identical by resolving the connection and scope from the tenant record.\n- Whatever you choose, plan two lifecycle operations from day one: exporting all data for one tenant, and deleting it. Both are contractual obligations and both are painful to retrofit.\n\nSee /src/api for tenant resolution and the supabase-rls pattern for row-level security specifics on Postgres."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Fairness: keeping one tenant from consuming the platform",
+      "summary": "Per-tenant quotas, bounded page sizes, and separated work pools stop a single customer's load from becoming everyone's outage.",
+      "body": "In a shared deployment, capacity is a shared resource. Without per-tenant limits, your worst-behaved customer sets everyone's latency.\n\n- Rate-limit and quota per tenant, not just globally, and return a clear error with a retry hint. Tie limits to the plan so the product and the platform agree on what is allowed.\n- Cap page sizes, export sizes, and query time server-side. An endpoint that lets a caller request 100000 rows is a denial of service you built.\n- Separate the work pools that matter: interactive requests, background jobs, and bulk imports should not share one queue or one connection pool. One tenant's million-row import should not delay another tenant's login.\n- Watch resource use per tenant (queries, storage, job time, tokens spent) both for capacity planning and because usage-based pricing needs it anyway.\n- Give large tenants an escape valve: dedicated workers, a separate database, or a shard. Plan for how a tenant moves between shapes before a customer forces the question.\n\nSee /src/jobs for the job scoping rule and the observability pattern for per-tenant metrics."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "tenant-isolation-review",
+      "summary": "Pre-merge review for any change that reads or writes tenant-owned data, plus the cross-tenant test to run.",
+      "body": "---\nname: tenant-isolation-review\ndescription: Review checklist for multi-tenant changes: data-layer scoping, tenant resolution, asynchronous context, and namespaced caches and files. Includes the cross-tenant leak test to run before merging.\n---\n\n# Tenant isolation review\n\n## Data access\n- [ ] Every new query goes through the scoped repository or is covered by an RLS policy.\n- [ ] No raw connection, admin client, or scope-disabled builder was introduced.\n- [ ] New tenant-owned tables have a tenant id column, an index, and tenant-inclusive unique constraints.\n- [ ] Joins cannot cross tenants (every joined table is scoped too).\n\n## Request path\n- [ ] The tenant comes from the session, with a membership and role check.\n- [ ] A tenant id in the URL, header, or body only selects among the caller's memberships.\n- [ ] The resolved tenant is set once, in request context, and read by the data layer.\n\n## Asynchronous work\n- [ ] Job payloads carry the tenant id and workers establish the scope before querying.\n- [ ] Scheduled cross-tenant work iterates tenants explicitly.\n- [ ] Webhooks resolve the tenant from the verified integration, not the payload.\n\n## Derived artifacts\n- [ ] Cache keys, search filters, storage paths, and signed URLs are tenant-prefixed.\n- [ ] Logs, metrics, and traces carry the tenant id.\n- [ ] Rate limits and idempotency keys are per tenant.\n\n## The test that matters\n1. Seed tenant A and tenant B with overlapping-looking data.\n2. Authenticate as a member of A only.\n3. Call every touched endpoint with B's ids (path, body, filters, cursors, exports).\n4. Assert not-found or forbidden, never a partial result, and never a 500 that reveals existence.\n5. Repeat for the job or webhook path if the change added one.\n",
+      "skillTags": [
+        "multi-tenancy",
+        "saas",
+        "security",
+        "code-review",
+        "data-isolation"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/node-ts-api-hono.js
+var nodeTsApiHono = {
+  "slug": "node-ts-api-hono",
+  "version": "1.0.1",
+  "name": "Node + TypeScript API (Hono)",
+  "tagline": "Build type-safe Hono APIs with chained routes, schema validation, and a typed RPC client.",
+  "description": "An opinionated baseline for shipping Hono APIs on Node 22 with end-to-end type safety. It covers route chaining for RPC inference, Standard Schema validation at the edge of every handler, centralized error handling with HTTPException, and the conventions that keep the client and server in sync.",
+  "category": "Backend",
+  "icon": "server",
+  "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Hono TypeScript API pattern for AI agents",
+  "metaDescription": "Hono pattern for AI coding agents: chain routes and export AppType for typed RPC, validate every input with a schema, and centralize errors through onError.",
+  "problem": "AI agents writing Hono APIs break RPC type inference, scatter validation, and return inconsistent error shapes.",
+  "audience": "Backend teams building type-safe Hono APIs on Node or the edge",
+  "prevents": [
+    "Mounting sub-apps on separate lines so the RPC client infers responses as unknown",
+    "Reading untrusted req.json() or query params without a schema validator",
+    "Returning ad-hoc error objects instead of a consistent HTTPException shape"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/src/routes",
+      "/src/index.ts"
+    ],
+    "stacks": [
+      "node",
+      "typescript",
+      "hono",
+      "edge"
+    ],
+    "packages": [
+      "hono",
+      "@hono/zod-validator",
+      "@hono/standard-validator",
+      "@hono/node-server",
+      "zod"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/routes",
+      "title": "Chain routes and export AppType for RPC",
+      "summary": "Define routes as one chained expression and export typeof the chained app so the RPC client infers types instead of unknown.",
+      "body": "The Hono RPC client only sees routes that belong to a single chained expression. Break the chain and `hc<AppType>` resolves responses to `unknown`.\n\n- Define handlers by chaining directly off `new Hono()`, for example `const routes = new Hono().get(...).post(...)`. Do not assign `app` and then call `app.get(...)` on later statements; reassigned, line-by-line definitions are not captured by `typeof`.\n- Mount sub-apps inline inside the same chain with `.route('/books', books)`, never as a standalone `app.route(...)` statement after the chain.\n- Export the route tree as a type at the top level: `export type AppType = typeof routes`. Import it with `import type { AppType }` on the client side.\n- Set `\"strict\": true` in the tsconfig of both the server and any client package. Hono RPC type inference depends on strict mode; without it inference silently degrades.\n- If you must split handlers out of the chain, use `factory.createHandlers()` from `hono/factory` so path-param and validator types still infer. Do not write Rails-style controller files that take a bare `Context`.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/routes",
+      "title": "Validate every handler input with a schema validator",
+      "summary": "Guard each handler with zValidator or sValidator and read only via c.req.valid(); never touch raw c.req.json() or query params.",
+      "body": "Untyped `c.req.json()` and raw query params are untrusted input and also produce no request types for the RPC client. Every handler reads validated data.\n\n- Validate the relevant targets (`json`, `query`, `param`, `form`, `header`, `cookie`) with `zValidator` from `@hono/zod-validator`, or `sValidator` from `@hono/standard-validator` when the team wants library-agnostic schemas (Zod, Valibot, or ArkType via Standard Schema).\n- Read validated data only with `c.req.valid('json')` (and the matching target). Do not call `c.req.json()` / `c.req.query()` directly in a handler that has a validator.\n- Place the validator middleware before the handler in the chain so its types flow into both `c.req.valid()` and the inferred RPC request type.\n- Supply the third hook argument to return a structured failure before business logic runs: `zValidator('json', schema, (result, c) => { if (!result.success) return c.json({ error: result.error }, 400) })`. Returning the error from the hook with an explicit status keeps the 400 in the RPC response union.\n- Note `@hono/zod-validator` 0.8.x supports Zod 3 and 4 (`zod ^3.25.0 || ^4.0.0`); pin one Zod major across the workspace to avoid duplicate-instance validation errors.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Centralize errors through onError and HTTPException",
+      "summary": "Throw HTTPException for expected failures and serialize everything through a single root app.onError; never return ad-hoc error objects.",
+      "body": "Every failure returns one consistent shape, registered once on the root app.\n\n- Throw `HTTPException` from `hono/http-exception` for expected failures, e.g. `throw new HTTPException(404, { message: 'Not found' })`. Do not scatter ad-hoc `c.json({ error }, 4xx)` shapes across handlers for control-flow errors.\n- Register exactly one `app.onError((err, c) => ...)` on the root app. For an `HTTPException`, return `err.getResponse()`; for anything else, return a generic 500 and do not leak `err.stack` or internal messages to the client.\n- Register `app.notFound(...)` once on the root app as well. Inside a handler, avoid `c.notFound()` when the route is consumed by the RPC client, because it makes the client response type `unknown` (see the RPC footguns memory).\n- Keep `onError` and `notFound` as the last wiring on the root app, after global middleware and after all routes are mounted.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Hono baseline: versions, runtime, and app wiring",
+      "summary": "Pinned stack and the canonical app/server bootstrap for Hono on Node 22.",
+      "body": "This API runs Hono v4 (4.12.x line, latest as of mid-2026) on Node 22 LTS with TypeScript 5.4+. The route-param and RPC type inference depends on TS 5.4+ const type parameters, so do not downgrade TypeScript.\n\n- Serve on Node with `@hono/node-server`'s `serve({ fetch: app.fetch, port })`. The same `app` deploys unchanged to Cloudflare Workers, Deno, or Bun because Hono targets Web Standards; keep handlers free of Node-only globals.\n- Keep `src/index.ts` thin: create the root app, attach global middleware (`logger`, `cors`, `secureHeaders`), mount feature routers via chained `.route()`, register `onError` + `notFound`, then `export default app` and `export type AppType`.\n- Return responses with `c.json()` / `c.text()` and read request-scoped state via typed `c.var` / `c.set()` context variables; never mutate Node req/res directly.\n- Order middleware deliberately: `logger` and `cors` outermost, then auth, then per-route validators, then the handler. Middleware runs top to bottom on the way in.\n\nSee /src/client for typed RPC client usage and /src for the RPC unknown-response footguns to avoid."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/client",
+      "title": "Typed RPC client usage",
+      "summary": "How to consume the server's AppType with hc and the InferRequestType/InferResponseType helpers.",
+      "body": "The frontend and internal callers talk to the API through Hono's RPC client, which derives request and response types straight from `AppType` with no codegen step.\n\n- Build the client with `import { hc } from 'hono/client'` and `const client = hc<AppType>(baseUrl)`. Import the server type as `import type { AppType }` so it is erased at build time.\n- Call endpoints as method chains, for example `await client.books[':id'].$get({ param: { id } })`. The result of `await res.json()` is typed from the handler's `c.json()` return value and is a union across the handler's status codes.\n- Use `InferRequestType<typeof client.books[':id'].$get>` and `InferResponseType<...>` to lift the request/response shapes into shared types (form state, react-query keys, etc.) without re-declaring them.\n- Narrow on `res.status` (or `res.ok`) before reading the body when a handler returns multiple status codes; each branch is independently typed.\n\nSee /src for the RPC unknown-response footguns memory if responses come back as `unknown`."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "RPC unknown-response footguns and fixes",
+      "summary": "Why hc responses degrade to unknown and the concrete fixes: chaining, c.json status codes, ApplyGlobalResponse, monorepo type-compile.",
+      "body": "When the RPC client types resolve to `unknown`, it is almost always a server-side or build-config issue, not a client bug. The recurring causes, in rough order of frequency:\n\n- Route defined outside the chain: any `app.get(...)` written as a separate statement is invisible to `typeof routes`. Fold it back into the single chained expression.\n- `c.notFound()` inside a handler: it makes that route's response type `unknown` for the client. Return `c.json({ error: 'not found' }, 404)` with an explicit status instead, or augment `interface NotFoundResponse extends TypedResponse<...>` via module augmentation if you must keep `c.notFound()`.\n- Global error types are not auto-included: responses produced by `app.onError()` (and global middleware) are not inferred into the client by default. Merge them with the `ApplyGlobalResponse` type helper so the client union also carries the 500 shape, e.g. `type AppType = ApplyGlobalResponse<typeof app, { 500: { json: { error: string } } }>`.\n- Monorepo / turborepo regression: in workspace setups consuming the server as a package, Hono v4.11+ has shown the imported app type collapsing to `unknown` where v4.10.8 worked (honojs/hono#4638). Mitigations: ensure `\"strict\": true` in every package tsconfig, emit and consume proper `.d.ts` declarations across the workspace boundary, and prefer the compiled-client export below over importing the raw `typeof app` across packages.\n- IDE slowness on large apps: compile the client type once and re-export it rather than re-inferring per file: `export type Client = ReturnType<typeof hc<typeof app>>; export const hcWithType = (...args: Parameters<typeof hc>): Client => hc<typeof app>(...args)`."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "node-ts-api-hono-review",
+      "summary": "Pre-merge checklist for Hono API changes: RPC type safety, validation, errors, and runtime.",
+      "body": '---\nname: node-ts-api-hono-review\ndescription: Review checklist for Node + TypeScript Hono API changes. Run before merging any route, validator, error-handler, or RPC client change to keep types, validation, and error shapes consistent.\n---\n\n# Node + TypeScript API (Hono) review\n\n- [ ] Routes are one chained expression (`new Hono().get(...).post(...)`), not reassigned line by line, and `export type AppType = typeof routes` is present.\n- [ ] Sub-apps are mounted inline with `.route()` inside the chain, not as a standalone statement.\n- [ ] `"strict": true` is set in the tsconfig of both server and any client package.\n- [ ] Every handler reads input via `c.req.valid(...)` behind a `zValidator` / `sValidator`; no raw `c.req.json()` or `c.req.query()` in validated handlers.\n- [ ] Validator failure path returns a structured 400 from the `(result, c)` hook; no invalid data reaches business logic.\n- [ ] Expected failures throw `HTTPException`; a single root `app.onError` returns `err.getResponse()` for HTTPException and a stack-free 500 otherwise.\n- [ ] No `c.notFound()` on RPC-consumed routes (use `c.json(..., 404)`); `notFound` and `onError` registered once on the root app after middleware and routes.\n- [ ] Global error/onError response types are exposed to the client via `ApplyGlobalResponse` if the client needs to narrow on them.\n- [ ] Pinned to Hono v4 (4.12.x) on Node 22 LTS with TypeScript 5.4+; Node entry uses `@hono/node-server` `serve({ fetch: app.fetch })`.\n- [ ] RPC client uses `hc<AppType>` with `import type`; responses type-check with no `unknown` leaks (check monorepo .d.ts emission if they appear).\n- [ ] One Zod major pinned workspace-wide; `@hono/zod-validator` 0.8.x supports Zod 3 and 4.\n',
+      "skillTags": [
+        "hono",
+        "typescript",
+        "node",
+        "rpc",
+        "validation",
+        "api-review"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/postgres-schema.js
+var postgresSchema = {
+  "slug": "postgres-schema",
+  "version": "1.0.1",
+  "name": "PostgreSQL Schema & Migrations",
+  "tagline": "Design normalized PostgreSQL schemas and ship lock-safe, forward-only migrations.",
+  "description": "A pattern bundle that teaches AI agents how to model PostgreSQL tables with correct types and constraints, and how to evolve them without downtime. It enforces forward-only, expand-contract migrations, concurrent index builds, and validated constraints so schema changes never lock production traffic. Tuned for PostgreSQL 18 with native UUIDv7 and identity columns.",
+  "category": "Backend",
+  "icon": "table-properties",
+  "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "PostgreSQL schema pattern for AI agents",
+  "metaDescription": "PostgreSQL pattern for AI coding agents: forward-only migrations, lock-safe DDL on populated tables, expand-and-contract column changes, and deliberate indexes.",
+  "problem": "AI agents write migrations that rename columns in place, build indexes that lock the table, and pick types that cause silent data and timezone bugs.",
+  "audience": "Backend and platform teams running PostgreSQL in production",
+  "prevents": [
+    "Blocking ACCESS EXCLUSIVE locks from rewriting tables or building indexes inline during deploys",
+    "Destructive in-place column renames or retypes that break the previous app version mid-rollout",
+    "Wrong column types like timestamp without time zone, varchar(n), or serial that cause timezone and overflow bugs"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/db",
+      "/db/migrations",
+      "/src/db"
+    ],
+    "stacks": [
+      "postgresql",
+      "postgres-18",
+      "sql",
+      "migrations",
+      "backend"
+    ],
+    "packages": [
+      "pg",
+      "drizzle-orm",
+      "knex",
+      "node-pg-migrate",
+      "prisma"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/db/migrations",
+      "title": "Migrations are forward-only, no down steps",
+      "summary": "Never author down/rollback migrations; recover by shipping a new forward migration.",
+      "body": "Every migration moves the schema forward only. There are no `down` or rollback steps in this codebase.\n\n- Do not write a `down`, `rollback`, or reverse step in any migration. A migration that has touched production data cannot be cleanly reversed, and a `down` that drops a column destroys data the previous app version may still need.\n- Recover from a bad migration by shipping a new forward migration that corrects the state, not by reverting.\n- Keep each migration small and single-purpose so a follow-up fix is easy to reason about.\n- Migrations are immutable once merged. Never edit a migration file that has already run anywhere; add a new one.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/db/migrations",
+      "title": "DDL on populated tables must be lock-safe",
+      "summary": "Use CONCURRENTLY, lock_timeout, and NOT VALID so DDL never takes a long ACCESS EXCLUSIVE lock on a hot table.",
+      "body": "DDL against a table that already holds production rows must acquire only weak, short locks, so a deploy never blocks live traffic behind an `ACCESS EXCLUSIVE` lock.\n\n- Build and drop indexes with `CREATE INDEX CONCURRENTLY` / `DROP INDEX CONCURRENTLY`. These take only a `SHARE UPDATE EXCLUSIVE` lock but cannot run inside a transaction block, so the migration tool must run that statement outside any wrapping transaction.\n- Set `SET lock_timeout = '5s'` (or similar) before DDL on a populated table. A statement that cannot get its lock then fails fast instead of queuing every subsequent query behind it.\n- Add foreign keys and `CHECK` constraints as `NOT VALID` first, then run `VALIDATE CONSTRAINT` in a separate statement. The `NOT VALID` step takes a brief strong lock to add the catalog entry; `VALIDATE` scans the table under a weaker `SHARE UPDATE EXCLUSIVE` lock that allows concurrent reads and writes.\n- Add a unique constraint without a long lock by running `CREATE UNIQUE INDEX CONCURRENTLY`, then `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE USING INDEX <name>`.\n- If a `CREATE INDEX CONCURRENTLY` fails, it leaves an `INVALID` index behind; drop it (`DROP INDEX CONCURRENTLY`) before retrying.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/db/migrations",
+      "title": "Evolve columns with expand-contract, never in place",
+      "summary": "Rename and retype across multiple deploys so old and new app versions both keep working.",
+      "body": "Schema changes that affect existing data run as separate expand, backfill, and contract migrations so every deployed app version stays compatible during a rolling deploy.\n\n- Never `RENAME` or `ALTER ... TYPE` a column in a single step while the old app version is still running. Add the new column, dual-write from the app, backfill, switch reads to the new column, then drop the old column in a later deploy.\n- Add new columns as nullable or with a NON-volatile constant `DEFAULT`. PostgreSQL stores a constant default in catalog metadata (`pg_attribute.attmissingval`) so the `ALTER TABLE` is instant with no table rewrite. A VOLATILE default (such as `clock_timestamp()`), a stored generated column, or an identity column DOES force a full rewrite under a strong lock; avoid those on large populated tables.\n- Backfill large tables in bounded batches (for example a few thousand rows per statement), each batch in its own transaction, not one giant `UPDATE` that holds locks and bloats WAL.\n- Apply `NOT NULL` on a backfilled column safely: add a `CHECK (col IS NOT NULL) NOT VALID`, `VALIDATE` it, then `SET NOT NULL` (which can use the validated check to skip a scan), instead of `SET NOT NULL` directly on a large table.\n- Drop the old column or table only after every running app version has stopped reading and writing it.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/db",
+      "title": "Default column types for new tables (PostgreSQL 18)",
+      "summary": "The canonical type and key choices for new PostgreSQL 18 tables and why.",
+      "body": "Pick the same correct types on every new table so the schema stays consistent and bug-free on PostgreSQL 18.\n\n- Primary keys: `bigint GENERATED ALWAYS AS IDENTITY` for internal rows, or `uuid DEFAULT uuidv7()` (native function added in PG 18) when ids are exposed externally or generated client-side. UUIDv7 is time-ordered so it indexes far better than random UUIDv4. Never use `serial`/`bigserial` (they leave the sequence ownership and grants in a surprising state and are effectively legacy).\n- Timestamps: always `timestamptz`, never `timestamp` (without time zone). `timestamptz` records a single absolute moment; `timestamp` silently drops the offset and causes timezone bugs. Default audit columns to `now()`.\n- Strings: use `text`. `text` and `varchar(n)` share identical storage and performance in PostgreSQL; `varchar(n)` only adds a length check. Enforce a real maximum with a `CHECK` constraint when the limit is a genuine business rule, not a guess.\n- Money and exact decimals: `numeric`, never `float`/`double precision` (binary floats cannot represent decimal cents exactly). Use `boolean` for flags and `jsonb` (not `json`) for semi-structured data, since `jsonb` is indexable and `json` only stores reparsed text.\n\nSee /db/migrations for the lock-safe and expand-contract rules that govern how these tables are changed after creation."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/db",
+      "title": "Index and constraint design checklist",
+      "summary": "Where indexes and constraints belong, and how to add unique/FK safely.",
+      "body": "Model integrity at the database, and index for the queries that actually run.\n\n- Index every foreign key column on the CHILD side. PostgreSQL does NOT create that index automatically, and without it a delete or update of a parent row scans the whole child table to check references, which is the classic cause of mysteriously slow parent deletes and `ON DELETE CASCADE` operations.\n- Use partial indexes (for example `WHERE deleted_at IS NULL`) and expression indexes when queries only filter a subset or a computed value, instead of indexing the whole column. Smaller indexes mean less write amplification and a higher chance the planner uses them.\n- Enforce business rules with `NOT NULL`, `UNIQUE`, `CHECK`, and foreign keys in the schema rather than trusting application code; the database is the only layer every writer goes through.\n- Avoid redundant indexes: a B-tree on `(a, b)` already serves queries filtering on `a` alone, so a separate index on `(a)` is usually wasted write cost.\n- For low-cardinality columns the planner will ignore the index, so do not add one just because a column is in a WHERE clause.\n\nSee /db/migrations for how to add these indexes and constraints concurrently without locking production."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "postgres-schema-review",
+      "summary": "Pre-merge checklist for any PostgreSQL schema change or migration.",
+      "body": "---\nname: postgres-schema-review\ndescription: Review a PostgreSQL schema change or migration before merge. Use when adding or altering tables, columns, indexes, or constraints, or when writing a migration file, to confirm correct types, sound integrity, and lock-safe forward-only DDL on PostgreSQL 18.\n---\n\n# PostgreSQL schema and migration review\n\n## Types and keys\n\n- [ ] Primary key is `bigint GENERATED ALWAYS AS IDENTITY` or `uuid DEFAULT uuidv7()`, not `serial`/`bigserial`.\n- [ ] All point-in-time columns are `timestamptz`, not `timestamp`.\n- [ ] Strings use `text` (length enforced via `CHECK` only when a real limit exists); money/decimals use `numeric`; structured data uses `jsonb`, not `json`.\n\n## Integrity and indexes\n\n- [ ] `NOT NULL`, `UNIQUE`, `CHECK`, and foreign keys express the real business rules at the database level.\n- [ ] Every foreign key column has a covering index on the child side.\n- [ ] Partial or expression indexes are used where queries filter a subset, instead of broad full-column indexes; no redundant indexes were added.\n\n## Forward-only\n\n- [ ] Migration has no `down`/rollback step.\n- [ ] No already-merged migration file was edited; this is a new file.\n\n## Lock-safe DDL\n\n- [ ] `lock_timeout` is set before DDL on any populated table.\n- [ ] Indexes are built/dropped `CONCURRENTLY`, and that statement runs outside a transaction block.\n- [ ] New foreign keys and check constraints are added `NOT VALID`, then `VALIDATE`d in a separate statement.\n- [ ] New columns are nullable or use a NON-volatile constant `DEFAULT` so no table rewrite is triggered (no volatile default, identity, or stored generated column added to a large table).\n- [ ] A unique constraint is added via `CREATE UNIQUE INDEX CONCURRENTLY` + `ADD CONSTRAINT ... USING INDEX`.\n\n## Expand-contract\n\n- [ ] Renames and type changes are split into expand, backfill, and contract deploys; nothing is renamed/retyped in place.\n- [ ] Backfills run in bounded batches, each in its own transaction.\n- [ ] `NOT NULL` on a backfilled column is applied via a validated `CHECK`, not a direct `SET NOT NULL` scan on a large table.\n- [ ] Old columns or tables are dropped only after no running app version uses them.\n",
+      "skillTags": [
+        "postgresql",
+        "migrations",
+        "schema",
+        "review",
+        "backend",
+        "ddl"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/prisma-orm.js
+var prismaOrm = {
+  "slug": "prisma-orm",
+  "version": "1.0.0",
+  "name": "Prisma ORM",
+  "tagline": "Use Prisma 7 as it actually ships: generated client, driver adapters, and one instance per process.",
+  "description": "Prisma 7 broke the shape of the code every assistant memorised. The generator is now `prisma-client` with a required `output`, so `PrismaClient` is imported from your generated directory rather than from the package. Every connection goes through a driver adapter, the middleware API is gone in favour of client extensions, and automatic seeding on migrate was removed. This bundle encodes the current API plus the two things that hurt in production regardless of version: one client per process, and queries that select what they need.",
+  "category": "Backend",
+  "icon": "database-zap",
+  "color": "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Prisma ORM 7 pattern for AI coding agents",
+  "metaDescription": "Prisma 7 pattern for AI coding agents: the prisma-client generator with output, driver adapters, client extensions, and a single client instance per process.",
+  "problem": "AI agents still generate the Prisma 6 shape: the prisma-client-js generator, an import from the package root, no driver adapter, and a new PrismaClient per request or per hot reload.",
+  "audience": "TypeScript teams running Prisma 7 against Postgres, MySQL, or SQLite",
+  "prevents": [
+    "Writing a prisma-client-js generator block that Prisma 7 no longer accepts",
+    "Importing PrismaClient from @prisma/client instead of the generated output directory",
+    "Instantiating a client per request and exhausting the database connection pool",
+    "Using the removed middleware API instead of client extensions"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/prisma",
+      "/src/db",
+      "/src/lib"
+    ],
+    "stacks": [
+      "prisma",
+      "typescript",
+      "postgres",
+      "node",
+      "orm"
+    ],
+    "packages": [
+      "prisma",
+      "@prisma/client",
+      "@prisma/adapter-pg"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/prisma",
+      "title": "Use the prisma-client generator with an explicit output",
+      "summary": 'The schema declares `provider = "prisma-client"` and an `output` directory, and code imports the client from there, not from the package root.',
+      "body": 'Prisma 7 made the Rust-free client the default and changed how it is generated. The old block simply does not work, and the import path changed with it.\n\n- The generator block is `generator client { provider = "prisma-client" output = "./generated/prisma" }`. `output` is required; `prisma-client-js` and `engineType` are gone.\n- Import from the generated location (`import { PrismaClient } from "./generated/prisma/client"`), not from `@prisma/client`. Fix the import everywhere in the same change, because the old path resolves to something that will not run.\n- Decide whether the generated directory is committed or generated in CI, then be consistent: if it is gitignored, `prisma generate` must run in every build and before typecheck, since types now come from that folder.\n- Put configuration (schema path, migrations, seed command) in `prisma.config.ts` at the project root rather than in `package.json`, which is where Prisma 7 expects it.\n- Seeding is explicit now: run `prisma db seed` yourself, because migrations no longer trigger it.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/db",
+      "title": "One client per process, constructed with a driver adapter",
+      "summary": "Export a single PrismaClient built on a driver adapter, cache it across hot reloads, and never construct one per request.",
+      "body": "In Prisma 7 every database connection goes through a driver adapter, and the client owns a connection pool. Creating one per request or per module reload is how a small app exhausts a database.\n\n- Build the adapter for your database (`new PrismaPg({ connectionString })` for Postgres, the matching adapter for MySQL, SQLite, or a serverless driver) and pass it in: `new PrismaClient({ adapter })`.\n- Export one instance from a single module and import that everywhere. In development, cache it on `globalThis` so hot reload does not open a new pool on every file save.\n- In serverless or edge runtimes, keep the client in module scope so it is reused across invocations of the same instance, and put a pooler (PgBouncer, a platform pooler, or a serverless driver adapter) between the function and the database. Concurrency there is the number of instances, not the number of requests.\n- Do not call `$connect()` eagerly or `$disconnect()` per request; the client connects lazily and disconnecting per request defeats pooling. Disconnect only in scripts and tests that end.\n- Extend behaviour with client extensions (`$extends`) for logging, soft delete, computed fields, or row-level filters. The `$use` middleware API was removed.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/db",
+      "title": "Select explicitly, batch relations, and keep transactions short",
+      "summary": "Every query names the fields it needs, related data is loaded with include or a batched query, and interactive transactions stay tiny.",
+      "body": "Prisma makes over-fetching easy to write and hard to see: a model query returns every column, and a relation accessed in a loop is a query per row.\n\n- Use `select` (or a narrow `include`) on anything that leaves a request handler. A default query returns all scalar fields, which is how a token or a hashed password ends up in an API response.\n- Load relations in the query with `include` or `select`, not by iterating results and querying per item. When you truly need per-item work, fetch the set in one `findMany({ where: { id: { in: ids } } })` and key it in memory.\n- Wrap multi-write invariants in a transaction: `$transaction([...])` for independent writes, the interactive form only when a later write depends on an earlier read. Keep interactive transactions free of network calls and set a timeout; a long one holds locks and blocks other writers.\n- Paginate with cursor pagination on a stable indexed column for large or infinite lists; `skip` grows more expensive as the offset grows.\n- Only use `$queryRaw` with tagged-template parameters. `$queryRawUnsafe` with interpolated input is SQL injection, and `$executeRaw` bypasses every extension you rely on.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/prisma",
+      "title": "Migration workflow and what Prisma 7 removed",
+      "summary": "migrate dev locally, migrate deploy in CI, never edit an applied migration, and remember the CLI flags and middleware that no longer exist.",
+      "body": "The migration model is unchanged, but several conveniences were removed in 7, and code or scripts that relied on them fail quietly.\n\n- Locally, change the schema and run `prisma migrate dev` to generate and apply a migration. In CI and production, run `prisma migrate deploy`, which only applies pending files and never generates or resets.\n- `prisma db push` is for prototyping against a scratch database. It does not create migration files, so never run it against an environment whose history matters.\n- Never edit a migration that has been applied anywhere shared. Add a new one, even for a typo.\n- Removed in 7 and worth knowing before you write a script: the `$use` middleware API (use `$extends`), the metrics preview feature, the `--skip-generate` and `--skip-seed` CLI flags, `--schema`/`--url` on `prisma db execute`, and automatic seeding as part of migrate.\n- Write destructive changes as multi-step: add the new column, deploy code that writes both, backfill, switch reads, then drop. A single migration that renames a column is a deploy-time outage.\n\nSee /src/db for the client and query rules, and the postgres-schema pattern for index and constraint design underneath Prisma."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "prisma-v7-upgrade",
+      "summary": "Step-by-step upgrade from Prisma 6 to 7, in the order that keeps the build green.",
+      "body": '---\nname: prisma-v7-upgrade\ndescription: Ordered procedure to move a codebase from Prisma 6 to Prisma 7: generator block, generated client import, driver adapters, middleware to extensions, and the removed CLI flags. Use when upgrading or when a Prisma 6 shape appears in a Prisma 7 project.\n---\n\n# Prisma 6 to 7 upgrade\n\nRun in order. Each step leaves the repo buildable.\n\n1. **Pin and read.** Upgrade `prisma` and `@prisma/client` together to the same 7.x version. Mismatched versions produce confusing type errors.\n2. **Switch the generator.** In `schema.prisma`, replace the client generator with:\n   `generator client { provider = "prisma-client" output = "./generated/prisma" }`\n   Remove `engineType`. Decide now whether `output` is committed or gitignored.\n3. **Regenerate.** Run `prisma generate` and confirm the directory appears where `output` points.\n4. **Fix imports.** Replace every `from "@prisma/client"` with the generated path (`./generated/prisma/client`, adjusted per file or via a path alias). Include types (`Prisma`, model types, enums), not just `PrismaClient`.\n5. **Add the driver adapter.** Install the adapter for your database, construct it from the connection string, and pass it to the client: `new PrismaClient({ adapter })`. Do this in the single module that exports the client.\n6. **Replace middleware.** Rewrite every `prisma.$use(...)` as a `$extends` client extension (query extension for interception, result extension for computed fields). There is no compatibility shim.\n7. **Move config.** Create `prisma.config.ts` for schema path, migrations, and the seed command, and delete the `prisma` block from `package.json`.\n8. **Fix scripts and CI.** Remove `--skip-generate` and `--skip-seed`, add an explicit `prisma db seed` step where seeding was implicit, and drop `--schema`/`--url` from any `prisma db execute` call.\n9. **Verify.** Typecheck, run the test suite against a real database, and check that `prisma migrate deploy` is still the production command.\n\n## Done when\n- [ ] No import from `@prisma/client` remains.\n- [ ] The client is constructed once, with an adapter.\n- [ ] No `$use` call remains anywhere.\n- [ ] CI generates the client before typecheck and seeds explicitly.\n',
+      "skillTags": [
+        "prisma",
+        "typescript",
+        "migration",
+        "upgrade",
+        "orm"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/redis-caching.js
 var redisCaching = {
   "slug": "redis-caching",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Redis Caching",
   "tagline": "Cache with Redis so reads get faster without serving stale or inconsistent data.",
   "description": "A practical baseline for caching with Redis. The hard part of caching is never the read path; it is expiry, invalidation, and what happens under concurrency and partial failure. This pattern uses the cache-aside read path, gives every key a TTL, prevents the cache stampede that turns an expiry into a database outage, and picks an invalidation strategy that matches how fresh the data must be. It also says plainly what not to cache.",
@@ -30667,16 +31795,21 @@ var redisCaching = {
   "icon": "database",
   "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Redis Caching pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for Redis caching: cache-aside reads, TTL on every key, stampede prevention, invalidation strategies, and what not to cache, tuned for AI coding agents.",
+  "metaTitle": "Redis caching pattern for AI coding agents",
+  "metaDescription": "Redis pattern for AI coding agents: a TTL on every key, stampede protection on hot keys, cache-aside reads, and an invalidation strategy matched to freshness.",
   "problem": "AI agents add a cache with no TTL, no stampede protection, and no invalidation plan, so reads get fast but data goes stale and an expiry wave can take the database down.",
   "audience": "Backend teams adding a Redis cache in front of a database or expensive computation",
   "prevents": [
@@ -30760,27 +31893,260 @@ var redisCaching = {
   ]
 };
 
-// ../../node_modules/@pathrule/patterns/dist/patterns/stripe-billing.js
-var stripeBilling = {
-  "slug": "stripe-billing",
-  "version": "1.0.0",
-  "name": "Stripe Billing",
-  "tagline": "Safe Stripe integration: verified webhooks, idempotent handlers, and the right API for the job.",
-  "description": "Rules, memories, and a review skill for adding Stripe billing to a product. Pre-scoped to your Stripe API routes and serverless functions so your AI assistant verifies webhook signatures, keeps handlers idempotent, and picks the correct payment API.",
-  "category": "Billing",
-  "icon": "credit-card",
-  "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
+// ../../node_modules/@pathrule/patterns/dist/patterns/rest-api-design.js
+var restApiDesign = {
+  "slug": "rest-api-design",
+  "version": "1.0.1",
+  "name": "REST / HTTP API Design",
+  "tagline": "Design HTTP APIs that stay predictable, safe to retry, and easy to evolve.",
+  "description": "A 2026 HTTP API design pattern for backend teams shipping REST endpoints. It standardizes resource naming and status codes, mandates RFC 9457 problem details for errors, cursor pagination for collections, idempotency keys for unsafe writes, and a deprecation discipline so versions retire cleanly instead of breaking clients.",
+  "category": "Backend",
+  "icon": "network",
+  "color": "bg-teal-500/10 text-teal-600 dark:bg-teal-400/15 dark:text-teal-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Stripe billing patterns for AI coding agents",
-  "metaDescription": "A ready-to-use Pathrule pattern for Stripe: webhook signature verification, idempotent handlers, Checkout vs PaymentIntents guidance, and a billing review skill.",
+  "metaTitle": "REST and HTTP API pattern for AI agents",
+  "metaDescription": "REST API pattern for AI coding agents: honest HTTP semantics, idempotency keys on unsafe writes, RFC 9457 problem details, and paginated collection contracts.",
+  "problem": "Agents ship inconsistent endpoints with ad-hoc error shapes, offset pagination, no retry safety, and breaking version changes that silently break clients.",
+  "audience": "Backend and platform teams building or maintaining public and internal REST/HTTP APIs.",
+  "prevents": [
+    "Verb-in-path endpoints and 200 responses that hide failures behind a body field",
+    "Bespoke per-endpoint error JSON instead of one machine-readable envelope",
+    "Duplicate charges and double-creates when a client retries an unsafe POST"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/api",
+      "/src/routes",
+      "/app/api"
+    ],
+    "stacks": [
+      "nodejs",
+      "typescript",
+      "rest",
+      "http",
+      "openapi"
+    ],
+    "packages": [
+      "express",
+      "fastify",
+      "zod",
+      "@hono/hono",
+      "openapi-typescript"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/api",
+      "title": "Resource naming and HTTP semantics",
+      "summary": "Model nouns as resources, map verbs to HTTP methods, and return the status code that matches the outcome.",
+      "body": 'URLs name resources with plural nouns; the HTTP method carries the verb and the status code carries the result. Never tunnel an action through a path segment or hide a failure inside a 200 body.\n\n- Use plural noun collections (`/orders`, `/users/{id}/invoices`) and keep nesting at most two levels deep; never `POST /createOrder` or `/orders/get`.\n- Map methods correctly: `GET` reads (safe), `POST` creates, `PUT` replaces, `PATCH` partially updates, `DELETE` removes. `GET`, `PUT`, and `DELETE` must be idempotent.\n- Return the precise status: `201` with a `Location` header on create, `200` on read/update, `204` on a body-less delete, `400`/`422` for invalid input, `401`/`403` for auth, `404` for missing, `409` for conflicts, `429` when rate limited.\n- Never return `200` with `{ "success": false }`; let the status line signal failure so clients and proxies can react without parsing the body.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/api",
+      "title": "Idempotency keys on unsafe writes",
+      "summary": "Every non-idempotent mutation accepts an Idempotency-Key header and deduplicates safely on retry.",
+      "body": "Networks drop responses, so clients retry; without deduplication a retried `POST` charges twice or creates duplicate rows. Make unsafe writes safe to retry with a client-supplied key.\n\n- Accept an `Idempotency-Key` request header on every `POST` (and any non-idempotent endpoint) that creates resources, involves money movement, or triggers external side effects.\n- Persist the key with the request fingerprint and the stored response. A replay with the same key returns the original result without re-executing the operation.\n- Scope keys per endpoint and per authenticated principal; set a retention TTL (commonly 24 hours); return `409` if the same key arrives with a different request body.\n- While the first request is still in flight, return `409` (or `425 Too Early`) for a concurrent replay rather than running the operation twice.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Error envelope: RFC 9457 problem details",
+      "summary": "How every error response is shaped so clients get one consistent, machine-readable contract.",
+      "body": "Every error returns an RFC 9457 problem document (the successor to RFC 7807), served as `application/problem+json`. One envelope across the whole API means clients write error handling once.\n\n- Always include `type` (a stable URI identifying the problem class), `title`, and `status`; add `detail` for a human-readable specific message and `instance` for the affected resource URI.\n- Make `type` a real, documented URI per problem class (for example `https://api.example.com/problems/insufficient-funds`). Reuse it consistently so clients can branch on `type` instead of parsing prose.\n- Add custom extension members for machine use (`errors` array for field-level validation failures, `traceId` for correlation, `balance` for domain context); never repurpose the standard members.\n- Keep `status` in the body equal to the HTTP status line, and never leak stack traces or internal identifiers into `detail`."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "Collection pagination and list contracts",
+      "summary": "Opaque cursor pagination with consistent parameters and a clear last-page signal.",
+      "body": "Collections are paginated with cursor (keyset) pagination, the pattern used by Stripe, GitHub, and Slack. Offset-based `OFFSET` pagination drifts when rows are inserted or deleted and degrades as the database counts and skips rows at scale.\n\n- Accept `limit` plus an opaque `cursor` (or `after`/`before`). The cursor encodes the sort key and ID of the last item so clients cannot tamper with or reverse-engineer it.\n- Enforce a default and a hard maximum page size (for example default `20`, max `100`); clamp oversized `limit` values instead of honoring `limit=1000000`.\n- Return a stable envelope: a `data` array plus a `next_cursor` (null on the last page) or a `has_more` boolean; never make clients guess where the list ends.\n- Sort on a deterministic, indexed tiebreaker (such as `(created_at, id)`) so the cursor maps to a single position and page boundaries stay consistent even when rows share the same `created_at`."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/api",
+      "title": "API versioning and deprecation discipline",
+      "summary": "Breaking changes get a new version; old versions signal sunset with standard headers and retire with 410 Gone.",
+      "body": "API versions must retire cleanly so clients have time to migrate and are never silently broken.\n\n- Ship breaking changes (removing or renaming a field, changing semantics, tightening validation) under a new version path (for example `/v2/orders`). Additive changes (new optional fields, new endpoints) are non-breaking and do not require a new version.\n- When a version is scheduled for removal, add `Deprecation` (RFC 9745) and `Sunset` (RFC 8594) response headers to every response from that version. These are machine-readable, not just documentation.\n- On the sunset date, return `410 Gone` with a problem detail body that includes a `Link` header pointing to the migration guide. Return `410` consistently, not `404` or `500`, so clients can detect the retirement programmatically.\n- Document the deprecation timeline (announcement date, sunset date) in the API changelog and notify API consumers via email or webhook before the sunset date, not after.\n- Avoid URL-version sprawl: deprecate and retire versions on a schedule (for example 12 months after a replacement ships) rather than letting old versions accumulate indefinitely."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "rest-api-design-review",
+      "summary": "Pre-merge checklist for any new or changed HTTP endpoint covering naming, status codes, errors, pagination, idempotency, and versioning.",
+      "body": "---\nname: rest-api-design-review\ndescription: Run this checklist before merging any new or changed HTTP/REST endpoint. Covers resource naming, HTTP method and status semantics, RFC 9457 error envelopes, cursor pagination, idempotency keys, and deprecation discipline.\n---\n\n# REST / HTTP API design review\n\n- [ ] Paths name resources with plural nouns and nest at most two levels; no verbs in the path.\n- [ ] HTTP method matches intent and `GET`/`PUT`/`DELETE` are idempotent; safe methods cause no side effects.\n- [ ] Status codes are precise: `201`+`Location` on create, `204` on empty delete, `400`/`422`, `401`/`403`, `404`, `409`, `429`; no `200` wrapping a failure.\n- [ ] All errors return an RFC 9457 `application/problem+json` document with `type`, `title`, `status`, and a stable documented `type` URI.\n- [ ] Field-level validation errors and a `traceId` are carried as problem-detail extension members, with no stack traces leaked.\n- [ ] Collection endpoints use opaque cursor pagination with `limit`, a clamped max page size, a deterministic sort tiebreaker, and a `next_cursor`/`has_more` last-page signal.\n- [ ] Unsafe `POST` mutations accept an `Idempotency-Key` and return the stored result on replay instead of re-executing.\n- [ ] Breaking changes ship under a new version path; the old version sends `Deprecation` and `Sunset` headers (RFC 9745 / RFC 8594).\n- [ ] Retired versions return `410 Gone` with a problem detail body linking to the migration guide, not `404` or `500`.\n- [ ] The endpoint is documented in the OpenAPI spec with request/response schemas and example error payloads.\n",
+      "skillTags": [
+        "rest",
+        "http",
+        "api-design",
+        "backend",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/supabase-rls.js
+var supabaseRls = {
+  "slug": "supabase-rls",
+  "version": "1.0.1",
+  "name": "Supabase + RLS",
+  "tagline": "Row Level Security done right: deny by default, user JWT only, and a clean migration workflow.",
+  "description": "Rules, memories, and a review skill for Supabase Postgres projects that take Row Level Security seriously. Pre-scoped to your supabase directory so your AI assistant enforces RLS, keeps the service role out of clients, and follows a disciplined migration flow. It also covers the migration workflow, so policies are versioned with the schema instead of being clicked into the dashboard and lost.",
+  "category": "Backend",
+  "icon": "database",
+  "color": "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Supabase RLS pattern for AI coding agents",
+  "metaDescription": "Supabase pattern for AI coding agents: row level security on every table with deny by default, service role key server-side only, and indexed policy columns.",
+  "problem": "Postgres tables ship without Row Level Security, or the service role key sneaks into client paths, leaving data open to anyone.",
+  "audience": "teams building on Supabase Postgres with multi-tenant or per-user data",
+  "prevents": [
+    "Creating a table without RLS enabled and policies",
+    "Using the service role key where the user's JWT belongs",
+    "Ad hoc access checks that drift apart across tables"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/supabase",
+      "/supabase/migrations",
+      "/supabase/functions"
+    ],
+    "stacks": [
+      "supabase",
+      "postgres"
+    ],
+    "packages": [
+      "@supabase/supabase-js"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/supabase",
+      "title": "RLS enabled on every table, deny by default",
+      "summary": "No table ships without Row Level Security enabled and explicit per-operation policies.",
+      "body": "Every user-facing table in the public schema must have Row Level Security enabled with a deny-by-default posture. A table with RLS disabled is readable and writable by any authenticated user.\n\n- Enable RLS in the same migration that creates the table: `ALTER TABLE <name> ENABLE ROW LEVEL SECURITY`. Never rely on the application layer to enforce access at the row level.\n- Start from no policies (which denies everything) and add the minimum set of policies per operation (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) that the feature actually requires. A catch-all `USING (true)` policy is equivalent to no RLS.\n- A migration that creates a table without enabling RLS and adding policies is incomplete and must not merge to a shared environment.\n- Internal or log tables used only by server-side jobs that run as the service role may skip per-user policies, but must still have RLS enabled and an explicit `USING` expression that allows only the service role, not a blanket bypass.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/supabase",
+      "title": "Service role key stays server-side; never in client paths",
+      "summary": "The service role key bypasses RLS entirely and must never appear in browser code, client environment variables, or per-request edge function logic acting on behalf of a user.",
+      "body": "The Supabase service role key grants full unrestricted access to every row in every table, bypassing all RLS policies. Leaking it to a browser or a client-accessible path renders all RLS useless.\n\n- Never include the service role key in any environment variable exposed to the browser (for example `NEXT_PUBLIC_*` in Next.js, or any variable bundled by Vite/webpack for the client).\n- Edge functions that handle per-user requests must create their Supabase client with the user's JWT from the `Authorization` header, not the service role: `createClient(url, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') } } })`. This ensures RLS evaluates under the correct user identity.\n- Use the service role key only in trusted server-side contexts (scheduled functions, admin scripts, server-to-server calls) where bypassing RLS is the deliberate intent and the scope is understood.\n- Never derive or reconstruct the service role key from a client request, environment variable pattern, or any value accessible to end users.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/supabase/migrations",
+      "title": "Index every column used in RLS policy predicates",
+      "summary": "An unindexed column in a USING or WITH CHECK expression causes a full-table scan on every row-level check.",
+      "body": "Postgres evaluates each RLS policy's `USING` and `WITH CHECK` expressions once per row that the query touches. An expression that references an unindexed column forces a sequential scan on every row access, not just on the query plan, and the cost is invisible in `EXPLAIN` for the outer query but shows up as degraded performance under load.\n\n- Add a B-tree index on every column that appears in a `USING (...)` or `WITH CHECK (...)` expression, particularly `user_id`, `workspace_id`, `tenant_id`, and any other access-boundary column.\n- For policies that call `auth.uid()`, the `user_id` column they compare against must be indexed; the `auth.uid()` itself is a function call that Postgres inlines as a constant per statement, so it is not the bottleneck, but the column scan is.\n- If using a `SECURITY DEFINER` helper function (see the access-helper memory), index the columns inside that function's WHERE clause, not just the surface-level expression in the policy.\n- Run `EXPLAIN ANALYZE` on representative queries before and after adding RLS to confirm the policy predicates are not adding full-table sequential scans.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/supabase",
+      "title": "Centralize access checks in a SECURITY DEFINER helper",
+      "summary": "One SQL function that expresses membership or ownership, reused by all policies across tables.",
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/supabase",
+      "title": "auth.uid(), auth.jwt(), and custom claims in policies",
+      "summary": "How to use Supabase JWT claims in RLS expressions and how to attach custom claims via a hook without performance footguns.",
+      "body": "Supabase injects the authenticated user's identity into the Postgres session so RLS policies can reference it without a subquery to `auth.users`.\n\n- `auth.uid()` returns the `sub` claim of the JWT as a `uuid`. Use it directly in policy `USING` expressions: `USING (user_id = auth.uid())`.\n- `auth.jwt()` returns the full decoded JWT as `jsonb`. Access top-level claims with `->>`: `auth.jwt() ->> 'role'`. For nested claims (for example `app_metadata`): `(auth.jwt() -> 'app_metadata') ->> 'plan'`.\n- Custom claims (roles, plan tier, org ID) are the recommended way to encode authorization context without an extra DB lookup per row. Add them via a Supabase Auth Hook (the `custom_access_token` hook in the Dashboard), which runs a Postgres function that appends claims to every JWT before it is issued.\n- Never call `SELECT ... FROM auth.users` inside a policy `USING` expression just to read a claim that is already in the JWT. It issues a subquery per row. Use `auth.jwt()` to read the claim from the already-present token instead.\n- When a custom claim must be refreshed (for example after a plan upgrade), call `supabase.auth.refreshSession()` on the client to force a new token with updated claims; old tokens keep the stale claims until they expire."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/supabase/migrations",
+      "title": "Supabase migration workflow",
+      "summary": "Forward-only timestamped SQL, RLS and policies in the same migration as the table, TypeScript types regenerated after each change.",
+      "body": "Supabase migrations are plain SQL files managed by the Supabase CLI. The workflow keeps the database and generated types in sync.\n\n- Generate a new migration with `supabase migration new <description>`, which creates a timestamped file in `supabase/migrations/`. Write forward-only SQL; there are no down steps.\n- Enable RLS and add all required policies in the same migration file that creates the table. Never leave the table in a state where it exists but RLS is not yet enabled, even briefly across separate migrations.\n- After applying a migration that changes the schema, regenerate TypeScript types: `supabase gen types typescript --linked > src/types/supabase.ts` (or equivalent). Commit the updated types file in the same PR as the migration.\n- Apply locally with `supabase db reset` (for local dev) or `supabase db push` (for remote preview branches). Never edit a migration file that has already been applied to any shared environment; add a new migration instead.\n- For Supabase hosted projects, use branching (`supabase branches`) to develop and test schema changes on an isolated preview branch before merging to production."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "supabase-rls-review",
+      "summary": "Checklist for reviewing a Supabase schema or migration change for RLS correctness, performance, and workflow safety.",
+      "body": "---\nname: supabase-rls-review\ndescription: Review a Supabase migration or schema change for RLS correctness, JWT claim usage, access-helper design, policy-predicate indexing, and migration workflow safety.\n---\n\n# Supabase RLS review\n\n## RLS and policies\n- [ ] RLS is enabled on every new table in the same migration that creates it.\n- [ ] Policies exist per operation (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) and the default is deny (no `USING (true)` catch-all).\n- [ ] Policies use the shared `SECURITY DEFINER` access helper, not ad-hoc inline subqueries that would differ across tables.\n- [ ] Internal/job tables accessed only via the service role have explicit `USING` expressions limiting to the service role, not a blanket bypass.\n\n## Performance\n- [ ] Every column referenced in a `USING` or `WITH CHECK` expression (especially `user_id`, `workspace_id`, `tenant_id`) has a B-tree index.\n- [ ] No policy calls `SELECT ... FROM auth.users` per row to read a claim that is already available via `auth.jwt()`.\n\n## JWT and custom claims\n- [ ] Policies use `auth.uid()` for user identity and `auth.jwt()` for custom claims; no unnecessary subqueries to `auth.users`.\n- [ ] Custom claims added via the Auth Hook are documented and the client calls `refreshSession()` after claim-changing events (plan upgrade, role change).\n\n## Service role\n- [ ] No service role key appears in any browser-accessible environment variable or in edge function code acting on behalf of a user.\n- [ ] Edge functions acting on behalf of a user forward the `Authorization: Bearer <user_jwt>` header to the Supabase client, not the service role key.\n\n## Migration workflow\n- [ ] TypeScript types are regenerated and committed alongside the migration.\n- [ ] Migration is forward-only and no already-applied file was edited; a new file was added.\n",
+      "skillTags": [
+        "supabase",
+        "postgres",
+        "rls",
+        "security",
+        "review"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/stripe-billing.js
+var stripeBilling = {
+  "slug": "stripe-billing",
+  "version": "1.0.1",
+  "name": "Stripe Billing",
+  "tagline": "Safe Stripe integration: verified webhooks, idempotent handlers, and the right API for the job.",
+  "description": "Rules, memories, and a review skill for adding Stripe billing to a product. Pre-scoped to your Stripe API routes and serverless functions so your AI assistant verifies webhook signatures, keeps handlers idempotent, and picks the correct payment API. The bundle assumes webhooks are the source of truth for entitlements, which is the difference between a billing integration that survives a failed redirect and one that silently grants access.",
+  "category": "Billing",
+  "icon": "credit-card",
+  "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Stripe billing pattern for AI coding agents",
+  "metaDescription": "Stripe pattern for AI coding agents: verify webhook signatures on the raw body, keep handlers idempotent, and grant entitlements from webhooks, not redirects.",
   "problem": "Billing code trusts unverified webhooks or double-applies retried events, causing security holes and wrong charges.",
   "audience": "teams adding subscriptions or payments with Stripe",
   "prevents": [
@@ -30795,7 +32161,10 @@ var stripeBilling = {
       "/supabase/functions"
     ],
     "stacks": [
-      "stripe"
+      "stripe",
+      "billing",
+      "webhooks",
+      "payments"
     ],
     "packages": [
       "stripe"
@@ -30890,7 +32259,7 @@ var stripeBilling = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/subscriptions-usage-billing.js
 var subscriptionsUsageBilling = {
   "slug": "subscriptions-usage-billing",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Subscriptions & Usage Billing",
   "tagline": "Ship metered subscriptions on Stripe Billing without dropping usage or double-charging customers.",
   "description": "A pattern bundle for subscription and usage-based billing on Stripe Billing in 2026. It covers Billing Meters and meter events, idempotent webhook handling, entitlement sync, proration on plan changes, and dunning for failed payments. Keep your own database as the source of truth for usage and entitlements, and treat Stripe events as a queue you reconcile against.",
@@ -30898,16 +32267,21 @@ var subscriptionsUsageBilling = {
   "icon": "gauge",
   "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Subscriptions & Usage Billing pattern for AI coding agents",
-  "metaDescription": "A Pathrule pattern that teaches AI coding agents to build Stripe metered subscriptions correctly: meters, idempotent webhooks, entitlements, proration, and dunning.",
+  "metaTitle": "Usage-based billing pattern for AI agents",
+  "metaDescription": "Metered billing pattern for AI coding agents: idempotent meter events, deduplicated Stripe webhooks, and entitlements derived from subscription state alone.",
   "problem": "Usage-based subscription billing silently loses meter events, grants the wrong entitlements, and mis-charges on plan changes when webhooks and metering are handled ad hoc.",
   "audience": "SaaS and AI product teams running subscription plus usage-based billing on Stripe.",
   "prevents": [
@@ -30991,6 +32365,215 @@ var subscriptionsUsageBilling = {
         "webhooks",
         "entitlements",
         "dunning"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/aws-lambda.js
+var awsLambda = {
+  "slug": "aws-lambda",
+  "version": "1.0.0",
+  "name": "AWS Lambda",
+  "tagline": "Write Lambda handlers that reuse their init work, retry safely, and do not exhaust the database.",
+  "description": "Lambda's execution model decides how the code should be written, and most functions are written as if it were a long-lived server. Work done at module load is paid once per environment and reused across invocations, while work inside the handler is paid every time. Asynchronous invocations retry, so a handler with a non-idempotent side effect will duplicate it. And a connection pool per instance multiplied by the concurrency limit is how a small function takes down a database. This bundle covers handler shape, retry and batch semantics, function configuration, cold starts, and connections.",
+  "category": "Infra",
+  "icon": "cloud-lightning",
+  "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "AWS Lambda pattern for AI coding agents",
+  "metaDescription": "AWS Lambda pattern for AI coding agents: initialise clients outside the handler, make retries idempotent, size memory and timeouts, and pool connections.",
+  "problem": "AI agents create SDK clients and database connections inside the handler, ignore that asynchronous invocations retry, and leave the default timeout and memory on functions that need neither.",
+  "audience": "Teams running serverless services on AWS Lambda with SQS, EventBridge, or API Gateway",
+  "prevents": [
+    "Constructing an SDK client or database connection on every invocation",
+    "Duplicating a side effect because an asynchronous invocation was retried",
+    "Failing an entire SQS batch when one message is bad",
+    "Opening a connection pool per instance until the database refuses connections"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/handlers",
+      "/src/lib",
+      "/infra"
+    ],
+    "stacks": [
+      "aws",
+      "lambda",
+      "serverless",
+      "node",
+      "sqs"
+    ],
+    "packages": [
+      "@aws-sdk/client-s3",
+      "@aws-lambda-powertools/logger",
+      "aws-cdk-lib"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/handlers",
+      "title": "Do setup at module scope, keep the handler pure work",
+      "summary": "Clients, config, and connections are created once outside the handler; the handler parses the event, does the work, and holds no cross-invocation state.",
+      "body": 'Everything at module scope runs once per execution environment and is reused for every invocation that lands on it. Everything in the handler runs every time.\n\n- Create SDK clients, database clients, and parsed configuration at module scope. Reuse means one TLS handshake and one credential fetch instead of thousands.\n- Fetch secrets and parameters once and cache them in module scope with a TTL (or use the Lambda extension that does it for you). A Secrets Manager call per invocation is latency and cost you pay forever.\n- Keep no mutable state across invocations beyond caches you designed. The next invocation may be a different request from a different tenant on the same instance, so a module-level variable holding "the current user" is a data leak.\n- Make the handler small: validate the event shape, call a function that could run anywhere, and map the result to the response. That function is what your tests exercise.\n- Never rely on background work continuing after the handler returns. The environment is frozen; an unawaited promise may never finish, and its error is invisible.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/handlers",
+      "title": "Treat every invocation as retryable",
+      "summary": "Asynchronous invocations retry automatically, so side effects are idempotent, batch handlers report partial failures, and poison events go to a failure destination.",
+      "body": "Synchronous callers decide what to do with a failure. For everything else (SQS, EventBridge, S3 notifications, asynchronous invokes), the platform retries, and it does not ask.\n\n- Make the side effect idempotent: key it on something stable from the event (message id, request id, an idempotency key from the caller) and check-then-act, or use a conditional write so the second attempt is a no-op. Powertools has an idempotency utility if you want it off the shelf.\n- For SQS event sources, enable partial batch responses (`ReportBatchItemFailures`) and return the failed message ids. Without it, one bad message re-delivers the entire batch and reprocesses everything that already succeeded.\n- Set a dead letter queue or an `OnFailure` destination on every asynchronous function and alarm on it. Silent drops after the retry budget are the failure mode nobody notices for weeks.\n- Bound retries deliberately (maximum attempts, maximum event age) rather than leaving a permanent failure to retry until the event expires.\n- Log the identifiers that make a duplicate traceable (request id, message id, correlation id) so you can tell a retry from a genuine second event.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/infra",
+      "title": "Configure each function deliberately: memory, timeout, permissions, concurrency",
+      "summary": "Memory and timeout are set per function from measurement, the role grants only what the function calls, and concurrency is capped to protect downstream systems.",
+      "body": 'Lambda\'s defaults are a starting point for a demo. Every one of them is a decision in production.\n\n- Size memory from measurement, not intuition: memory also scales CPU, so more memory often costs less per invocation because the function finishes sooner. Tune it with real payloads rather than guessing.\n- Set a timeout that reflects the work plus headroom, not the maximum. A function that hangs for fifteen minutes is fifteen minutes of billed nothing, and it hides the real failure.\n- Prefer `arm64` (Graviton) unless a native dependency blocks it: same code, lower cost, generally better performance.\n- One IAM role per function, with only the actions and resources that function touches. No wildcard resources, no shared "lambda-execution-role" that accumulates every permission the account ever needed.\n- Cap blast radius with reserved concurrency on functions that talk to something fragile (a relational database, a third-party API with a rate limit), and use provisioned concurrency only on latency-critical paths where you have measured that it pays for itself.\n- Define all of this as infrastructure as code so the configuration is reviewable, and so a console change cannot become the source of truth.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/lib",
+      "title": "What actually reduces cold starts",
+      "summary": "Bundle size and init work dominate; arm64 and lazy imports help, SnapStart helps Java, Python, and .NET, and provisioned concurrency is a paid last resort.",
+      "body": "Cold start work is spent loading your code and running module scope. Most of the fix is in the artifact, not in a platform feature.\n\n- Shrink the bundle: tree-shake, bundle only what you import, and never ship the whole SDK when you need one client. Modular AWS SDK imports and a bundler are the largest single win in Node.\n- Import lazily inside the handler for code only some paths need (a PDF renderer, a heavy parser), so the common path does not pay for it at init.\n- Keep init work honest: reading a large config file, compiling schemas, or warming a cache at module scope is added to every cold start. Cache what is reused; defer what is rare.\n- `arm64` typically improves both cost and startup. SnapStart removes most init latency for Java, Python, and .NET by resuming from a snapshot of the initialised environment; it is not a Node feature, and code that captures state at init (random seeds, connections, timestamps) must be written to handle resume.\n- Provisioned concurrency eliminates cold starts on the paths you pay for it on, and it is genuinely expensive at scale. Reach for it after the bundle and init work are already small, and only for user-facing latency.\n\nSee /infra for the configuration rule and /src/handlers for the init-outside-handler rule."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/infra",
+      "title": "Databases and Lambda: concurrency is the connection count",
+      "summary": "Every concurrent instance holds its own pool, so put a proxy or a data API in front of a relational database and keep the per-instance pool tiny.",
+      "body": "The classic serverless outage: traffic spikes, Lambda scales to hundreds of instances, each opens a pool, and the database refuses connections for everyone including the non-serverless services.\n\n- Keep the per-instance pool at one or two connections. An instance handles one invocation at a time, so a large pool buys nothing and multiplies against concurrency.\n- Put a pooler in front of a relational database: RDS Proxy, a serverless-aware driver, or an HTTP data API. This is the actual fix, because it decouples client count from database connections.\n- Cap the function's reserved concurrency to something the database can survive, and treat that number as a capacity decision rather than a throttle you removed once during an incident.\n- Never open a connection inside the handler or close it at the end. Create it at module scope, let it be reused, and let the environment's teardown handle the rest.\n- Prefer purpose-built serverless stores (DynamoDB, S3, SQS) for high-fan-out paths, and keep the relational database behind a bounded, pooled surface.\n\nSee the observability pattern for tracing across these hops, and /src/handlers for the retry rules that assume a healthy database."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "lambda-production-checklist",
+      "summary": "Gate a Lambda function before it takes production traffic or an event source.",
+      "body": "---\nname: lambda-production-checklist\ndescription: Production checklist for an AWS Lambda function: handler shape, retry and idempotency, configuration, permissions, connections, and observability. Run before wiring a function to production traffic or an event source.\n---\n\n# Lambda production checklist\n\n## Handler\n- [ ] SDK clients, config, and connections are created at module scope.\n- [ ] Secrets are fetched once and cached with a TTL, not per invocation.\n- [ ] No mutable cross-invocation state that could belong to another caller.\n- [ ] Nothing is left running after the handler returns; all promises are awaited.\n\n## Retries and failures\n- [ ] Side effects are idempotent, keyed on a stable identifier from the event.\n- [ ] SQS sources return partial batch failures.\n- [ ] A dead letter queue or `OnFailure` destination exists, with an alarm on it.\n- [ ] Retry attempts and maximum event age are set deliberately.\n\n## Configuration\n- [ ] Memory and timeout come from measurement, not defaults.\n- [ ] Architecture is `arm64` unless a dependency blocks it.\n- [ ] Reserved concurrency protects fragile downstream systems.\n- [ ] Everything is defined in infrastructure as code.\n\n## Permissions\n- [ ] One role per function, no wildcard resources.\n- [ ] No permission the function does not actually call.\n\n## Data access\n- [ ] Per-instance connection pool is 1 to 2.\n- [ ] A proxy or data API sits in front of any relational database.\n\n## Observability\n- [ ] Structured JSON logs with request and correlation ids.\n- [ ] Traces enabled across the hops this function participates in.\n- [ ] Alarms on errors, throttles, duration approaching the timeout, and dead letter depth.\n",
+      "skillTags": [
+        "aws",
+        "lambda",
+        "serverless",
+        "production-readiness",
+        "reliability"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/cloudflare-workers.js
+var cloudflareWorkers = {
+  "slug": "cloudflare-workers",
+  "version": "1.0.0",
+  "name": "Cloudflare Workers",
+  "tagline": "Write Workers that use bindings, respect the isolate model, and stay inside the CPU budget.",
+  "description": "A Worker is not a small Node server. It runs in a V8 isolate with a CPU-time budget rather than a wall-clock one, it reaches storage and other services through bindings instead of network calls, and module scope is shared by every request that lands on the same isolate. Code written with server habits either fails to deploy, leaks state between requests, or silently exceeds its CPU allowance. This bundle covers bindings and generated types, the isolate rules, the storage decision between KV, D1, Durable Objects, and R2, and the wrangler configuration that keeps a project on the current runtime.",
+  "category": "Infra",
+  "icon": "globe",
+  "color": "bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Cloudflare Workers pattern for AI agents",
+  "metaDescription": "Cloudflare Workers pattern for AI coding agents: use bindings instead of REST, generate Env types, respect isolate and CPU limits, and pick the right storage.",
+  "problem": "AI agents write Workers like Node servers: REST calls to services that have bindings, hand-written Env interfaces, mutable module-scope state shared across requests, and whole responses buffered in memory.",
+  "audience": "Teams building APIs and edge logic on Cloudflare Workers",
+  "prevents": [
+    "Calling a Cloudflare service over its REST API when a binding is available",
+    "Hand-writing the Env interface so it drifts from the actual configuration",
+    "Keeping request state in a module-scope variable that the next request reads",
+    "Buffering a large response in memory instead of streaming it"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src",
+      "/"
+    ],
+    "stacks": [
+      "cloudflare",
+      "workers",
+      "edge",
+      "typescript",
+      "serverless"
+    ],
+    "packages": [
+      "wrangler",
+      "@cloudflare/workers-types",
+      "hono"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Reach every service through a binding, with generated types",
+      "summary": "KV, R2, D1, Queues, Durable Objects, and other Workers are accessed through bindings on env, and the Env type is generated from the configuration.",
+      "body": "A binding is an in-process reference to another resource: no network hop, no credential to manage, no signing. Calling the same resource over its public API is slower, costs more, and adds a secret you did not need.\n\n- Access resources as `env.MY_KV`, `env.MY_BUCKET`, `env.DB`, `env.MY_QUEUE`, and other Workers through service bindings. Use the REST API only for control-plane work that has no binding.\n- Never hand-write the `Env` interface. Generate it (`wrangler types`) from the configuration so a renamed or missing binding is a compile error rather than a runtime `undefined`.\n- Pass `env` explicitly through your code instead of reading a module-level copy. It is per-request state, and capturing it in module scope is how a preview binding ends up serving production traffic.\n- Keep secrets as secrets (`wrangler secret put`), read them from `env`, and never inline them in source or in the config file.\n- Test against real bindings with the Workers test pool, which runs tests inside the runtime rather than in Node, so KV, D1, and Durable Object behaviour is the actual behaviour.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src",
+      "title": "Write for the isolate: no shared request state, stream, and stay inside CPU time",
+      "summary": "Module scope is shared across requests, the limit is CPU time rather than wall clock, and post-response work goes through waitUntil.",
+      "body": "Many requests share one isolate, and the runtime bills CPU time, not the time you spend waiting on I/O. Both facts change how code should be written.\n\n- Keep no mutable request state at module scope. Caching an immutable, non-user-specific value (a parsed config, a compiled regex) is fine; storing anything about the current user is a cross-request leak.\n- Waiting on `fetch`, KV, or D1 does not consume CPU budget, so parallel I/O is cheap: fire independent requests together with `Promise.all` rather than sequentially. What does consume the budget is computation, so avoid parsing or transforming large payloads in the Worker.\n- Stream bodies through rather than buffering: pass the response body along, or use `TransformStream` and `pipeTo`. Reading a large response into a string is how a Worker hits its memory ceiling.\n- Return the response first and do follow-up work in `ctx.waitUntil(...)` (analytics, cache writes, logging). Work started without `waitUntil` after the response may be cancelled.\n- Handle failure explicitly at the edge: a subrequest limit, a timeout, or a downstream error should produce a deliberate response, not an unhandled rejection.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "Wrangler configuration keeps the runtime current",
+      "summary": "New projects use wrangler.jsonc with an explicit compatibility_date, nodejs_compat where needed, per-environment overrides, and observability enabled.",
+      "body": "The Worker's behaviour is pinned by its configuration, and stale settings are the most common cause of \"it works locally but not on deploy\".\n\n- Use `wrangler.jsonc` for new projects (some newer features are JSON-config only) and keep it in the repo as the source of truth for bindings, routes, and limits.\n- Set `compatibility_date` explicitly and move it forward deliberately when you have tested the change. It is the runtime's version pin, not a timestamp to ignore.\n- Enable `nodejs_compat` when your code or a dependency imports Node built-ins, and prefer web-standard APIs where you have the choice. A missing flag shows up as a module resolution failure at deploy.\n- Define environments for staging and production with their own bindings and routes, so a promotion is a deploy of the same code with different resources rather than an edited config.\n- Turn on observability and use `wrangler tail` while debugging. Structured logging plus a request id is what makes an edge deployment debuggable at all.\n\nSee /src for the binding and isolate rules this configuration exposes."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src",
+      "title": "Choosing storage: KV, D1, Durable Objects, R2, Queues",
+      "summary": "KV for read-heavy config with eventual consistency, D1 for relational data, Durable Objects for coordination and strong consistency, R2 for blobs, Queues for async work.",
+      "body": "Each store has one job, and picking the wrong one is the most expensive mistake in a Workers architecture because it shapes the data model.\n\n- KV: read constantly, write rarely, and tolerate eventual consistency. Feature flags, configuration, session lookups. Do not use it as a counter or a write-heavy store; writes propagate globally and reads can be briefly stale.\n- D1: relational application data with SQL. Great for the long tail of app queries; treat it like a small database (index what you filter, keep queries narrow) and remember reads have regional characteristics.\n- Durable Objects: a single addressable instance that serialises access to its own state. This is the only way to get strong consistency and coordination (rate limiters, real-time rooms, per-entity locks, WebSocket hibernation).\n- R2: object storage for blobs, with no egress fee to Workers. Stream to and from it rather than loading objects into memory.\n- Queues for asynchronous work and buffering, and the Cache API (or cache headers) in front of expensive computed responses. If a value is expensive to compute and identical for many requests, cache it before reaching for a store.\n\nSee /src for the isolate rules and the redis-caching pattern for cache invalidation strategy."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "workers-deploy-review",
+      "summary": "Pre-deploy checklist for a Cloudflare Worker: bindings, isolate safety, limits, storage choice, and configuration.",
+      "body": "---\nname: workers-deploy-review\ndescription: Review checklist for Cloudflare Workers changes covering bindings and generated types, isolate safety, CPU and memory limits, storage selection, and wrangler configuration. Run before deploying.\n---\n\n# Workers deploy review\n\n## Bindings\n- [ ] Every Cloudflare resource is reached through a binding, not its REST API.\n- [ ] `Env` types are generated, not hand-written, and the build fails on a missing binding.\n- [ ] Secrets come from `env`; nothing sensitive is in source or config.\n- [ ] `env` is passed explicitly, never captured at module scope.\n\n## Isolate safety\n- [ ] No mutable module-scope state carries request or user data.\n- [ ] Independent I/O runs in parallel; nothing sequential without a reason.\n- [ ] Bodies are streamed, not buffered, for anything large.\n- [ ] Post-response work runs inside `ctx.waitUntil`.\n\n## Limits\n- [ ] Computation in the request path is bounded and cheap.\n- [ ] Script size is within limits after bundling; no accidental large dependency.\n- [ ] Subrequest and downstream failures produce a deliberate response.\n\n## Storage\n- [ ] The store matches the access pattern (KV read-heavy, D1 relational, Durable Object for consistency, R2 for blobs).\n- [ ] Nothing write-heavy or counter-like is in KV.\n- [ ] Expensive identical responses are cached.\n\n## Configuration\n- [ ] `wrangler.jsonc` in the repo, `compatibility_date` explicit and current.\n- [ ] `nodejs_compat` set if Node built-ins are used.\n- [ ] Staging and production environments have their own bindings and routes.\n- [ ] Observability enabled; logs carry a request id.\n",
+      "skillTags": [
+        "cloudflare",
+        "workers",
+        "edge",
+        "deployment",
+        "code-review"
       ]
     }
   ]
@@ -31095,7 +32678,7 @@ var dockerContainers = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/github-actions-cicd.js
 var githubActionsCicd = {
   "slug": "github-actions-cicd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "GitHub Actions CI/CD",
   "tagline": "Build hardened, fast, OIDC-deployed GitHub Actions pipelines that AI agents keep secure by default.",
   "description": "A bundle of rules, memories, and a review skill that lock GitHub Actions workflows to least-privilege tokens, SHA-pinned actions, and keyless OIDC deploys. It encodes the current 2026 stack (checkout@v6, setup-node@v6, cache@v5) so coding agents stop reintroducing long-lived secrets and over-broad permissions. Use it to keep CI fast with caching and matrix builds while staying audit-clean.",
@@ -31103,16 +32686,21 @@ var githubActionsCicd = {
   "icon": "workflow",
   "color": "bg-slate-500/10 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "GitHub Actions CI/CD pattern for AI coding agents",
-  "metaDescription": "Keep AI coding agents shipping secure, fast GitHub Actions pipelines: least-privilege tokens, SHA-pinned actions, OIDC deploys, caching, and matrix builds for 2026.",
+  "metaTitle": "GitHub Actions CI/CD pattern for AI agents",
+  "metaDescription": "GitHub Actions pattern for AI coding agents: least-privilege GITHUB_TOKEN, every action pinned to a commit SHA, and cloud deploys authenticated through OIDC.",
   "problem": "AI agents and busy teams keep shipping GitHub Actions workflows with write-all tokens, mutable action tags, and long-lived cloud secrets that fail security review.",
   "audience": "Platform and application teams running GitHub Actions CI/CD who let AI agents edit workflow files",
   "prevents": [
@@ -31193,10 +32781,136 @@ var githubActionsCicd = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/kubernetes-helm.js
+var kubernetesHelm = {
+  "slug": "kubernetes-helm",
+  "version": "1.0.0",
+  "name": "Kubernetes + Helm",
+  "tagline": "Ship workloads that Kubernetes can schedule, restart, drain, and scale without dropping requests.",
+  "description": "A generated Kubernetes manifest usually deploys and usually survives a demo. What it lacks is everything the cluster needs to treat the workload correctly: requests so the scheduler can place it, three probes with different jobs, a disruption budget so a node drain does not take the service down, a security context so the container is not root, and a shutdown path that stops accepting traffic before it exits. Audits of public Helm charts keep finding the same two gaps, missing disruption budgets and missing resource requests, which is exactly what this bundle refuses to ship without.",
+  "category": "Infra",
+  "icon": "ship-wheel",
+  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "installs": 0,
+  "updatedAt": "2026-08-24",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-08-24",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Kubernetes and Helm pattern for AI agents",
+  "metaDescription": "Kubernetes pattern for AI coding agents: resource requests, three probes, disruption budgets, hardened security contexts, and Helm charts without secrets.",
+  "problem": "AI agents generate Kubernetes manifests with no resource requests, one probe copied into all three slots, a latest image tag, a root container, and no disruption budget or graceful shutdown.",
+  "audience": "Platform and backend teams running services on Kubernetes with Helm",
+  "prevents": [
+    "Deploying a container with no resource requests, so the scheduler cannot place it sanely",
+    "Using the same endpoint for liveness and readiness and restarting pods during a slow start",
+    "Draining a node and taking every replica of a service with it",
+    "Running as root with a writable root filesystem and a mutable latest tag"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/k8s",
+      "/charts",
+      "/deploy"
+    ],
+    "stacks": [
+      "kubernetes",
+      "k8s",
+      "helm",
+      "containers",
+      "devops"
+    ],
+    "packages": []
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/k8s",
+      "title": "Every container declares resource requests and limits",
+      "summary": "Requests reflect steady-state usage so the scheduler can place the pod, memory limit equals request, and CPU limits are used deliberately.",
+      "body": "Requests are what the scheduler reserves; limits are what the kernel enforces. A container with neither is scheduled blind and evicted first when the node is under pressure.\n\n- Set a CPU and memory request on every container, including init and sidecar containers, based on observed steady-state usage rather than a guess.\n- Set the memory limit equal to the request for anything you care about. Memory is not compressible: exceeding the limit is an OOM kill, and a request far below the limit means the pod is in the Burstable class and gets evicted early.\n- Be deliberate with CPU limits. A limit throttles the container at the boundary, which shows up as latency spikes rather than load. For latency-sensitive services, prefer a solid request and a generous or absent limit.\n- Give a namespace a ResourceQuota and LimitRange so a missing request is caught by the cluster, not discovered during an incident.\n- Revisit the numbers with real data (a vertical autoscaler in recommend mode, or your metrics) instead of copying them between services.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/k8s",
+      "title": "Use all three probes, each for its own job",
+      "summary": "Startup probes cover slow boots, readiness gates traffic, liveness restarts a wedged process, and readiness never checks a dependency you do not control.",
+      "body": "The three probes answer three different questions, and copying one endpoint into all three slots produces restart loops during deploys.\n\n- `startupProbe` covers initialisation: while it is failing, liveness and readiness are suspended, so a slow-booting app is not killed before it is up. Give it a generous `failureThreshold`.\n- `readinessProbe` decides whether the pod receives traffic. It should check that this process can serve a request right now (caches warm, migrations applied, worker pool started).\n- `livenessProbe` decides whether to restart the process. It must only fail when a restart genuinely fixes things: a deadlock, an unrecoverable state. A liveness probe that checks the database restarts every pod during a database blip and turns a partial outage into a total one.\n- Keep probe endpoints cheap, dependency-light, and unauthenticated within the cluster. No probe should run a query per call.\n- Tune `periodSeconds`, `timeoutSeconds`, and thresholds so a transient hiccup does not remove capacity, and make readiness fail fast so shutdown drains quickly.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/k8s",
+      "title": "Survive disruption: budgets, spread, and graceful shutdown",
+      "summary": "More than one replica, a PodDisruptionBudget that a drain can still satisfy, spread across nodes and zones, and a preStop hook that drains connections.",
+      "body": 'Nodes are drained for upgrades constantly. A workload that cannot tolerate that is a workload that has an outage on every cluster maintenance window.\n\n- Run at least two replicas for anything serving traffic, and set a `PodDisruptionBudget` (`minAvailable` or `maxUnavailable`) that keeps enough capacity while still allowing a drain to make progress. A budget that blocks every eviction is worse than none: it stalls upgrades.\n- Spread replicas with `topologySpreadConstraints` across nodes and, where available, zones, so one node or zone loss is not the whole service.\n- Set `rollingUpdate` `maxUnavailable` and `maxSurge` intentionally, together with the readiness probe, so a bad rollout stops before it replaces every pod.\n- Handle SIGTERM: fail readiness immediately, finish in-flight requests, then exit. Add a short `preStop` sleep so the endpoints controller removes the pod from the load balancer before the process stops accepting connections, and set `terminationGracePeriodSeconds` longer than your slowest request.\n- For batch and queue workers, make shutdown mean "stop taking new work and finish the current item", and make the work idempotent so a kill mid-item is safe.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/k8s",
+      "title": "Harden the pod: non-root, read-only, no capabilities, pinned image",
+      "summary": "Containers run as a non-root user with a read-only root filesystem and dropped capabilities, and images are pinned to an immutable tag or digest.",
+      "body": 'A container defaults to more privilege than it needs, and a mutable tag means you cannot say what is running.\n\n- Set `securityContext` with `runAsNonRoot: true`, an explicit `runAsUser`/`runAsGroup`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, and `capabilities.drop: ["ALL"]`. Mount an `emptyDir` for the paths that genuinely need to be writable.\n- Never `privileged: true`, never host network, PID, or IPC namespaces, and no host path mounts outside a deliberate, reviewed infrastructure workload.\n- Pin images to an immutable tag or a digest and set `imagePullPolicy: IfNotPresent` with that pin. `:latest` makes rollbacks meaningless and two replicas can silently run different code.\n- Give each workload its own ServiceAccount with only the RBAC it needs, and disable the token mount (`automountServiceAccountToken: false`) when the pod does not call the API server.\n- Restrict traffic with NetworkPolicies: default deny in the namespace, then allow the specific flows. Enforce the whole set with Pod Security Admission or a policy engine so the next manifest cannot skip it.\n\nSee the docker-containers pattern for how the image itself is built, and supply-chain-security for provenance.',
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/charts",
+      "title": "Keep charts declarative, versioned, and free of secrets",
+      "summary": "Values carry configuration with sane defaults, secrets come from a secret manager, chart versions bump on every change, and upgrades are atomic.",
+      "body": "A Helm chart is the deployable contract for a service. Treated casually, it becomes a template nobody can render safely.\n\n- No secret values in `values.yaml` or in a committed values file. Reference an existing Secret, or generate it from a secret manager (External Secrets, Secrets Store CSI, sealed secrets). Charts are shared and end up in artifact registries.\n- Give every value a documented default that produces a working, safe deployment, and validate inputs with `values.schema.json` so a typo fails at install rather than at runtime.\n- Bump the chart `version` on every change and set `appVersion` to the image tag. An unversioned chart makes rollback a guess.\n- Deploy with `helm upgrade --install --atomic --timeout`, so a failed rollout rolls back instead of leaving half the replicas on new code. Run `helm template` and a policy check (kubeconform, conftest, or your admission policies) in CI.\n- Do not hand-edit live resources: `kubectl edit` on a chart-managed object is drift that the next upgrade will either revert or fight. Change the chart.\n- Add a checksum annotation on the pod template for mounted ConfigMaps and Secrets so a config change actually triggers a rollout.",
+      "scopeType": "folder",
+      "priority": "medium",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/k8s",
+      "title": "Configuration, secrets, and how a change reaches a pod",
+      "summary": "ConfigMaps and Secrets are versioned inputs; mounted files update in place, environment variables do not, and neither restarts a pod on its own.",
+      "body": "Config delivery in Kubernetes is subtle in exactly one way: what happens to a running pod when the config changes.\n\n- A Secret or ConfigMap consumed as environment variables is read once at start. Changing it does nothing until the pod restarts, so a rollout must be triggered (the standard trick is a checksum annotation on the pod template).\n- The same object mounted as a volume is updated in place after a short delay, which only helps if the application re-reads the file. Decide which behaviour you want and implement it deliberately.\n- Keep secret material out of the manifest tree. Pull it from a manager at deploy time or sync it into the cluster, and let RBAC decide who can read the Secret object.\n- Separate genuinely environment-specific values (replicas, hostnames, resource sizes) from application configuration, so promoting a release does not require editing application settings.\n- Keep the whole desired state in git and let a controller reconcile it (GitOps) rather than applying from a laptop, so the cluster and the repo cannot disagree silently.\n\nSee /charts for the chart rules and the secrets-env-management pattern for storage and rotation."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/k8s",
+      "title": "Scaling: autoscalers only work with honest requests",
+      "summary": "The horizontal autoscaler scales on a signal you choose, requests decide scheduling, and the cluster autoscaler can only help if pods are schedulable.",
+      "body": "Autoscaling failures are almost always upstream of the autoscaler.\n\n- Scale on the metric that reflects saturation for the workload: CPU for compute-bound services, queue depth or requests per second for I/O-bound ones (through custom or external metrics). CPU utilisation is measured against the request, so a wrong request makes the target meaningless.\n- Set `minReplicas` above one for availability, a `maxReplicas` you can actually afford, and stabilisation windows so the autoscaler does not oscillate. Scale up fast, scale down slowly.\n- The cluster autoscaler adds nodes when pods are pending. Pods pend because of requests, affinity, or topology constraints, so overly strict constraints look like an autoscaler that does not work.\n- Do not run a horizontal and a vertical autoscaler on the same resource metric; they fight. Use vertical recommendations to set requests, then scale horizontally.\n- For bursty batch work, prefer a queue plus workers that scale on depth over a fixed deployment sized for the peak, and use priority classes so batch work yields to interactive traffic.\n\nSee /k8s for the requests rule that all of this depends on."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "k8s-production-readiness",
+      "summary": "Gate a workload before its first production deploy or before a manifest change ships.",
+      "body": "---\nname: k8s-production-readiness\ndescription: Production readiness gate for a Kubernetes workload: resources, probes, disruption tolerance, security context, config delivery, and observability. Run before the first production deploy and before merging manifest or chart changes.\n---\n\n# Kubernetes production readiness\n\n## Scheduling\n- [ ] CPU and memory requests set on every container, from observed usage.\n- [ ] Memory limit equals request; CPU limit chosen deliberately.\n- [ ] Namespace has a ResourceQuota and LimitRange.\n\n## Health\n- [ ] Startup, readiness, and liveness probes are distinct and cheap.\n- [ ] Liveness does not check external dependencies.\n- [ ] Readiness fails immediately on SIGTERM.\n\n## Disruption\n- [ ] At least two replicas for serving workloads.\n- [ ] PodDisruptionBudget allows a drain to complete while keeping capacity.\n- [ ] `topologySpreadConstraints` spread replicas across nodes and zones.\n- [ ] `preStop` and `terminationGracePeriodSeconds` drain in-flight requests.\n\n## Security\n- [ ] `runAsNonRoot`, explicit user, `readOnlyRootFilesystem`, `capabilities.drop: [ALL]`, no privilege escalation.\n- [ ] No privileged mode, host namespaces, or host path mounts.\n- [ ] Image pinned to an immutable tag or digest.\n- [ ] Dedicated ServiceAccount, minimal RBAC, token mount off if unused.\n- [ ] NetworkPolicy default-deny plus explicit allows.\n\n## Configuration\n- [ ] No secrets in chart values or committed files.\n- [ ] Config change triggers a rollout (checksum annotation) or is re-read at runtime.\n- [ ] Chart version bumped; `helm upgrade --atomic` used.\n\n## Operations\n- [ ] Logs go to stdout as structured lines.\n- [ ] Metrics and traces are exported, and dashboards and alerts exist.\n- [ ] A rollback command is written down and has been tested once.\n",
+      "skillTags": [
+        "kubernetes",
+        "helm",
+        "production-readiness",
+        "devops",
+        "reliability"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/observability.js
 var observability = {
   "slug": "observability",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Observability",
   "tagline": "Emit correlated logs, metrics, and traces that make incidents debuggable.",
   "description": "A ready-to-use bundle of rules, memories, and a review checklist for instrumenting services with OpenTelemetry. It encodes 2026 best practices: OTLP-first telemetry, structured JSON logs carrying trace and span ids, low-cardinality metrics, and SLO burn-rate alerts so your agent stops generating print-statement debugging and noisy page-on-everything alerting.",
@@ -31204,8 +32918,13 @@ var observability = {
   "icon": "activity",
   "color": "bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
@@ -31213,7 +32932,7 @@ var observability = {
     }
   ],
   "metaTitle": "Observability pattern for AI coding agents",
-  "metaDescription": "Teach your AI coding agent to instrument services with OpenTelemetry: structured logs with trace ids, low-cardinality metrics, OTLP export, SLOs, and burn-rate alerts.",
+  "metaDescription": "Observability pattern for AI coding agents: structured JSON logs tied to the active trace, low-cardinality metrics, OTLP export, and burn-rate SLO alerting.",
   "problem": "AI agents reach for ad-hoc console logs and unbounded custom metrics, producing telemetry that cannot be correlated across signals and alerts that page on noise instead of user impact.",
   "audience": "Backend and platform teams running production services who own their on-call and SLOs",
   "prevents": [
@@ -31302,7 +33021,7 @@ var observability = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/secrets-env-management.js
 var secretsEnvManagement = {
   "slug": "secrets-env-management",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Secrets & Environment Management",
   "tagline": "Keep secrets out of git, inject them at runtime, and rotate them automatically.",
   "description": "A pattern bundle for handling API keys, tokens, and credentials safely across local development, CI, and production. It enforces .env hygiene, pushes teams toward a managed secret store with runtime injection and OIDC, and ships a review checklist so no credential ever lands in source control or a build log.",
@@ -31310,16 +33029,21 @@ var secretsEnvManagement = {
   "icon": "lock-keyhole",
   "color": "bg-red-500/10 text-red-600 dark:bg-red-400/15 dark:text-red-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Secrets & Environment Management for AI Coding Agents",
-  "metaDescription": "Rules, memories, and a review checklist that keep AI coding agents from committing secrets, teach safe .env hygiene, secret managers, OIDC, and credential rotation.",
+  "metaTitle": "Secrets management pattern for AI agents",
+  "metaDescription": "Secrets pattern for AI coding agents: nothing live in git history, server secrets never in the client bundle, OIDC in CI, and rotation with least privilege.",
   "problem": "Secrets keep leaking into commits, build logs, and client bundles because there is no enforced convention for where credentials live or how they reach runtime.",
   "audience": "Backend and platform teams shipping services with API keys, database credentials, and CI/CD pipelines.",
   "prevents": [
@@ -31414,7 +33138,7 @@ var secretsEnvManagement = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/terraform-iac.js
 var terraformIac = {
   "slug": "terraform-iac",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Terraform / IaC",
   "tagline": "Ship Terraform with locked remote state, pinned versions, and a plan-gated CI pipeline.",
   "description": "A guardrail bundle for teams managing infrastructure as code with Terraform 1.11+ on AWS. It enforces remote state with native S3 locking, pinned providers and modules, secrets kept out of state via write-only arguments, and a CI pipeline that always reviews a plan before apply. Built so AI agents make the same safe choices a senior platform engineer would.",
@@ -31422,16 +33146,21 @@ var terraformIac = {
   "icon": "cloud-cog",
   "color": "bg-purple-500/10 text-purple-600 dark:bg-purple-400/15 dark:text-purple-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Terraform / IaC pattern for AI coding agents | Pathrule",
-  "metaDescription": "Pathrule rules, memories, and a review skill that keep AI agents shipping safe Terraform: locked remote state, pinned versions, plan-gated CI, and no secrets in state.",
+  "metaTitle": "Terraform IaC pattern for AI coding agents",
+  "metaDescription": "Terraform pattern for AI coding agents: locked remote state, secrets kept out of state, pinned module and provider versions, and plan-gated OIDC pipelines.",
   "problem": "AI agents and rushed PRs ship Terraform with unlocked state, drifting versions, secrets baked into state, and applies that never matched a reviewed plan.",
   "audience": "Platform, DevOps, and SRE teams running Terraform 1.11+ against AWS",
   "prevents": [
@@ -31528,7 +33257,7 @@ var terraformIac = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/vercel-deploy.js
 var vercelDeploy = {
   "slug": "vercel-deploy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Vercel Deployment",
   "tagline": "Ship to Vercel with safe previews, scoped env vars, and instant rollbacks.",
   "description": "An opinionated bundle for teams deploying Next.js and other apps on Vercel in 2026. It codifies the preview-then-promote workflow, per-environment secrets with OIDC and Sensitive variables, Fluid Compute function config, and CDN-aware caching so deploys stay fast, safe, and reversible.",
@@ -31536,16 +33265,21 @@ var vercelDeploy = {
   "icon": "triangle",
   "color": "bg-neutral-500/10 text-neutral-700 dark:bg-neutral-400/15 dark:text-neutral-300",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Vercel Deployment pattern for AI coding agents",
-  "metaDescription": "A Pathrule pattern that teaches AI coding agents the 2026 Vercel workflow: preview-then-promote, scoped env vars with OIDC, Fluid Compute, ISR caching, and instant rollbacks.",
+  "metaTitle": "Vercel deployment pattern for AI agents",
+  "metaDescription": "Vercel pattern for AI coding agents: preview before promoting, scope environment variables per environment, configure Fluid Compute, and cache on the CDN.",
   "problem": "Teams break production on Vercel by pushing untested changes, leaking secrets into client bundles, and misconfiguring functions and caching.",
   "audience": "Frontend and full-stack teams deploying Next.js apps on Vercel",
   "prevents": [
@@ -31636,7 +33370,7 @@ var vercelDeploy = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/code-review.js
 var codeReview = {
   "slug": "code-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Code Review",
   "tagline": "Ship small pull requests that reviewers can approve fast with confidence.",
   "description": "A workflow bundle that keeps code review focused on correctness, security, and maintainability instead of style nits. It encodes small-PR discipline, an author self-check before requesting review, structured reviewer feedback, and a fast turnaround norm so changes merge in hours, not days.",
@@ -31644,16 +33378,21 @@ var codeReview = {
   "icon": "git-pull-request",
   "color": "bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Code Review pattern for AI coding agents | Pathrule",
-  "metaDescription": "A Pathrule workflow pattern that teaches AI coding agents to ship small PRs, self-check before review, give specific feedback, and keep turnaround fast.",
+  "metaTitle": "Code review pattern for AI coding agents",
+  "metaDescription": "Code review pattern for AI coding agents: small single-purpose pull requests, review for correctness and security, and leave style to automated tooling.",
   "problem": "Pull requests pile up because they are too large, mix unrelated changes, and trigger slow rounds of vague review feedback.",
   "audience": "Engineering teams using PR-based GitHub or GitLab workflows with human and AI reviewers",
   "prevents": [
@@ -31737,24 +33476,29 @@ var codeReview = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/git-conventional-commits.js
 var gitConventionalCommits = {
   "slug": "git-conventional-commits",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Git & Conventional Commits",
   "tagline": "Keep history readable and releases automatic with small commits and Conventional Commits.",
-  "description": "A workflow bundle that standardizes how AI agents and humans commit, branch, and open pull requests. It enforces the Conventional Commits v1.0.0 spec, short-lived branches off main, and small reviewable PRs so changelogs and version bumps can be generated automatically.",
+  "description": "A workflow bundle that standardizes how AI agents and humans commit, branch, and open pull requests. It enforces the Conventional Commits v1.0.0 spec, short-lived branches off main, and small reviewable PRs so changelogs and version bumps can be generated automatically. The rules are scoped so commit conventions, branch policy, and the release automation config each sit on the path that owns them.",
   "category": "Workflow",
   "icon": "git-commit-horizontal",
   "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Git & Conventional Commits for AI coding agents",
-  "metaDescription": "Teach AI coding agents to write Conventional Commits, keep branches short-lived, and ship small reviewable PRs so changelogs and semantic versions stay automatic.",
+  "metaTitle": "Conventional Commits pattern for AI agents",
+  "metaDescription": "Git pattern for AI coding agents: Conventional Commits v1.0.0, short-lived branches with squash merges, and commitlint plus release-please automation.",
   "problem": "AI agents and humans write inconsistent commit messages and oversized PRs, breaking automated changelogs and making history impossible to review.",
   "audience": "Product teams on GitHub Flow or trunk-based development that automate releases from commit history.",
   "prevents": [
@@ -31826,10 +33570,114 @@ var gitConventionalCommits = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/python-tooling.js
+var pythonTooling = {
+  "slug": "python-tooling",
+  "version": "1.0.1",
+  "name": "Modern Python Tooling (uv + Ruff)",
+  "tagline": "Set up Python projects the 2026 way: one fast tool for envs and deps, one for lint and format.",
+  "description": "The current standard for setting up and maintaining a Python project. uv replaces the tangle of pip, venv, pip-tools, and pyenv with one fast tool that manages the interpreter, the virtual environment, dependencies, and a committed lockfile. Ruff replaces Black, isort, and Flake8 with one fast linter and formatter. A type checker and pytest round it out, all configured in a single pyproject.toml. This is the project-hygiene layer that sits underneath any Python app, including a FastAPI service.",
+  "category": "Workflow",
+  "icon": "boxes",
+  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata, and scoped the CI memory to /.github/workflows."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "Python uv and Ruff pattern for AI agents",
+  "metaDescription": "Python tooling pattern for AI coding agents: run the project on uv with a committed lockfile, gate on Ruff and a type checker, and configure it in pyproject.",
+  "problem": "AI agents set up Python projects with raw pip and venv, no lockfile, scattered config, and Black/isort/Flake8, instead of the faster, single-source-of-truth uv + Ruff workflow.",
+  "audience": "Python teams standardizing project setup, dependencies, and code quality",
+  "prevents": [
+    "Hand-managing venv + pip with no committed lockfile, so installs are not reproducible",
+    "Spreading config across setup.py, setup.cfg, requirements.txt, .flake8, and tox.ini",
+    "Running Black, isort, and Flake8 separately instead of one Ruff pass",
+    "pip install in CI with no frozen, hash-checked dependency resolution"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/",
+      "/pyproject.toml",
+      "/.github/workflows"
+    ],
+    "stacks": [
+      "python",
+      "uv",
+      "ruff"
+    ],
+    "packages": [
+      "uv",
+      "ruff",
+      "pytest"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Manage the project with uv and commit the lockfile",
+      "summary": "Use uv for the interpreter, venv, and dependencies; declare deps in pyproject.toml, commit uv.lock, and install with uv sync; no manual pip/venv.",
+      "body": "uv is the base of the project: it creates the project, pins the Python version, manages the virtual environment, resolves and locks dependencies, and runs commands. Reaching around it with raw pip breaks reproducibility.\n\n- Declare dependencies in `pyproject.toml` and manage them with `uv add` / `uv remove`. Do not hand-edit a `requirements.txt` or run `pip install` into the environment as the source of truth.\n- Commit `uv.lock`. It is the exact, resolved, hashed dependency set. Install from it with `uv sync` so every machine and CI run gets the identical environment.\n- Run project commands through uv (`uv run pytest`, `uv run python ...`) so they use the project's locked environment without manual `activate`. uv manages the venv for you.\n- Pin the Python version for the project (`uv python pin`) so the interpreter is part of the reproducible setup, not whatever happens to be on the machine.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/",
+      "title": "Lint, format, and type-check as a gate",
+      "summary": "Use Ruff for both linting and formatting and a type checker (mypy/ty) in CI; fail the build on violations rather than relying on manual cleanup.",
+      "body": "Quality tools only hold a line if the build enforces them. Run them in CI and fail on violation, so style and type drift cannot accumulate.\n\n- Use Ruff for both linting and formatting; it replaces Black, isort, and Flake8 with one fast tool. Run `ruff format` and `ruff check` (with `--fix` locally) and gate CI on a clean `ruff check` and `ruff format --check`.\n- Run a type checker (mypy, or Astral's ty) in CI on the codebase, and treat new type errors as build failures. Types catch a whole class of bugs before runtime.\n- Wire these into a pre-commit hook so violations are caught before they are pushed, and into CI so the gate is enforced regardless of local setup.\n- Configure Ruff's selected rule set deliberately in `pyproject.toml` rather than enabling everything blindly; turn rules on as the team adopts them.",
+      "scopeType": "project",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/",
+      "title": "pyproject.toml is the single source of truth",
+      "summary": "Configure the project and all tools in one pyproject.toml; uv, Ruff, and the type checker read from it, replacing the old scatter of config files.",
+      "body": "Modern Python configuration lives in one file. `pyproject.toml` holds the project metadata, dependencies, and the configuration for uv, Ruff, pytest, and the type checker, so there is one place to look and edit.\n\n- Keep project metadata and dependencies under `[project]`, and tool config under `[tool.uv]`, `[tool.ruff]`, `[tool.pytest.ini_options]`, etc. Delete the legacy scatter: `setup.py`, `setup.cfg`, `requirements.txt`, `.flake8`, `tox.ini`.\n- uv, Ruff, and ty come from the same vendor (Astral) and are designed to read `pyproject.toml` and work together, which is why the stack composes cleanly.\n- Separate dependency groups for dev vs runtime (`uv add --dev ruff pytest`) so production installs do not pull test/lint tooling.\n- This pattern is the project-setup layer; an app framework like FastAPI sits on top of it. See the fastapi pattern for the application conventions.\n\nSee / for the uv-and-lockfile rule and the lint/format/type-check rule."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/.github/workflows",
+      "title": "Testing and reproducible CI with uv",
+      "summary": "Run pytest through uv, install from the lockfile in CI with uv sync --frozen, and cache uv for fast, deterministic pipelines.",
+      "body": "CI should run the exact environment the lockfile describes, fast, with no surprise resolution.\n\n- Run tests with `uv run pytest`. Keep tests under `tests/`, name them so pytest discovers them, and use fixtures for shared setup. uv ensures pytest runs in the locked environment.\n- In CI, install with `uv sync --frozen` (or `--locked`) so the pipeline fails if `uv.lock` is out of date rather than silently resolving new versions. This is the reproducibility guarantee.\n- Cache uv's download/cache directory in CI to make installs fast; uv is already much faster than pip, and caching compounds it.\n- Use the official `astral-sh/setup-uv` action (pinned) to install uv in GitHub Actions, then run lint, type-check, and test as gated steps.\n\nSee / for the uv-and-lockfile and lint/format/type-check rules; see the github-actions-cicd and supply-chain-security patterns for CI hardening."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "python-project-bootstrap",
+      "summary": "Checklist to set up or modernize a Python project with uv, Ruff, a type checker, and pytest.",
+      "body": "---\nname: python-project-bootstrap\ndescription: Checklist for setting up or modernizing a Python project with uv, Ruff, a type checker, and pytest. Run when starting a project or migrating off pip/venv/Black/Flake8.\n---\n\n# Python project bootstrap (uv + Ruff)\n\n## Setup\n- [ ] `uv init` the project; dependencies declared in `pyproject.toml`, managed with `uv add` / `uv remove`.\n- [ ] Python version pinned with `uv python pin`.\n- [ ] `uv.lock` committed; environments installed with `uv sync` (never raw `pip install` as source of truth).\n- [ ] Dev tooling in a dev group (`uv add --dev ruff pytest ...`) separate from runtime deps.\n\n## Quality gates\n- [ ] Ruff configured in `pyproject.toml` for both lint and format; `ruff check` + `ruff format --check` gate CI.\n- [ ] Type checker (mypy/ty) runs in CI; new type errors fail the build.\n- [ ] pre-commit hook runs Ruff (and ideally the type checker) before push.\n\n## Config & CI\n- [ ] `pyproject.toml` is the single source of truth; legacy `setup.py`/`setup.cfg`/`requirements.txt`/`.flake8`/`tox.ini` removed.\n- [ ] Tests run via `uv run pytest`; CI installs with `uv sync --frozen` and caches uv.\n- [ ] `setup-uv` action pinned in CI; lint, type-check, and test are separate gated steps.\n",
+      "skillTags": [
+        "python",
+        "uv",
+        "ruff",
+        "tooling",
+        "pytest",
+        "project-setup"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/monorepo-pnpm-turborepo.js
 var monorepoPnpmTurborepo = {
   "slug": "monorepo-pnpm-turborepo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Monorepo (pnpm + Turborepo)",
   "tagline": "Keep a pnpm and Turborepo monorepo fast, cacheable, and boundary-clean.",
   "description": "A pattern bundle for JavaScript and TypeScript monorepos built on pnpm workspaces and Turborepo. It codifies the rules that keep task pipelines deterministic and cacheable, package boundaries explicit, and dependency versions unified. Use it so AI agents and humans both extend the repo without breaking the cache or leaking cross-package imports.",
@@ -31837,16 +33685,21 @@ var monorepoPnpmTurborepo = {
   "icon": "folder-tree",
   "color": "bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Monorepo (pnpm + Turborepo) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for pnpm + Turborepo monorepos: cacheable task pipelines, clean package boundaries, catalog-pinned versions, and shared configs for AI agents.",
+  "metaTitle": "pnpm and Turborepo pattern for AI agents",
+  "metaDescription": "Monorepo pattern for AI coding agents: Turborepo tasks that declare inputs and outputs, imports through public entry points, and pinned tool and dep versions.",
   "problem": "Monorepo task pipelines silently lose cache hits and packages drift across boundaries as the repo grows.",
   "audience": "Teams running a JavaScript or TypeScript monorepo on pnpm workspaces and Turborepo.",
   "prevents": [
@@ -31940,7 +33793,7 @@ var monorepoPnpmTurborepo = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/testing-vitest-playwright.js
 var testingVitestPlaywright = {
   "slug": "testing-vitest-playwright",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Testing (Vitest + Playwright)",
   "tagline": "Unit test behavior with Vitest, drive real user flows with Playwright, and keep both green in CI.",
   "description": "A layered testing setup that splits fast unit and component tests in Vitest from end-to-end browser tests in Playwright. It pushes assertions toward observable behavior and role-based selectors so tests survive refactors, and it wires both suites into CI with coverage, retries, and trace artifacts.",
@@ -31948,16 +33801,21 @@ var testingVitestPlaywright = {
   "icon": "flask-conical",
   "color": "bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Testing (Vitest + Playwright) pattern for AI coding agents",
-  "metaDescription": "A Pathrule pattern that teaches AI coding agents to write Vitest unit tests and Playwright e2e tests the right way: behavior over implementation, stable role-based selectors, and green CI.",
+  "metaTitle": "Vitest and Playwright pattern for AI agents",
+  "metaDescription": "Testing pattern for AI coding agents: select by role and accessible name, assert observable behavior, and replace fixed waits with auto-retrying assertions.",
   "problem": "AI-generated tests often assert on implementation details and brittle CSS selectors, so they break on every refactor while missing real user-facing regressions.",
   "audience": "Frontend and full-stack teams running Vitest for units and Playwright for end-to-end on a TypeScript codebase.",
   "prevents": [
@@ -32050,99 +33908,120 @@ var testingVitestPlaywright = {
   ]
 };
 
-// ../../node_modules/@pathrule/patterns/dist/patterns/python-tooling.js
-var pythonTooling = {
-  "slug": "python-tooling",
+// ../../node_modules/@pathrule/patterns/dist/patterns/ai-agents.js
+var aiAgents = {
+  "slug": "ai-agents",
   "version": "1.0.0",
-  "name": "Modern Python Tooling (uv + Ruff)",
-  "tagline": "Set up Python projects the 2026 way: one fast tool for envs and deps, one for lint and format.",
-  "description": "The current standard for setting up and maintaining a Python project. uv replaces the tangle of pip, venv, pip-tools, and pyenv with one fast tool that manages the interpreter, the virtual environment, dependencies, and a committed lockfile. Ruff replaces Black, isort, and Flake8 with one fast linter and formatter. A type checker and pytest round it out, all configured in a single pyproject.toml. This is the project-hygiene layer that sits underneath any Python app, including a FastAPI service.",
-  "category": "Workflow",
-  "icon": "boxes",
-  "color": "bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400",
+  "name": "AI Agents in Production",
+  "tagline": "Run agent loops with hard budgets, small tool surfaces, and approval gates on anything irreversible.",
+  "description": "An agent is a loop: the model plans, calls a tool, reads the result, and continues until it is done or until something stops it. Almost every production failure is in that last clause. A loop with no step limit, no cost ceiling, and no stall detection burns a budget on a task it cannot finish; a tool surface that is too large or too granular produces wrong calls; and a write tool with no approval gate eventually does something irreversible to real data. This bundle covers loop bounds, tool design, privilege and approval, context discipline against prompt injection, and the tracing and evals that make behaviour reviewable.",
+  "category": "AI",
+  "icon": "brain-circuit",
+  "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-24",
   "changelog": [
     {
       "version": "1.0.0",
-      "date": "2026-06-09",
+      "date": "2026-08-24",
       "note": "First release."
     }
   ],
-  "metaTitle": "Modern Python Tooling (uv + Ruff) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for modern Python tooling: uv for interpreter, venv, dependencies, and lockfile; Ruff for lint and format; a type checker and pytest; all configured in pyproject.toml, tuned for AI coding agents.",
-  "problem": "AI agents set up Python projects with raw pip and venv, no lockfile, scattered config, and Black/isort/Flake8, instead of the faster, single-source-of-truth uv + Ruff workflow.",
-  "audience": "Python teams standardizing project setup, dependencies, and code quality",
+  "metaTitle": "AI agents in production pattern for engineers",
+  "metaDescription": "AI agent pattern for coding agents: bound the loop with step and cost limits, design small typed tools, gate destructive actions, and trace every step.",
+  "problem": "AI agents are shipped as an unbounded while loop with a dozen granular tools, full file contents pasted into context, write access to production, and no trace of what happened.",
+  "audience": "Engineering teams putting LLM agents into a product or an internal workflow",
   "prevents": [
-    "Hand-managing venv + pip with no committed lockfile, so installs are not reproducible",
-    "Spreading config across setup.py, setup.cfg, requirements.txt, .flake8, and tox.ini",
-    "Running Black, isort, and Flake8 separately instead of one Ruff pass",
-    "pip install in CI with no frozen, hash-checked dependency resolution"
+    "Running an agent loop with no step, cost, or wall-clock limit",
+    "Exposing many granular tools instead of a few that complete a task",
+    "Letting an agent take a destructive or irreversible action with no approval",
+    "Treating tool output and fetched text as instructions rather than untrusted data"
   ],
   "appliesTo": {
     "paths": [
-      "/",
-      "/pyproject.toml"
+      "/src/agent",
+      "/src/agent/tools"
     ],
     "stacks": [
-      "python",
-      "uv",
-      "ruff"
+      "llm",
+      "agents",
+      "typescript",
+      "mcp",
+      "ai"
     ],
     "packages": [
-      "uv",
-      "ruff",
-      "pytest"
+      "ai",
+      "@anthropic-ai/sdk",
+      "@modelcontextprotocol/sdk"
     ]
   },
   "pieces": [
     {
       "kind": "rule",
-      "nodePath": "/",
-      "title": "Manage the project with uv and commit the lockfile",
-      "summary": "Use uv for the interpreter, venv, and dependencies; declare deps in pyproject.toml, commit uv.lock, and install with uv sync; no manual pip/venv.",
-      "body": "uv is the base of the project: it creates the project, pins the Python version, manages the virtual environment, resolves and locks dependencies, and runs commands. Reaching around it with raw pip breaks reproducibility.\n\n- Declare dependencies in `pyproject.toml` and manage them with `uv add` / `uv remove`. Do not hand-edit a `requirements.txt` or run `pip install` into the environment as the source of truth.\n- Commit `uv.lock`. It is the exact, resolved, hashed dependency set. Install from it with `uv sync` so every machine and CI run gets the identical environment.\n- Run project commands through uv (`uv run pytest`, `uv run python ...`) so they use the project's locked environment without manual `activate`. uv manages the venv for you.\n- Pin the Python version for the project (`uv python pin`) so the interpreter is part of the reproducible setup, not whatever happens to be on the machine.",
-      "scopeType": "project",
+      "nodePath": "/src/agent",
+      "title": "Bound every loop by steps, cost, and time",
+      "summary": "The loop has a maximum step count, a token or money budget, a wall-clock timeout, and stall detection, and it reports why it stopped.",
+      "body": "An agent loop is the only code in your system whose termination depends on a model's judgment. Give it limits that do not.\n\n- Set a hard maximum number of steps (typically a small double-digit number, tuned per task) and stop when it is reached. Most runaway runs are a model repeating the same two calls.\n- Track spend per run against a budget and abort when it is exceeded. Measure it in the currency you care about (tokens or money) and record it on the run so cost per task is a number you can see.\n- Add a wall-clock timeout, since a slow tool can hold a run open long after the user stopped caring.\n- Detect stalls: identical consecutive tool calls, no state change across steps, or repeated failures of the same tool. Stop and report rather than looping.\n- Terminate explicitly and structurally: a final answer, a limit hit, or a failure, each with a reason the caller can branch on. A loop that ends by falling out of a condition tells you nothing about what happened.",
+      "scopeType": "folder",
       "priority": "high",
       "enforcement": "strict"
     },
     {
       "kind": "rule",
-      "nodePath": "/",
-      "title": "Lint, format, and type-check as a gate",
-      "summary": "Use Ruff for both linting and formatting and a type checker (mypy/ty) in CI; fail the build on violations rather than relying on manual cleanup.",
-      "body": "Quality tools only hold a line if the build enforces them. Run them in CI and fail on violation, so style and type drift cannot accumulate.\n\n- Use Ruff for both linting and formatting; it replaces Black, isort, and Flake8 with one fast tool. Run `ruff format` and `ruff check` (with `--fix` locally) and gate CI on a clean `ruff check` and `ruff format --check`.\n- Run a type checker (mypy, or Astral's ty) in CI on the codebase, and treat new type errors as build failures. Types catch a whole class of bugs before runtime.\n- Wire these into a pre-commit hook so violations are caught before they are pushed, and into CI so the gate is enforced regardless of local setup.\n- Configure Ruff's selected rule set deliberately in `pyproject.toml` rather than enabling everything blindly; turn rules on as the team adopts them.",
-      "scopeType": "project",
+      "nodePath": "/src/agent/tools",
+      "title": "Design few, coarse tools with strict schemas and errors as data",
+      "summary": "Each tool completes a meaningful step, declares a strict validated schema, returns errors as structured results, and is safe to call twice.",
+      "body": 'Tool design is the highest-leverage part of an agent, and it is the part most often copied from an internal API surface that was never meant for a model.\n\n- Prefer a small number of tools that each accomplish something a user would name, over many primitives the model must orchestrate. Every extra hop is another chance to choose wrong, and more tokens spent describing the surface.\n- Declare a strict schema (required fields, enums, bounds) and validate arguments at the boundary. Return a clear validation error the model can correct rather than throwing an exception that kills the run.\n- Return failures as structured results (`{ ok: false, code, message, hint }`), not as exceptions. A model can retry a described failure; it cannot recover from a stack trace.\n- Make tools idempotent, or key them so a repeat is a no-op. A retried call must not send a second email or create a second record.\n- Write the description for the model: what it does, when to use it, when not to, and what it returns. Keep outputs small and structured, and truncate large payloads with a pointer to fetch more rather than flooding the context.\n- Never expose a generic "run this code" or "run this SQL" tool without a sandbox and read-only credentials. That is not a tool, it is remote execution.',
+      "scopeType": "folder",
       "priority": "high",
-      "enforcement": "advisory"
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/agent",
+      "title": "Separate read from write, and gate anything irreversible",
+      "summary": "Tools run with least privilege, destructive actions require explicit approval or a dry run, and every action is attributed and logged.",
+      "body": "An agent will eventually try the destructive path. The question is only whether your system lets it.\n\n- Classify every tool as read, reversible write, or irreversible, and give each class its own credentials. A read-only agent needs read-only keys; nothing needs a production admin role.\n- Require human approval for irreversible or high-impact actions (money, deletions, external communication, production configuration), and present the exact action for confirmation rather than a summary of intent.\n- Offer a dry run for anything bulk: show what would change, then apply on confirmation. This is also the cheapest way to debug agent behaviour.\n- Act as the user, not as the system: authorize each tool call against the requesting user's permissions, so an agent cannot become a privilege escalation path.\n- Log every tool call with its arguments, result, the run id, and the acting identity, and rate-limit and quota the agent per user and per tenant. If an agent can spend money or send messages, it needs the same abuse controls as a public endpoint.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/agent",
+      "title": "Curate the context and never trust what comes back",
+      "summary": "Send the smallest sufficient context, summarize instead of accumulating, and treat tool output, documents, and web content as data rather than instructions.",
+      "body": "Most agent cost is paid on the input side, and most agent security incidents come from text the model was handed and treated as an instruction.\n\n- Send what the step needs, not everything available: relevant excerpts instead of whole files, a summary of earlier turns instead of the full transcript, and a scratchpad of decided facts rather than the entire history.\n- Compact deliberately: when the context grows past a threshold, summarize what happened, keep the decisions and open questions, and drop the noise. Unbounded accumulation degrades both cost and accuracy.\n- Mark every piece of retrieved content as untrusted data with a clear boundary, and instruct the model that content inside it is information, not commands. Fetched pages, ticket comments, file contents, and tool results are all attacker-influenced in some product.\n- Never let retrieved text change the run's permissions, budget, or target. Those live in your code, not in the prompt, so no injected instruction can raise them.\n- Keep the system prompt stable and versioned. A prompt edited by hand in production is an untracked deploy, and it invalidates every eval result you have.\n\nSee /src/agent/tools for the tool contract and the rag-embeddings pattern for retrieval quality.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
     },
     {
       "kind": "memory",
-      "nodePath": "/",
-      "title": "pyproject.toml is the single source of truth",
-      "summary": "Configure the project and all tools in one pyproject.toml; uv, Ruff, and the type checker read from it, replacing the old scatter of config files.",
-      "body": "Modern Python configuration lives in one file. `pyproject.toml` holds the project metadata, dependencies, and the configuration for uv, Ruff, pytest, and the type checker, so there is one place to look and edit.\n\n- Keep project metadata and dependencies under `[project]`, and tool config under `[tool.uv]`, `[tool.ruff]`, `[tool.pytest.ini_options]`, etc. Delete the legacy scatter: `setup.py`, `setup.cfg`, `requirements.txt`, `.flake8`, `tox.ini`.\n- uv, Ruff, and ty come from the same vendor (Astral) and are designed to read `pyproject.toml` and work together, which is why the stack composes cleanly.\n- Separate dependency groups for dev vs runtime (`uv add --dev ruff pytest`) so production installs do not pull test/lint tooling.\n- This pattern is the project-setup layer; an app framework like FastAPI sits on top of it. See the fastapi pattern for the application conventions.\n\nSee / for the uv-and-lockfile rule and the lint/format/type-check rule."
+      "nodePath": "/src/agent",
+      "title": "Loop architecture: state, checkpoints, and delegation",
+      "summary": "Keep run state outside the model, checkpoint each step so a run can resume, and delegate a bounded subtask to a subagent with its own budget.",
+      "body": 'The loop is ordinary software. The parts that make it reliable are the parts that do not involve the model.\n\n- Keep authoritative state in your own store (goal, plan, completed steps, artifacts, budget spent), not only in the message history. The context is a view of state, not the state itself.\n- Persist a checkpoint after each step so a crash, a rate limit, or a deploy can resume instead of restarting. Long-running agents need this the way any long job does.\n- Stream progress to the user (the step, the tool being called, partial output). An agent that shows its work is debuggable and feels faster, and it lets a human interrupt before a wrong path gets expensive.\n- Delegate a bounded subtask to a subagent when it needs its own long exploration, and give it its own step and cost budget plus a narrow tool set. Return a summary, not its whole transcript, so the parent context stays small.\n- Make the whole run replayable: a stored transcript of prompts, tool calls, and results is what turns "the agent did something weird" into a fixable bug.\n\nSee /src/agent for the loop bounds and the ai-sdk pattern for the client-side implementation details.'
     },
     {
       "kind": "memory",
-      "nodePath": "/",
-      "title": "Testing and reproducible CI with uv",
-      "summary": "Run pytest through uv, install from the lockfile in CI with uv sync --frozen, and cache uv for fast, deterministic pipelines.",
-      "body": "CI should run the exact environment the lockfile describes, fast, with no surprise resolution.\n\n- Run tests with `uv run pytest`. Keep tests under `tests/`, name them so pytest discovers them, and use fixtures for shared setup. uv ensures pytest runs in the locked environment.\n- In CI, install with `uv sync --frozen` (or `--locked`) so the pipeline fails if `uv.lock` is out of date rather than silently resolving new versions. This is the reproducibility guarantee.\n- Cache uv's download/cache directory in CI to make installs fast; uv is already much faster than pip, and caching compounds it.\n- Use the official `astral-sh/setup-uv` action (pinned) to install uv in GitHub Actions, then run lint, type-check, and test as gated steps.\n\nSee / for the uv-and-lockfile and lint/format/type-check rules; see the github-actions-cicd and supply-chain-security patterns for CI hardening."
+      "nodePath": "/src/agent",
+      "title": "You cannot improve what you do not trace",
+      "summary": "Trace every step with tokens, latency, and outcome, define task-level success metrics, and run an eval suite before any prompt, model, or tool change ships.",
+      "body": "Agent behaviour is not deterministic, so the only way to know whether a change helped is to measure it on a fixed set of tasks.\n\n- Trace each run as a tree of steps: prompt, model, tool calls with arguments and results, tokens in and out, latency, and the terminal reason. Tie it to a run id the user can quote.\n- Define success at the task level, not the token level: did it complete the job, with how many steps, at what cost, and did a human have to intervene? Those four numbers are your dashboard.\n- Keep an eval set of real tasks with known good outcomes, including the hard and adversarial ones, and run it before shipping a prompt change, a model change, a tool change, or a context change. Any of those four can regress the others.\n- Watch the operational signals: step-limit hits, budget aborts, stalls, tool error rates, and approval rejection rate. A rising approval rejection rate means the agent is proposing the wrong actions, which is a prompt or tool problem, not a user problem.\n- Version prompts and tool schemas alongside code, so a regression can be bisected like any other.\n\nSee the llm-evals pattern for building the eval suite and the observability pattern for shipping these traces."
     },
     {
       "kind": "skill",
       "nodePath": "/",
-      "title": "python-project-bootstrap",
-      "summary": "Checklist to set up or modernize a Python project with uv, Ruff, a type checker, and pytest.",
-      "body": "---\nname: python-project-bootstrap\ndescription: Checklist for setting up or modernizing a Python project with uv, Ruff, a type checker, and pytest. Run when starting a project or migrating off pip/venv/Black/Flake8.\n---\n\n# Python project bootstrap (uv + Ruff)\n\n## Setup\n- [ ] `uv init` the project; dependencies declared in `pyproject.toml`, managed with `uv add` / `uv remove`.\n- [ ] Python version pinned with `uv python pin`.\n- [ ] `uv.lock` committed; environments installed with `uv sync` (never raw `pip install` as source of truth).\n- [ ] Dev tooling in a dev group (`uv add --dev ruff pytest ...`) separate from runtime deps.\n\n## Quality gates\n- [ ] Ruff configured in `pyproject.toml` for both lint and format; `ruff check` + `ruff format --check` gate CI.\n- [ ] Type checker (mypy/ty) runs in CI; new type errors fail the build.\n- [ ] pre-commit hook runs Ruff (and ideally the type checker) before push.\n\n## Config & CI\n- [ ] `pyproject.toml` is the single source of truth; legacy `setup.py`/`setup.cfg`/`requirements.txt`/`.flake8`/`tox.ini` removed.\n- [ ] Tests run via `uv run pytest`; CI installs with `uv sync --frozen` and caches uv.\n- [ ] `setup-uv` action pinned in CI; lint, type-check, and test are separate gated steps.\n",
+      "title": "agent-loop-review",
+      "summary": "Pre-merge review for an agent loop, a new tool, or a prompt change.",
+      "body": "---\nname: agent-loop-review\ndescription: Review checklist for production LLM agents: loop bounds, tool contracts, privilege and approval gates, context and injection handling, and tracing and evals. Run before merging an agent, tool, or prompt change.\n---\n\n# Agent loop review\n\n## Bounds\n- [ ] Maximum step count, cost budget, and wall-clock timeout are all set.\n- [ ] Stall detection stops repeated identical calls or no-progress steps.\n- [ ] The run ends with a structured reason the caller can branch on.\n\n## Tools\n- [ ] Each tool completes a meaningful step; the surface is as small as the task allows.\n- [ ] Schemas are strict and validated; invalid arguments return a correctable error.\n- [ ] Failures return structured data, not thrown exceptions.\n- [ ] Every tool is idempotent or keyed so a retry is a no-op.\n- [ ] Outputs are small and truncated with a pointer, not dumped whole.\n- [ ] No unsandboxed code or SQL execution tool.\n\n## Privilege\n- [ ] Read, reversible write, and irreversible tools have separate credentials.\n- [ ] Irreversible and high-impact actions require explicit approval of the exact action.\n- [ ] Bulk operations support a dry run.\n- [ ] Tool calls are authorized as the requesting user, and logged with the run id.\n- [ ] Per-user and per-tenant rate limits and quotas apply.\n\n## Context\n- [ ] Only the context the step needs is sent; history is summarized, not accumulated.\n- [ ] Retrieved content is delimited and labelled untrusted; instructions inside it are ignored.\n- [ ] Permissions, budgets, and targets live in code, not in the prompt.\n- [ ] The system prompt is versioned in the repo.\n\n## Evidence\n- [ ] The run is fully traced (steps, tokens, latency, outcome) and replayable.\n- [ ] The eval suite ran, and the result is recorded in the change.\n- [ ] Operational alerts exist for limit hits, budget aborts, and tool error rates.\n",
       "skillTags": [
-        "python",
-        "uv",
-        "ruff",
-        "tooling",
-        "pytest",
-        "project-setup"
+        "ai",
+        "agents",
+        "llm",
+        "code-review",
+        "safety"
       ]
     }
   ]
@@ -32151,7 +34030,7 @@ var pythonTooling = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/ai-sdk.js
 var aiSdk = {
   "slug": "ai-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "AI SDK (Vercel AI SDK)",
   "tagline": "Build streaming, tool-calling LLM features with one typed API across every provider.",
   "description": "A production baseline for shipping LLM features with the Vercel AI SDK v5+. It keeps model calls on the server, streams every user-facing response, validates tool inputs and structured output with Zod, and routes models through the AI Gateway as plain `provider/model` strings so you can swap or fall back without rewriting code. The conventions here are what separate a demo chat box from an agent loop you can ship.",
@@ -32159,16 +34038,21 @@ var aiSdk = {
   "icon": "bot",
   "color": "bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "AI SDK (Vercel AI SDK) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for the Vercel AI SDK: server-only model calls, streamed responses, Zod-validated tools and structured output, agent loops with stopWhen, and AI Gateway provider routing, tuned for AI coding agents.",
+  "metaTitle": "Vercel AI SDK pattern for AI coding agents",
+  "metaDescription": "AI SDK pattern for AI coding agents: keep provider keys server-side, stream responses, schema-validate tool inputs, and bound the agent loop with stopWhen.",
   "problem": "AI agents wiring up the AI SDK leak provider keys to the browser, block on full generations, pass unvalidated tool arguments, and hardcode one provider.",
   "audience": "Full-stack teams shipping LLM chat, agents, and structured extraction in a TypeScript app",
   "prevents": [
@@ -32260,10 +34144,220 @@ var aiSdk = {
   ]
 };
 
+// ../../node_modules/@pathrule/patterns/dist/patterns/llm-evals.js
+var llmEvals = {
+  "slug": "llm-evals",
+  "version": "1.0.1",
+  "name": "LLM Evaluations & Testing",
+  "tagline": "Catch hallucinations and quality regressions before users do, with evals on every prompt change.",
+  "description": "The discipline that turns an LLM feature from a demo into something you can change with confidence. Hallucinations and inconsistent quality are the top reported problems with AI-generated work, and you cannot fix what you do not measure. This pattern builds a labelled evaluation set, scores outputs with deterministic checks plus a calibrated LLM-as-judge, and gates every prompt, model, or retrieval change on an eval run so a tweak that helps one case but breaks ten is caught in CI, not in production.",
+  "category": "AI",
+  "icon": "clipboard-check",
+  "color": "bg-purple-500/10 text-purple-600 dark:bg-purple-400/15 dark:text-purple-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "LLM evaluation pattern for AI coding agents",
+  "metaDescription": "LLM eval pattern for AI coding agents: gate prompt and model changes on an eval run, build a labelled set from real usage, and score deterministically first.",
+  "problem": "AI agents ship prompt and model changes on vibes, with no eval set, so hallucinations and quality regressions only surface once users hit them.",
+  "audience": "Teams shipping LLM features that need to measure and defend output quality",
+  "prevents": [
+    "Changing a prompt or model and shipping it because the one example you tried looked good",
+    "Having no labelled dataset, so quality is a feeling rather than a number",
+    "Using an LLM judge with a vague rubric that does not agree with humans",
+    "Letting hallucinations through because nothing checks answers against their source"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/evals",
+      "/src/ai"
+    ],
+    "stacks": [
+      "llm",
+      "ai",
+      "evals"
+    ],
+    "packages": []
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/ai",
+      "title": "Gate prompt, model, and retrieval changes on an eval run",
+      "summary": "No change to a prompt, model, or retrieval config ships without running the eval set and comparing scores against the current baseline.",
+      "body": "A prompt is code: a small edit can improve one case and silently break ten others. Without an eval gate, you find out from users.\n\n- Run the eval set on every change to a prompt, model id, temperature, tool definition, or retrieval config, and compare the scores to the committed baseline before merging.\n- Treat a regression on the eval set like a failing test: it blocks the change. An improvement on your one hand-picked example is not evidence; the aggregate score on the dataset is.\n- Pin the model version in the eval run. A provider silently changing a model under you is itself a regression you want the evals to catch.\n- Keep eval runs in CI (or a pre-merge step) so the gate is enforced regardless of who makes the change. Record the score so the trend is visible over time.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/evals",
+      "title": "Build a labelled eval set that mirrors real usage",
+      "summary": "Curate a versioned dataset of representative and adversarial inputs with expected outputs or acceptance criteria; grow it from real failures.",
+      "body": "The eval set is the asset. The model and prompt will change; the dataset is what lets you tell whether a change is better.\n\n- Curate inputs that mirror real traffic: common cases, important edge cases, and adversarial inputs (prompt injection, ambiguous or out-of-scope requests, inputs that should be refused). A dataset of only happy-path examples measures nothing useful.\n- For each case, record either an expected output, a reference answer, or explicit acceptance criteria. Some tasks have one right answer; many have a rubric instead, and that is fine as long as it is written down.\n- Version the dataset alongside the code and grow it from production failures: every real hallucination or bad answer becomes a new eval case so the same regression cannot return unnoticed.\n- Keep the set balanced and labelled honestly; do not overfit prompts to a tiny set of examples you keep re-reading. Aim for coverage of the behaviours that matter.\n\nSee /evals for the scoring memory and /src/ai for the eval-gate rule."
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/evals",
+      "title": "Score with deterministic checks first, then a calibrated judge",
+      "summary": "Use exact/programmatic checks where outputs are verifiable; use an LLM-as-judge with a clear rubric, calibrated against human labels, for open-ended quality.",
+      "body": "Pick the cheapest scoring method that actually measures the thing, and only reach for an LLM judge when the output is genuinely open-ended.\n\n- Score deterministically wherever you can: exact match, schema/JSON validity, regex, contains-required-facts, executes-without-error, latency, and cost. These are free, fast, and not themselves subject to model error.\n- For open-ended quality (helpfulness, tone, faithfulness), use an LLM-as-judge: a separate model call that scores the output against a specific, written rubric, ideally returning a structured verdict with a reason, not a bare number.\n- Calibrate the judge against human labels on a sample: if the judge does not agree with your team's judgments, fix the rubric before trusting it. An uncalibrated judge is just another opinion.\n- For RAG and any grounded answer, score faithfulness explicitly: does the answer follow from the retrieved context, or did the model invent it? This is the direct measure of hallucination. (See the rag-embeddings pattern for retrieval quality.)\n\nSee /evals for the dataset memory and /src/ai for the eval-gate rule."
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "llm-eval-set-builder",
+      "summary": "Checklist for building or extending an LLM evaluation set and wiring it into the change workflow.",
+      "body": "---\nname: llm-eval-set-builder\ndescription: Checklist for building or extending an LLM evaluation set and gating changes on it. Run when adding an LLM feature or after a production quality failure.\n---\n\n# LLM eval set builder\n\n## Dataset\n- [ ] Inputs mirror real usage: common cases, important edge cases, and adversarial inputs (injection, out-of-scope, must-refuse).\n- [ ] Each case has an expected output, reference answer, or written acceptance criteria/rubric.\n- [ ] Dataset is versioned with the code and grows from real production failures.\n- [ ] Coverage is balanced; prompts are not overfit to a handful of examples.\n\n## Scoring\n- [ ] Deterministic checks used where outputs are verifiable (exact match, schema validity, required facts, runs-clean, latency, cost).\n- [ ] LLM-as-judge used only for open-ended quality, with a specific written rubric and a structured verdict + reason.\n- [ ] Judge calibrated against human labels on a sample; rubric fixed until it agrees.\n- [ ] Grounded answers scored for faithfulness (does the answer follow from the source) to catch hallucination.\n\n## Gate\n- [ ] Eval run triggers on any prompt/model/temperature/tool/retrieval change; model version pinned.\n- [ ] Scores compared to a committed baseline; a regression blocks the change like a failing test.\n- [ ] Eval runs in CI / pre-merge; scores recorded so the quality trend is visible.\n",
+      "skillTags": [
+        "llm",
+        "evals",
+        "testing",
+        "llm-as-judge",
+        "hallucination",
+        "ai-review"
+      ]
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "llm-as-judge-rubric",
+      "summary": "Template and guidance for writing a reliable LLM-as-judge scoring prompt and rubric.",
+      "body": "---\nname: llm-as-judge-rubric\ndescription: Guidance for writing a reliable LLM-as-judge scoring prompt. Use when building automated scoring for open-ended LLM outputs.\n---\n\n# LLM-as-judge rubric\n\nUse when an output is too open-ended for a deterministic check. A judge is only as good as its rubric.\n\n## Writing the rubric\n- [ ] Define each criterion concretely (e.g. faithfulness, relevance, completeness, tone) with what a pass and a fail look like, not just a label.\n- [ ] Prefer a small discrete scale (e.g. 1-5 or pass/fail per criterion) over an unanchored 0-100; anchor each level with a description.\n- [ ] Ask the judge to give its reasoning and cite the part of the input/source that justifies the score, then the score. Require a structured output (per-criterion verdict + reason).\n- [ ] For faithfulness/grounding, give the judge the source context and ask explicitly whether each claim is supported by it.\n\n## Making it reliable\n- [ ] Use a capable model as the judge; do not have a weak model grade a strong one.\n- [ ] Calibrate: score a sample the team has labelled and measure agreement; revise the rubric until the judge matches human judgment.\n- [ ] Watch for known judge biases (position, length, self-preference) and control for them (e.g. randomize order in pairwise comparisons).\n- [ ] Keep the judge prompt and model versioned with the eval set; a judge change is itself an eval change.\n",
+      "skillTags": [
+        "llm",
+        "llm-as-judge",
+        "evals",
+        "scoring",
+        "rubric",
+        "ai-review"
+      ]
+    }
+  ]
+};
+
+// ../../node_modules/@pathrule/patterns/dist/patterns/mcp-server-authoring.js
+var mcpServerAuthoring = {
+  "slug": "mcp-server-authoring",
+  "version": "1.0.1",
+  "name": "MCP Server Authoring",
+  "tagline": "Build Model Context Protocol servers whose tools an LLM can actually call correctly and safely.",
+  "description": "A focused standard for authoring Model Context Protocol servers. An MCP tool is an API consumed by a language model, so its description and input schema are not documentation - they are the contract the model reasons over. This pattern covers writing tools the model calls correctly, keeping side effects honest and destructive actions gated, and choosing transport and auth: stdio for local servers, streamable HTTP with bearer/OAuth for remote ones.",
+  "category": "AI",
+  "icon": "plug-zap",
+  "color": "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400",
+  "installs": 0,
+  "updatedAt": "2026-08-25",
+  "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-06-09",
+      "note": "First release."
+    }
+  ],
+  "metaTitle": "MCP server pattern for AI coding agents",
+  "metaDescription": "MCP pattern for AI coding agents: treat tool descriptions and schemas as the model-facing contract, gate destructive actions, and pick the right transport.",
+  "problem": "AI agents building MCP servers write vague tool descriptions, skip input schemas, let destructive tools fire without confirmation, and expose remote servers with no auth.",
+  "audience": "Developers building MCP servers and tools for Claude, Cursor, and other MCP clients",
+  "prevents": [
+    "Tool descriptions too vague for the model to know when to call them",
+    "Tools that accept arguments with no schema and crash on bad input",
+    "Destructive tools that act with no confirmation parameter or dry-run",
+    "Remote HTTP servers with no authentication"
+  ],
+  "appliesTo": {
+    "paths": [
+      "/src/mcp",
+      "/src/tools",
+      "/server"
+    ],
+    "stacks": [
+      "mcp",
+      "typescript",
+      "node"
+    ],
+    "packages": [
+      "@modelcontextprotocol/sdk",
+      "zod"
+    ]
+  },
+  "pieces": [
+    {
+      "kind": "rule",
+      "nodePath": "/src/mcp",
+      "title": "Treat the tool description and schema as the LLM-facing API contract",
+      "summary": "Write each tool's name, description, and input schema for the model that reads them; the schema is mandatory and validated before the handler runs.",
+      "body": "The model never sees your handler code. It decides whether and how to call a tool from the name, description, and input schema alone. Those three are the entire API as far as the LLM is concerned.\n\n- Name tools by action and object (`create_issue`, `search_docs`), not by internal function names. The name is the first thing the model matches against intent.\n- Write the description for the model: what the tool does, when to use it, when NOT to use it, and what it returns. Mention units, formats, and constraints the model would otherwise guess wrong. A vague description is the most common reason a tool is never called or called wrong.\n- Declare an input schema for every tool (Zod or JSON Schema) with `.describe()` on non-obvious fields. The SDK validates input against it before your handler runs, so the handler receives typed, checked arguments - never raw, unvalidated input.\n- Return structured, model-readable results and use the protocol's error channel (`isError`) for failures instead of throwing opaque strings. The model uses the result to decide its next step, so make the result legible.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/mcp",
+      "title": "Keep tools side-effect-honest and gate destructive actions",
+      "summary": "A tool's effects must match its description; destructive or irreversible tools require an explicit confirmation argument or a dry-run mode, and re-check authorization in the handler.",
+      "body": "A model will call any tool it is given if the description fits the goal. The server, not the model's good judgement, is what stops a destructive call from doing damage.\n\n- A tool must do exactly what its description says and nothing more. A `search_*` tool must not write; a tool that mutates state must say so plainly in its description so the model (and the human approving it) understands the consequence.\n- Gate destructive or irreversible actions (delete, send, charge, deploy): require an explicit `confirm: true` argument, or support a `dryRun` that returns what would happen without doing it. Do not let one unqualified call wipe data.\n- Re-check authorization inside the handler against the authenticated session. The model selecting a tool is not authorization; the handler must verify the caller may perform this specific action on this specific resource.\n- Make handlers safe to retry: design mutations to be idempotent (or guarded by an idempotency key) so a re-issued call after a timeout does not double-act.\n- Scope each tool narrowly. A surgical tool the model uses correctly beats a powerful do-everything tool it misuses.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "strict"
+    },
+    {
+      "kind": "rule",
+      "nodePath": "/src/mcp",
+      "title": "Choose transport by deployment and authenticate remote servers",
+      "summary": "Use stdio for local single-client servers and streamable HTTP for remote/multi-client servers; every HTTP server requires auth (bearer token or OAuth).",
+      "body": "Transport is a deployment decision, and the moment a server is reachable over the network it needs authentication.\n\n- Use the stdio transport for a local server launched by one client (a desktop AI app, an editor): no network surface, the client owns the process lifecycle.\n- Use streamable HTTP for a remote or multi-client server. It is the current HTTP transport; do not build new servers on the deprecated HTTP+SSE transport.\n- Authenticate every HTTP server. At minimum require a bearer token; for third-party or user-facing servers, implement the MCP OAuth flow so each user authorizes with their own identity. An unauthenticated remote MCP server is an open door to whatever its tools can do.\n- Validate the `Origin` header and bind local HTTP servers to `127.0.0.1` to prevent DNS-rebinding and cross-site access. Keep secrets in server env, never in tool output or logs.\n- Pass the authenticated identity into tool handlers so per-tool authorization checks have a subject to check against.",
+      "scopeType": "folder",
+      "priority": "high",
+      "enforcement": "advisory"
+    },
+    {
+      "kind": "memory",
+      "nodePath": "/src/mcp",
+      "title": "Choose the right primitive: tool vs resource vs prompt",
+      "summary": "Tools are model-invoked actions, resources are app-controlled readable context, prompts are user-invoked templates; map each capability to the primitive whose control model fits.",
+      "body": 'MCP exposes three primitives with different control models, and picking the wrong one is a recurring design mistake.\n\n- Tools are model-controlled: the LLM decides to call them to take an action or fetch dynamic data. Use a tool when the model should act (mutations, searches, computations, live lookups).\n- Resources are application-controlled: readable, addressable context (a file, a record, a schema) the host app or user attaches. Use a resource for content the model should be able to read but not "invoke" - it has no side effect and is referenced by URI.\n- Prompts are user-controlled: parameterized templates a user explicitly selects (slash commands, canned workflows). Use a prompt to package a reusable interaction the user triggers, not the model.\n- A read-only lookup can legitimately be either a resource (attachable context) or a tool (model fetches on demand); choose by whether the host or the model should decide when it enters context. When unsure for actions, a narrowly-scoped tool is the safe default.\n\nSee /src/mcp for the tool-contract and destructive-action rules.'
+    },
+    {
+      "kind": "skill",
+      "nodePath": "/",
+      "title": "mcp-tool-authoring-checklist",
+      "summary": "Checklist to run before merging a new or changed MCP tool, resource, or prompt.",
+      "body": "---\nname: mcp-tool-authoring-checklist\ndescription: Checklist for adding or changing an MCP tool, resource, or prompt. Run before merging any change to a Model Context Protocol server.\n---\n\n# MCP tool authoring checklist\n\n## Contract (model-facing)\n- [ ] Tool name is action+object and matches what the model would search for.\n- [ ] Description states what it does, when to use it, when NOT to, and what it returns - written for the model, with units/formats spelled out.\n- [ ] Input schema declared (Zod/JSON Schema) with `.describe()` on non-obvious fields; handler reads only validated input.\n- [ ] Result is structured and model-readable; failures use the error channel (`isError`), not opaque throws.\n\n## Safety\n- [ ] Effects match the description exactly; mutating tools say so.\n- [ ] Destructive/irreversible actions require `confirm: true` or support `dryRun`.\n- [ ] Handler re-checks authorization against the authenticated session for this resource.\n- [ ] Mutations are idempotent or guarded by an idempotency key (safe to retry).\n- [ ] Tool is narrowly scoped, not a do-everything tool.\n\n## Transport & auth\n- [ ] stdio for local single-client; streamable HTTP for remote (not the deprecated SSE transport).\n- [ ] Every HTTP server authenticates (bearer or OAuth); local HTTP binds to 127.0.0.1 and validates `Origin`.\n- [ ] No secrets in tool output or logs; authenticated identity flows into handlers.\n\n## Primitive choice\n- [ ] Capability mapped to the right primitive: tool (model acts), resource (readable context), prompt (user-triggered template).\n",
+      "skillTags": [
+        "mcp",
+        "tools",
+        "llm",
+        "transport",
+        "auth",
+        "ai-review"
+      ]
+    }
+  ]
+};
+
 // ../../node_modules/@pathrule/patterns/dist/patterns/rag-embeddings.js
 var ragEmbeddings = {
   "slug": "rag-embeddings",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "RAG & Embeddings",
   "tagline": "Ground LLM answers in your own data with retrieval that returns the right chunks, not just similar ones.",
   "description": "A pragmatic baseline for retrieval-augmented generation: how to chunk documents so retrieval has something to find, how to store and index embeddings in pgvector, how to filter by metadata and a similarity floor instead of dumping a raw top-k into the prompt, and when a re-ranking pass is worth its latency. Retrieval quality, not the model, is what makes or breaks a RAG feature, and most of that quality is decided before the LLM is ever called.",
@@ -32271,16 +34365,21 @@ var ragEmbeddings = {
   "icon": "library",
   "color": "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/15 dark:text-cyan-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "RAG & Embeddings pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for retrieval-augmented generation: semantic chunking with overlap, pgvector + HNSW storage, metadata-filtered retrieval with a similarity threshold, re-ranking, and pinned embedding models, tuned for AI coding agents.",
+  "metaTitle": "RAG and embeddings pattern for AI agents",
+  "metaDescription": "RAG pattern for AI coding agents: chunk on semantic boundaries, filter retrieval by metadata and a similarity floor, and pin the embedding model and dimension.",
   "problem": "AI agents building RAG embed whole documents, dump a blind top-k into the prompt, and silently change the embedding model, producing irrelevant context and answers that quietly degrade.",
   "audience": "Teams adding retrieval over their own documents to an LLM application",
   "prevents": [
@@ -32366,210 +34465,10 @@ var ragEmbeddings = {
   ]
 };
 
-// ../../node_modules/@pathrule/patterns/dist/patterns/mcp-server-authoring.js
-var mcpServerAuthoring = {
-  "slug": "mcp-server-authoring",
-  "version": "1.0.0",
-  "name": "MCP Server Authoring",
-  "tagline": "Build Model Context Protocol servers whose tools an LLM can actually call correctly and safely.",
-  "description": "A focused standard for authoring Model Context Protocol servers. An MCP tool is an API consumed by a language model, so its description and input schema are not documentation - they are the contract the model reasons over. This pattern covers writing tools the model calls correctly, keeping side effects honest and destructive actions gated, and choosing transport and auth: stdio for local servers, streamable HTTP with bearer/OAuth for remote ones.",
-  "category": "AI",
-  "icon": "plug-zap",
-  "color": "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "MCP Server Authoring pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for authoring Model Context Protocol (MCP) servers: tool descriptions and schemas as the LLM contract, side-effect-honest and gated destructive tools, and stdio vs streamable HTTP transport with auth, tuned for AI coding agents.",
-  "problem": "AI agents building MCP servers write vague tool descriptions, skip input schemas, let destructive tools fire without confirmation, and expose remote servers with no auth.",
-  "audience": "Developers building MCP servers and tools for Claude, Cursor, and other MCP clients",
-  "prevents": [
-    "Tool descriptions too vague for the model to know when to call them",
-    "Tools that accept arguments with no schema and crash on bad input",
-    "Destructive tools that act with no confirmation parameter or dry-run",
-    "Remote HTTP servers with no authentication"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/src/mcp",
-      "/src/tools",
-      "/server"
-    ],
-    "stacks": [
-      "mcp",
-      "typescript",
-      "node"
-    ],
-    "packages": [
-      "@modelcontextprotocol/sdk",
-      "zod"
-    ]
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/src/mcp",
-      "title": "Treat the tool description and schema as the LLM-facing API contract",
-      "summary": "Write each tool's name, description, and input schema for the model that reads them; the schema is mandatory and validated before the handler runs.",
-      "body": "The model never sees your handler code. It decides whether and how to call a tool from the name, description, and input schema alone. Those three are the entire API as far as the LLM is concerned.\n\n- Name tools by action and object (`create_issue`, `search_docs`), not by internal function names. The name is the first thing the model matches against intent.\n- Write the description for the model: what the tool does, when to use it, when NOT to use it, and what it returns. Mention units, formats, and constraints the model would otherwise guess wrong. A vague description is the most common reason a tool is never called or called wrong.\n- Declare an input schema for every tool (Zod or JSON Schema) with `.describe()` on non-obvious fields. The SDK validates input against it before your handler runs, so the handler receives typed, checked arguments - never raw, unvalidated input.\n- Return structured, model-readable results and use the protocol's error channel (`isError`) for failures instead of throwing opaque strings. The model uses the result to decide its next step, so make the result legible.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src/mcp",
-      "title": "Keep tools side-effect-honest and gate destructive actions",
-      "summary": "A tool's effects must match its description; destructive or irreversible tools require an explicit confirmation argument or a dry-run mode, and re-check authorization in the handler.",
-      "body": "A model will call any tool it is given if the description fits the goal. The server, not the model's good judgement, is what stops a destructive call from doing damage.\n\n- A tool must do exactly what its description says and nothing more. A `search_*` tool must not write; a tool that mutates state must say so plainly in its description so the model (and the human approving it) understands the consequence.\n- Gate destructive or irreversible actions (delete, send, charge, deploy): require an explicit `confirm: true` argument, or support a `dryRun` that returns what would happen without doing it. Do not let one unqualified call wipe data.\n- Re-check authorization inside the handler against the authenticated session. The model selecting a tool is not authorization; the handler must verify the caller may perform this specific action on this specific resource.\n- Make handlers safe to retry: design mutations to be idempotent (or guarded by an idempotency key) so a re-issued call after a timeout does not double-act.\n- Scope each tool narrowly. A surgical tool the model uses correctly beats a powerful do-everything tool it misuses.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "strict"
-    },
-    {
-      "kind": "rule",
-      "nodePath": "/src/mcp",
-      "title": "Choose transport by deployment and authenticate remote servers",
-      "summary": "Use stdio for local single-client servers and streamable HTTP for remote/multi-client servers; every HTTP server requires auth (bearer token or OAuth).",
-      "body": "Transport is a deployment decision, and the moment a server is reachable over the network it needs authentication.\n\n- Use the stdio transport for a local server launched by one client (a desktop AI app, an editor): no network surface, the client owns the process lifecycle.\n- Use streamable HTTP for a remote or multi-client server. It is the current HTTP transport; do not build new servers on the deprecated HTTP+SSE transport.\n- Authenticate every HTTP server. At minimum require a bearer token; for third-party or user-facing servers, implement the MCP OAuth flow so each user authorizes with their own identity. An unauthenticated remote MCP server is an open door to whatever its tools can do.\n- Validate the `Origin` header and bind local HTTP servers to `127.0.0.1` to prevent DNS-rebinding and cross-site access. Keep secrets in server env, never in tool output or logs.\n- Pass the authenticated identity into tool handlers so per-tool authorization checks have a subject to check against.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "advisory"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/src/mcp",
-      "title": "Choose the right primitive: tool vs resource vs prompt",
-      "summary": "Tools are model-invoked actions, resources are app-controlled readable context, prompts are user-invoked templates; map each capability to the primitive whose control model fits.",
-      "body": 'MCP exposes three primitives with different control models, and picking the wrong one is a recurring design mistake.\n\n- Tools are model-controlled: the LLM decides to call them to take an action or fetch dynamic data. Use a tool when the model should act (mutations, searches, computations, live lookups).\n- Resources are application-controlled: readable, addressable context (a file, a record, a schema) the host app or user attaches. Use a resource for content the model should be able to read but not "invoke" - it has no side effect and is referenced by URI.\n- Prompts are user-controlled: parameterized templates a user explicitly selects (slash commands, canned workflows). Use a prompt to package a reusable interaction the user triggers, not the model.\n- A read-only lookup can legitimately be either a resource (attachable context) or a tool (model fetches on demand); choose by whether the host or the model should decide when it enters context. When unsure for actions, a narrowly-scoped tool is the safe default.\n\nSee /src/mcp for the tool-contract and destructive-action rules.'
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "mcp-tool-authoring-checklist",
-      "summary": "Checklist to run before merging a new or changed MCP tool, resource, or prompt.",
-      "body": "---\nname: mcp-tool-authoring-checklist\ndescription: Checklist for adding or changing an MCP tool, resource, or prompt. Run before merging any change to a Model Context Protocol server.\n---\n\n# MCP tool authoring checklist\n\n## Contract (model-facing)\n- [ ] Tool name is action+object and matches what the model would search for.\n- [ ] Description states what it does, when to use it, when NOT to, and what it returns - written for the model, with units/formats spelled out.\n- [ ] Input schema declared (Zod/JSON Schema) with `.describe()` on non-obvious fields; handler reads only validated input.\n- [ ] Result is structured and model-readable; failures use the error channel (`isError`), not opaque throws.\n\n## Safety\n- [ ] Effects match the description exactly; mutating tools say so.\n- [ ] Destructive/irreversible actions require `confirm: true` or support `dryRun`.\n- [ ] Handler re-checks authorization against the authenticated session for this resource.\n- [ ] Mutations are idempotent or guarded by an idempotency key (safe to retry).\n- [ ] Tool is narrowly scoped, not a do-everything tool.\n\n## Transport & auth\n- [ ] stdio for local single-client; streamable HTTP for remote (not the deprecated SSE transport).\n- [ ] Every HTTP server authenticates (bearer or OAuth); local HTTP binds to 127.0.0.1 and validates `Origin`.\n- [ ] No secrets in tool output or logs; authenticated identity flows into handlers.\n\n## Primitive choice\n- [ ] Capability mapped to the right primitive: tool (model acts), resource (readable context), prompt (user-triggered template).\n",
-      "skillTags": [
-        "mcp",
-        "tools",
-        "llm",
-        "transport",
-        "auth",
-        "ai-review"
-      ]
-    }
-  ]
-};
-
-// ../../node_modules/@pathrule/patterns/dist/patterns/llm-evals.js
-var llmEvals = {
-  "slug": "llm-evals",
-  "version": "1.0.0",
-  "name": "LLM Evaluations & Testing",
-  "tagline": "Catch hallucinations and quality regressions before users do, with evals on every prompt change.",
-  "description": "The discipline that turns an LLM feature from a demo into something you can change with confidence. Hallucinations and inconsistent quality are the top reported problems with AI-generated work, and you cannot fix what you do not measure. This pattern builds a labelled evaluation set, scores outputs with deterministic checks plus a calibrated LLM-as-judge, and gates every prompt, model, or retrieval change on an eval run so a tweak that helps one case but breaks ten is caught in CI, not in production.",
-  "category": "AI",
-  "icon": "clipboard-check",
-  "color": "bg-purple-500/10 text-purple-600 dark:bg-purple-400/15 dark:text-purple-400",
-  "installs": 0,
-  "updatedAt": "2026-06-09",
-  "changelog": [
-    {
-      "version": "1.0.0",
-      "date": "2026-06-09",
-      "note": "First release."
-    }
-  ],
-  "metaTitle": "LLM Evaluations & Testing pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for LLM evaluation and testing: a labelled eval set, deterministic checks plus a calibrated LLM-as-judge, grounding/hallucination checks, and gating prompt and model changes on an eval run, tuned for AI coding agents.",
-  "problem": "AI agents ship prompt and model changes on vibes, with no eval set, so hallucinations and quality regressions only surface once users hit them.",
-  "audience": "Teams shipping LLM features that need to measure and defend output quality",
-  "prevents": [
-    "Changing a prompt or model and shipping it because the one example you tried looked good",
-    "Having no labelled dataset, so quality is a feeling rather than a number",
-    "Using an LLM judge with a vague rubric that does not agree with humans",
-    "Letting hallucinations through because nothing checks answers against their source"
-  ],
-  "appliesTo": {
-    "paths": [
-      "/evals",
-      "/src/ai"
-    ],
-    "stacks": [
-      "llm",
-      "ai",
-      "evals"
-    ],
-    "packages": []
-  },
-  "pieces": [
-    {
-      "kind": "rule",
-      "nodePath": "/src/ai",
-      "title": "Gate prompt, model, and retrieval changes on an eval run",
-      "summary": "No change to a prompt, model, or retrieval config ships without running the eval set and comparing scores against the current baseline.",
-      "body": "A prompt is code: a small edit can improve one case and silently break ten others. Without an eval gate, you find out from users.\n\n- Run the eval set on every change to a prompt, model id, temperature, tool definition, or retrieval config, and compare the scores to the committed baseline before merging.\n- Treat a regression on the eval set like a failing test: it blocks the change. An improvement on your one hand-picked example is not evidence; the aggregate score on the dataset is.\n- Pin the model version in the eval run. A provider silently changing a model under you is itself a regression you want the evals to catch.\n- Keep eval runs in CI (or a pre-merge step) so the gate is enforced regardless of who makes the change. Record the score so the trend is visible over time.",
-      "scopeType": "folder",
-      "priority": "high",
-      "enforcement": "advisory"
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/evals",
-      "title": "Build a labelled eval set that mirrors real usage",
-      "summary": "Curate a versioned dataset of representative and adversarial inputs with expected outputs or acceptance criteria; grow it from real failures.",
-      "body": "The eval set is the asset. The model and prompt will change; the dataset is what lets you tell whether a change is better.\n\n- Curate inputs that mirror real traffic: common cases, important edge cases, and adversarial inputs (prompt injection, ambiguous or out-of-scope requests, inputs that should be refused). A dataset of only happy-path examples measures nothing useful.\n- For each case, record either an expected output, a reference answer, or explicit acceptance criteria. Some tasks have one right answer; many have a rubric instead, and that is fine as long as it is written down.\n- Version the dataset alongside the code and grow it from production failures: every real hallucination or bad answer becomes a new eval case so the same regression cannot return unnoticed.\n- Keep the set balanced and labelled honestly; do not overfit prompts to a tiny set of examples you keep re-reading. Aim for coverage of the behaviours that matter.\n\nSee /evals for the scoring memory and /src/ai for the eval-gate rule."
-    },
-    {
-      "kind": "memory",
-      "nodePath": "/evals",
-      "title": "Score with deterministic checks first, then a calibrated judge",
-      "summary": "Use exact/programmatic checks where outputs are verifiable; use an LLM-as-judge with a clear rubric, calibrated against human labels, for open-ended quality.",
-      "body": "Pick the cheapest scoring method that actually measures the thing, and only reach for an LLM judge when the output is genuinely open-ended.\n\n- Score deterministically wherever you can: exact match, schema/JSON validity, regex, contains-required-facts, executes-without-error, latency, and cost. These are free, fast, and not themselves subject to model error.\n- For open-ended quality (helpfulness, tone, faithfulness), use an LLM-as-judge: a separate model call that scores the output against a specific, written rubric, ideally returning a structured verdict with a reason, not a bare number.\n- Calibrate the judge against human labels on a sample: if the judge does not agree with your team's judgments, fix the rubric before trusting it. An uncalibrated judge is just another opinion.\n- For RAG and any grounded answer, score faithfulness explicitly: does the answer follow from the retrieved context, or did the model invent it? This is the direct measure of hallucination. (See the rag-embeddings pattern for retrieval quality.)\n\nSee /evals for the dataset memory and /src/ai for the eval-gate rule."
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "llm-eval-set-builder",
-      "summary": "Checklist for building or extending an LLM evaluation set and wiring it into the change workflow.",
-      "body": "---\nname: llm-eval-set-builder\ndescription: Checklist for building or extending an LLM evaluation set and gating changes on it. Run when adding an LLM feature or after a production quality failure.\n---\n\n# LLM eval set builder\n\n## Dataset\n- [ ] Inputs mirror real usage: common cases, important edge cases, and adversarial inputs (injection, out-of-scope, must-refuse).\n- [ ] Each case has an expected output, reference answer, or written acceptance criteria/rubric.\n- [ ] Dataset is versioned with the code and grows from real production failures.\n- [ ] Coverage is balanced; prompts are not overfit to a handful of examples.\n\n## Scoring\n- [ ] Deterministic checks used where outputs are verifiable (exact match, schema validity, required facts, runs-clean, latency, cost).\n- [ ] LLM-as-judge used only for open-ended quality, with a specific written rubric and a structured verdict + reason.\n- [ ] Judge calibrated against human labels on a sample; rubric fixed until it agrees.\n- [ ] Grounded answers scored for faithfulness (does the answer follow from the source) to catch hallucination.\n\n## Gate\n- [ ] Eval run triggers on any prompt/model/temperature/tool/retrieval change; model version pinned.\n- [ ] Scores compared to a committed baseline; a regression blocks the change like a failing test.\n- [ ] Eval runs in CI / pre-merge; scores recorded so the quality trend is visible.\n",
-      "skillTags": [
-        "llm",
-        "evals",
-        "testing",
-        "llm-as-judge",
-        "hallucination",
-        "ai-review"
-      ]
-    },
-    {
-      "kind": "skill",
-      "nodePath": "/",
-      "title": "llm-as-judge-rubric",
-      "summary": "Template and guidance for writing a reliable LLM-as-judge scoring prompt and rubric.",
-      "body": "---\nname: llm-as-judge-rubric\ndescription: Guidance for writing a reliable LLM-as-judge scoring prompt. Use when building automated scoring for open-ended LLM outputs.\n---\n\n# LLM-as-judge rubric\n\nUse when an output is too open-ended for a deterministic check. A judge is only as good as its rubric.\n\n## Writing the rubric\n- [ ] Define each criterion concretely (e.g. faithfulness, relevance, completeness, tone) with what a pass and a fail look like, not just a label.\n- [ ] Prefer a small discrete scale (e.g. 1-5 or pass/fail per criterion) over an unanchored 0-100; anchor each level with a description.\n- [ ] Ask the judge to give its reasoning and cite the part of the input/source that justifies the score, then the score. Require a structured output (per-criterion verdict + reason).\n- [ ] For faithfulness/grounding, give the judge the source context and ask explicitly whether each claim is supported by it.\n\n## Making it reliable\n- [ ] Use a capable model as the judge; do not have a weak model grade a strong one.\n- [ ] Calibrate: score a sample the team has labelled and measure agreement; revise the rubric until the judge matches human judgment.\n- [ ] Watch for known judge biases (position, length, self-preference) and control for them (e.g. randomize order in pairwise comparisons).\n- [ ] Keep the judge prompt and model versioned with the eval set; a judge change is itself an eval change.\n",
-      "skillTags": [
-        "llm",
-        "llm-as-judge",
-        "evals",
-        "scoring",
-        "rubric",
-        "ai-review"
-      ]
-    }
-  ]
-};
-
 // ../../node_modules/@pathrule/patterns/dist/patterns/supply-chain-security.js
 var supplyChainSecurity = {
   "slug": "supply-chain-security",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Software Supply Chain Security",
   "tagline": "Stop a poisoned dependency from running in your build, CI, and production.",
   "description": "A defense baseline against the supply chain attacks that hit the npm ecosystem hard in 2025 and 2026. Software Supply Chain Failures entered the OWASP Top 10 at A03:2025 because most of these compromises run through a dependency's install script before anyone reads the code. This pattern commits the lockfile and installs from it, neutralizes lifecycle scripts, adds a publish cooldown so freshly-compromised versions are never pulled, and treats every dependency change as a reviewed event with provenance.",
@@ -32577,16 +34476,21 @@ var supplyChainSecurity = {
   "icon": "package-check",
   "color": "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Software Supply Chain Security pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for software supply chain security: commit the lockfile and install frozen, disable dependency install scripts, add a publish cooldown, pin and review dependencies with provenance, tuned for AI coding agents.",
+  "metaTitle": "Supply chain security pattern for AI agents",
+  "metaDescription": "Supply chain pattern for AI coding agents: frozen lockfile installs, lifecycle scripts disabled, a publish cooldown on new versions, and provenance in CI.",
   "problem": "AI agents run npm install in CI, leave install scripts enabled, and add freshly-published dependencies, exactly the path recent supply chain attacks use to execute code.",
   "audience": "Teams hardening their dependency pipeline against supply chain compromise",
   "prevents": [
@@ -32680,7 +34584,7 @@ var supplyChainSecurity = {
 // ../../node_modules/@pathrule/patterns/dist/patterns/web-security.js
 var webSecurity = {
   "slug": "web-security",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Web Security (OWASP)",
   "tagline": "Build web apps that deny by default, distrust every input, and ship secure headers.",
   "description": "A baseline against the risks at the top of the OWASP Top 10:2025. Broken Access Control is still the number one application security risk, and Security Misconfiguration and Injection sit right behind it. This pattern enforces server-side authorization on every request, treats all input as hostile, defends against XSS and CSRF, and ships a secure-by-default configuration with the right response headers. It is the app-security layer that sits above your authentication, not a replacement for it.",
@@ -32688,16 +34592,21 @@ var webSecurity = {
   "icon": "shield-check",
   "color": "bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-400",
   "installs": 0,
-  "updatedAt": "2026-06-09",
+  "updatedAt": "2026-08-25",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-08-25",
+      "note": "Rewrote the page title and description so the site stops substituting generic metadata."
+    },
     {
       "version": "1.0.0",
       "date": "2026-06-09",
       "note": "First release."
     }
   ],
-  "metaTitle": "Web Security (OWASP) pattern for AI coding agents",
-  "metaDescription": "Pathrule pattern for OWASP web security: server-side deny-by-default access control, input validation against injection, XSS and CSRF defenses, and secure response headers, tuned for AI coding agents.",
+  "metaTitle": "OWASP web security pattern for AI agents",
+  "metaDescription": "Web security pattern for AI coding agents: server-side deny-by-default access control, parameterized queries, XSS and CSRF defenses, and secure headers.",
   "problem": "AI agents enforce access control in the UI, trust request input, build SQL by string concatenation, and ship apps with default configs and no security headers.",
   "audience": "Web teams hardening application security beyond authentication",
   "prevents": [
@@ -32789,47 +34698,62 @@ var webSecurity = {
 
 // ../../node_modules/@pathrule/patterns/dist/index.js
 var PATTERNS = [
+  angular,
   astro,
+  django,
   expoReactNative,
   flutter,
+  laravel,
   nextjsAppRouter,
   nuxt,
   reactRouter,
+  rails,
   sveltekit,
+  swiftui,
+  coreWebVitals,
   formsRhfZod,
   reactTypescript,
-  typescriptStrict,
   shadcnUi,
   tailwindCss,
   tanstackQuery,
+  typescriptStrict,
   webAccessibility,
   authSessionsJwtOauth,
   backgroundJobsQueues,
   drizzleOrm,
-  nodeTsApiHono,
-  postgresSchema,
-  restApiDesign,
-  supabaseRls,
   fastapi,
   goApi,
+  graphqlApi,
+  kafkaEventDriven,
+  mongodbMongoose,
+  multiTenancy,
+  nodeTsApiHono,
+  postgresSchema,
+  prismaOrm,
   redisCaching,
+  restApiDesign,
+  supabaseRls,
   stripeBilling,
   subscriptionsUsageBilling,
+  awsLambda,
+  cloudflareWorkers,
   dockerContainers,
   githubActionsCicd,
+  kubernetesHelm,
   observability,
   secretsEnvManagement,
   terraformIac,
   vercelDeploy,
   codeReview,
   gitConventionalCommits,
+  pythonTooling,
   monorepoPnpmTurborepo,
   testingVitestPlaywright,
-  pythonTooling,
+  aiAgents,
   aiSdk,
-  ragEmbeddings,
-  mcpServerAuthoring,
   llmEvals,
+  mcpServerAuthoring,
+  ragEmbeddings,
   supplyChainSecurity,
   webSecurity
 ];
@@ -34143,6 +36067,19 @@ var FORMULAS = [
     active: false
   },
   {
+    // m185. The floor is measured rather than chosen: over 58,827 same-workspace
+    // pairs on prod, 0.95+ is genuine repetition and the 0.90 band is path-scoped
+    // knowledge files that legitimately share a shape. Monthly, because a
+    // duplicate does not appear between two turns and the comparison is O(n^2)
+    // over the workspace's embeddings.
+    id: "duplicate_memory",
+    findingType: "duplicate_knowledge",
+    cadence: "monthly",
+    confidenceBaseline: 0.9,
+    phase: 2,
+    active: true
+  },
+  {
     id: "title_pair_conflict",
     findingType: "conflicting_knowledge",
     cadence: "monthly",
@@ -34224,6 +36161,15 @@ var MAINTENANCE_CASE_REGISTRY = [
     defaultSeverity: "attention",
     defaultExecutionClass: "needs_user_engine",
     requiresBehaviorOutcome: true
+  },
+  {
+    // Detection is deterministic (cosine similarity over the existing embeddings),
+    // but merging two memories is a judgement about which wording survives, so a
+    // cheap model drafts the merge and a person accepts it.
+    type: "duplicate_knowledge",
+    defaultSeverity: "info",
+    defaultExecutionClass: "cheap_ai_review",
+    requiresBehaviorOutcome: false
   },
   {
     type: "repeated_work_candidate",
@@ -35493,15 +37439,15 @@ var makeIssue = (params) => {
       message: issueData.message
     };
   }
-  let errorMessage = "";
+  let errorMessage2 = "";
   const maps = errorMaps.filter((m) => !!m).slice().reverse();
   for (const map of maps) {
-    errorMessage = map(fullIssue, { data, defaultError: errorMessage }).message;
+    errorMessage2 = map(fullIssue, { data, defaultError: errorMessage2 }).message;
   }
   return {
     ...issueData,
     path: fullPath,
-    message: errorMessage
+    message: errorMessage2
   };
 };
 var EMPTY_PATH = [];
@@ -45325,19 +47271,19 @@ var getRefs = (options) => {
 };
 
 // ../../node_modules/zod-to-json-schema/dist/esm/errorMessages.js
-function addErrorMessage(res, key, errorMessage, refs) {
+function addErrorMessage(res, key, errorMessage2, refs) {
   if (!refs?.errorMessages)
     return;
-  if (errorMessage) {
+  if (errorMessage2) {
     res.errorMessage = {
       ...res.errorMessage,
-      [key]: errorMessage
+      [key]: errorMessage2
     };
   }
 }
-function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
+function setResponseValueAndErrors(res, key, value, errorMessage2, refs) {
   res[key] = value;
-  addErrorMessage(res, key, errorMessage, refs);
+  addErrorMessage(res, key, errorMessage2, refs);
 }
 
 // ../../node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
@@ -46648,8 +48594,8 @@ var Protocol = class {
                   if (queuedMessage.type === "response") {
                     resolver(message);
                   } else {
-                    const errorMessage = message;
-                    const error2 = new McpError(errorMessage.error.code, errorMessage.error.message, errorMessage.error.data);
+                    const errorMessage2 = message;
+                    const error2 = new McpError(errorMessage2.error.code, errorMessage2.error.message, errorMessage2.error.data);
                     resolver(error2);
                   }
                 } else {
@@ -47949,23 +49895,23 @@ var Server = class extends Protocol {
       const wrappedHandler = async (request, extra) => {
         const validatedRequest = safeParse2(CallToolRequestSchema, request);
         if (!validatedRequest.success) {
-          const errorMessage = validatedRequest.error instanceof Error ? validatedRequest.error.message : String(validatedRequest.error);
-          throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call request: ${errorMessage}`);
+          const errorMessage2 = validatedRequest.error instanceof Error ? validatedRequest.error.message : String(validatedRequest.error);
+          throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call request: ${errorMessage2}`);
         }
         const { params } = validatedRequest.data;
         const result = await Promise.resolve(handler(request, extra));
         if (params.task) {
           const taskValidationResult = safeParse2(CreateTaskResultSchema, result);
           if (!taskValidationResult.success) {
-            const errorMessage = taskValidationResult.error instanceof Error ? taskValidationResult.error.message : String(taskValidationResult.error);
-            throw new McpError(ErrorCode.InvalidParams, `Invalid task creation result: ${errorMessage}`);
+            const errorMessage2 = taskValidationResult.error instanceof Error ? taskValidationResult.error.message : String(taskValidationResult.error);
+            throw new McpError(ErrorCode.InvalidParams, `Invalid task creation result: ${errorMessage2}`);
           }
           return taskValidationResult.data;
         }
         const validationResult = safeParse2(CallToolResultSchema, result);
         if (!validationResult.success) {
-          const errorMessage = validationResult.error instanceof Error ? validationResult.error.message : String(validationResult.error);
-          throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call result: ${errorMessage}`);
+          const errorMessage2 = validationResult.error instanceof Error ? validationResult.error.message : String(validationResult.error);
+          throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call result: ${errorMessage2}`);
         }
         return validationResult.data;
       };
@@ -48459,12 +50405,12 @@ var McpServer = class {
    * @param errorMessage - The error message.
    * @returns The tool error result.
    */
-  createToolError(errorMessage) {
+  createToolError(errorMessage2) {
     return {
       content: [
         {
           type: "text",
-          text: errorMessage
+          text: errorMessage2
         }
       ],
       isError: true
@@ -48482,8 +50428,8 @@ var McpServer = class {
     const parseResult = await safeParseAsync2(schemaToParse, args);
     if (!parseResult.success) {
       const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-      const errorMessage = getParseErrorMessage(error2);
-      throw new McpError(ErrorCode.InvalidParams, `Input validation error: Invalid arguments for tool ${toolName}: ${errorMessage}`);
+      const errorMessage2 = getParseErrorMessage(error2);
+      throw new McpError(ErrorCode.InvalidParams, `Input validation error: Invalid arguments for tool ${toolName}: ${errorMessage2}`);
     }
     return parseResult.data;
   }
@@ -48507,8 +50453,8 @@ var McpServer = class {
     const parseResult = await safeParseAsync2(outputObj, result.structuredContent);
     if (!parseResult.success) {
       const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-      const errorMessage = getParseErrorMessage(error2);
-      throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${errorMessage}`);
+      const errorMessage2 = getParseErrorMessage(error2);
+      throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${errorMessage2}`);
     }
   }
   /**
@@ -48720,8 +50666,8 @@ var McpServer = class {
         const parseResult = await safeParseAsync2(argsObj, request.params.arguments);
         if (!parseResult.success) {
           const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
-          const errorMessage = getParseErrorMessage(error2);
-          throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for prompt ${request.params.name}: ${errorMessage}`);
+          const errorMessage2 = getParseErrorMessage(error2);
+          throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for prompt ${request.params.name}: ${errorMessage2}`);
         }
         const args = parseResult.data;
         const cb = prompt.callback;
@@ -51951,12 +53897,14 @@ var deleteMemoryTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await deleteMemoryHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
+      const before = await toolCtx.backend?.readMemory(args.memory_id).catch(() => null);
+      const result = await deleteMemoryHandler(toolCtx, {
         memory_id: args.memory_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result.ok ? { ok: true, data: { ...result.data, title: before?.title } } : formatToolError3(result.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -52051,12 +53999,14 @@ var deleteRuleTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await deleteRuleHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
+      const before = await toolCtx.backend?.readRule(args.rule_id).catch(() => null);
+      const result = await deleteRuleHandler(toolCtx, {
         rule_id: args.rule_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result.ok ? { ok: true, data: { ...result.data, name: before?.name } } : formatToolError3(result.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -52157,12 +54107,14 @@ var deleteSkillTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await deleteSkillHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
+      const before = await toolCtx.backend?.readSkill(args.skill_id).catch(() => null);
+      const result = await deleteSkillHandler(toolCtx, {
         skill_id: args.skill_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result.ok ? { ok: true, data: { ...result.data, name: before?.name } } : formatToolError3(result.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
