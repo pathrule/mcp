@@ -2,9 +2,21 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.pathrule/pathrule-remote-mcp",
   "title": "Pathrule",
-  "description": "Path-scoped team memories, rules and skills for Claude Code, Cursor, Codex and other MCP clients.",
-  "version": "0.3.2",
-  "websiteUrl": "https://www.pathrule.io",
+  "description": "Persistent project memory, rules and skills that give AI coding agents lasting path-scoped context.",
+  "version": "0.4.0",
+  "websiteUrl": "https://www.pathrule.io/products/mcp",
+  "icons": [
+    {
+      "src": "https://www.pathrule.io/pathrule-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    },
+    {
+      "src": "https://www.pathrule.io/pathrule-mark.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/pathrule/mcp",
     "source": "github"
