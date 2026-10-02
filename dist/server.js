@@ -2133,10 +2133,10 @@ var require_keyword = __commonJS({
       if (def.async && !schemaEnv.$async)
         throw new Error("async keyword in sync schema");
     }
-    function useKeyword(gen, keyword, result) {
-      if (result === void 0)
+    function useKeyword(gen, keyword, result2) {
+      if (result2 === void 0)
         throw new Error(`keyword "${keyword}" failed to compile`);
-      return gen.scopeValue("keyword", typeof result == "function" ? { ref: result } : { ref: result, code: (0, codegen_1.stringify)(result) });
+      return gen.scopeValue("keyword", typeof result2 == "function" ? { ref: result2 } : { ref: result2, code: (0, codegen_1.stringify)(result2) });
     }
     function validSchemaType(schema, schemaType, allowUndefined = false) {
       return !schemaType.length || schemaType.some((st) => st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
@@ -2428,20 +2428,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count = 0;
+      let count2 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count++;
+        count2++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count2 += countKeys(sch));
         }
-        if (count === Infinity)
+        if (count2 === Infinity)
           return Infinity;
       }
-      return count;
+      return count2;
     }
     function getFullPath(resolver, id = "", normalize) {
       if (normalize !== false)
@@ -2902,8 +2902,8 @@ var require_validate = __commonJS({
         if (!this.allErrors)
           this.gen.if(cond);
       }
-      setParams(obj, assign) {
-        if (assign)
+      setParams(obj, assign2) {
+        if (assign2)
           Object.assign(this.params, obj);
         else
           this.params = obj;
@@ -5526,8 +5526,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count)));
+          const count2 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count2)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -5540,16 +5540,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count) {
-          gen.code((0, codegen_1._)`${count}++`);
+        function checkLimits(count2) {
+          gen.code((0, codegen_1._)`${count2}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count2} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -7010,6 +7010,1698 @@ var require_dist = __commonJS({
   }
 });
 
+// ../../node_modules/obliterator/iterator.js
+var require_iterator = __commonJS({
+  "../../node_modules/obliterator/iterator.js"(exports, module) {
+    "use strict";
+    function Iterator3(next) {
+      if (typeof next !== "function")
+        throw new Error("obliterator/iterator: expecting a function!");
+      this.next = next;
+    }
+    if (typeof Symbol !== "undefined")
+      Iterator3.prototype[Symbol.iterator] = function() {
+        return this;
+      };
+    Iterator3.of = function() {
+      var args = arguments, l = args.length, i = 0;
+      return new Iterator3(function() {
+        if (i >= l) return { done: true };
+        return { done: false, value: args[i++] };
+      });
+    };
+    Iterator3.empty = function() {
+      var iterator = new Iterator3(function() {
+        return { done: true };
+      });
+      return iterator;
+    };
+    Iterator3.fromSequence = function(sequence) {
+      var i = 0, l = sequence.length;
+      return new Iterator3(function() {
+        if (i >= l) return { done: true };
+        return { done: false, value: sequence[i++] };
+      });
+    };
+    Iterator3.is = function(value) {
+      if (value instanceof Iterator3) return true;
+      return typeof value === "object" && value !== null && typeof value.next === "function";
+    };
+    module.exports = Iterator3;
+  }
+});
+
+// ../../node_modules/obliterator/support.js
+var require_support = __commonJS({
+  "../../node_modules/obliterator/support.js"(exports) {
+    "use strict";
+    exports.ARRAY_BUFFER_SUPPORT = typeof ArrayBuffer !== "undefined";
+    exports.SYMBOL_SUPPORT = typeof Symbol !== "undefined";
+  }
+});
+
+// ../../node_modules/obliterator/iter.js
+var require_iter = __commonJS({
+  "../../node_modules/obliterator/iter.js"(exports, module) {
+    "use strict";
+    var Iterator3 = require_iterator();
+    var support = require_support();
+    var ARRAY_BUFFER_SUPPORT = support.ARRAY_BUFFER_SUPPORT;
+    var SYMBOL_SUPPORT = support.SYMBOL_SUPPORT;
+    function iterOrNull(target) {
+      if (typeof target === "string" || Array.isArray(target) || ARRAY_BUFFER_SUPPORT && ArrayBuffer.isView(target))
+        return Iterator3.fromSequence(target);
+      if (typeof target !== "object" || target === null) return null;
+      if (SYMBOL_SUPPORT && typeof target[Symbol.iterator] === "function")
+        return target[Symbol.iterator]();
+      if (typeof target.next === "function") return target;
+      return null;
+    }
+    module.exports = function iter(target) {
+      var iterator = iterOrNull(target);
+      if (!iterator)
+        throw new Error(
+          "obliterator: target is not iterable nor a valid iterator."
+        );
+      return iterator;
+    };
+  }
+});
+
+// ../../node_modules/obliterator/take.js
+var require_take = __commonJS({
+  "../../node_modules/obliterator/take.js"(exports, module) {
+    "use strict";
+    var iter = require_iter();
+    module.exports = function take2(iterable, n) {
+      var l = arguments.length > 1 ? n : Infinity, array2 = l !== Infinity ? new Array(l) : [], step, i = 0;
+      var iterator = iter(iterable);
+      while (true) {
+        if (i === l) return array2;
+        step = iterator.next();
+        if (step.done) {
+          if (i !== n) array2.length = i;
+          return array2;
+        }
+        array2[i++] = step.value;
+      }
+    };
+  }
+});
+
+// ../../node_modules/obliterator/chain.js
+var require_chain = __commonJS({
+  "../../node_modules/obliterator/chain.js"(exports, module) {
+    "use strict";
+    var Iterator3 = require_iterator();
+    var iter = require_iter();
+    module.exports = function chain2() {
+      var iterables = arguments;
+      var current = null;
+      var i = -1;
+      return new Iterator3(function next() {
+        var step = null;
+        do {
+          if (current === null) {
+            i++;
+            if (i >= iterables.length) return { done: true };
+            current = iter(iterables[i]);
+          }
+          step = current.next();
+          if (step.done === true) {
+            current = null;
+            continue;
+          }
+          break;
+        } while (true);
+        return step;
+      });
+    };
+  }
+});
+
+// ../../node_modules/graphology-utils/defaults.js
+var require_defaults2 = __commonJS({
+  "../../node_modules/graphology-utils/defaults.js"(exports, module) {
+    "use strict";
+    function isLeaf(o) {
+      return !o || typeof o !== "object" || typeof o === "function" || Array.isArray(o) || o instanceof Set || o instanceof Map || o instanceof RegExp || o instanceof Date;
+    }
+    function resolveDefaults(target, defaults) {
+      target = target || {};
+      var output = {};
+      for (var k in defaults) {
+        var existing = target[k];
+        var def = defaults[k];
+        if (!isLeaf(def)) {
+          output[k] = resolveDefaults(existing, def);
+          continue;
+        }
+        if (existing === void 0) {
+          output[k] = def;
+        } else {
+          output[k] = existing;
+        }
+      }
+      return output;
+    }
+    module.exports = resolveDefaults;
+  }
+});
+
+// ../../node_modules/graphology-utils/is-graph.js
+var require_is_graph = __commonJS({
+  "../../node_modules/graphology-utils/is-graph.js"(exports, module) {
+    "use strict";
+    module.exports = function isGraph(value) {
+      return value !== null && typeof value === "object" && typeof value.addUndirectedEdgeWithKey === "function" && typeof value.dropNode === "function" && typeof value.multi === "boolean";
+    };
+  }
+});
+
+// ../../node_modules/graphology-utils/infer-type.js
+var require_infer_type = __commonJS({
+  "../../node_modules/graphology-utils/infer-type.js"(exports, module) {
+    "use strict";
+    var isGraph = require_is_graph();
+    module.exports = function inferType(graph) {
+      if (!isGraph(graph))
+        throw new Error(
+          "graphology-utils/infer-type: expecting a valid graphology instance."
+        );
+      var declaredType = graph.type;
+      if (declaredType !== "mixed") return declaredType;
+      if (graph.directedSize === 0 && graph.undirectedSize === 0 || graph.directedSize > 0 && graph.undirectedSize > 0)
+        return "mixed";
+      if (graph.directedSize > 0) return "directed";
+      return "undirected";
+    };
+  }
+});
+
+// ../../node_modules/mnemonist/utils/typed-arrays.js
+var require_typed_arrays = __commonJS({
+  "../../node_modules/mnemonist/utils/typed-arrays.js"(exports) {
+    "use strict";
+    var MAX_8BIT_INTEGER = Math.pow(2, 8) - 1;
+    var MAX_16BIT_INTEGER = Math.pow(2, 16) - 1;
+    var MAX_32BIT_INTEGER = Math.pow(2, 32) - 1;
+    var MAX_SIGNED_8BIT_INTEGER = Math.pow(2, 7) - 1;
+    var MAX_SIGNED_16BIT_INTEGER = Math.pow(2, 15) - 1;
+    var MAX_SIGNED_32BIT_INTEGER = Math.pow(2, 31) - 1;
+    exports.getPointerArray = function(size) {
+      var maxIndex = size - 1;
+      if (maxIndex <= MAX_8BIT_INTEGER)
+        return Uint8Array;
+      if (maxIndex <= MAX_16BIT_INTEGER)
+        return Uint16Array;
+      if (maxIndex <= MAX_32BIT_INTEGER)
+        return Uint32Array;
+      throw new Error("mnemonist: Pointer Array of size > 4294967295 is not supported.");
+    };
+    exports.getSignedPointerArray = function(size) {
+      var maxIndex = size - 1;
+      if (maxIndex <= MAX_SIGNED_8BIT_INTEGER)
+        return Int8Array;
+      if (maxIndex <= MAX_SIGNED_16BIT_INTEGER)
+        return Int16Array;
+      if (maxIndex <= MAX_SIGNED_32BIT_INTEGER)
+        return Int32Array;
+      return Float64Array;
+    };
+    exports.getNumberType = function(value) {
+      if (value === (value | 0)) {
+        if (Math.sign(value) === -1) {
+          if (value <= 127 && value >= -128)
+            return Int8Array;
+          if (value <= 32767 && value >= -32768)
+            return Int16Array;
+          return Int32Array;
+        } else {
+          if (value <= 255)
+            return Uint8Array;
+          if (value <= 65535)
+            return Uint16Array;
+          return Uint32Array;
+        }
+      }
+      return Float64Array;
+    };
+    var TYPE_PRIORITY = {
+      Uint8Array: 1,
+      Int8Array: 2,
+      Uint16Array: 3,
+      Int16Array: 4,
+      Uint32Array: 5,
+      Int32Array: 6,
+      Float32Array: 7,
+      Float64Array: 8
+    };
+    exports.getMinimalRepresentation = function(array2, getter) {
+      var maxType = null, maxPriority = 0, p, t, v, i, l;
+      for (i = 0, l = array2.length; i < l; i++) {
+        v = getter ? getter(array2[i]) : array2[i];
+        t = exports.getNumberType(v);
+        p = TYPE_PRIORITY[t.name];
+        if (p > maxPriority) {
+          maxPriority = p;
+          maxType = t;
+        }
+      }
+      return maxType;
+    };
+    exports.isTypedArray = function(value) {
+      return typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(value);
+    };
+    exports.concat = function() {
+      var length = 0, i, o, l;
+      for (i = 0, l = arguments.length; i < l; i++)
+        length += arguments[i].length;
+      var array2 = new arguments[0].constructor(length);
+      for (i = 0, o = 0; i < l; i++) {
+        array2.set(arguments[i], o);
+        o += arguments[i].length;
+      }
+      return array2;
+    };
+    exports.indices = function(length) {
+      var PointerArray = exports.getPointerArray(length);
+      var array2 = new PointerArray(length);
+      for (var i = 0; i < length; i++)
+        array2[i] = i;
+      return array2;
+    };
+  }
+});
+
+// ../../node_modules/mnemonist/sparse-map.js
+var require_sparse_map = __commonJS({
+  "../../node_modules/mnemonist/sparse-map.js"(exports, module) {
+    "use strict";
+    var Iterator3 = require_iterator();
+    var getPointerArray = require_typed_arrays().getPointerArray;
+    function SparseMap(Values, length) {
+      if (arguments.length < 2) {
+        length = Values;
+        Values = Array;
+      }
+      var ByteArray = getPointerArray(length);
+      this.size = 0;
+      this.length = length;
+      this.dense = new ByteArray(length);
+      this.sparse = new ByteArray(length);
+      this.vals = new Values(length);
+    }
+    SparseMap.prototype.clear = function() {
+      this.size = 0;
+    };
+    SparseMap.prototype.has = function(member) {
+      var index = this.sparse[member];
+      return index < this.size && this.dense[index] === member;
+    };
+    SparseMap.prototype.get = function(member) {
+      var index = this.sparse[member];
+      if (index < this.size && this.dense[index] === member)
+        return this.vals[index];
+      return;
+    };
+    SparseMap.prototype.set = function(member, value) {
+      var index = this.sparse[member];
+      if (index < this.size && this.dense[index] === member) {
+        this.vals[index] = value;
+        return this;
+      }
+      this.dense[this.size] = member;
+      this.sparse[member] = this.size;
+      this.vals[this.size] = value;
+      this.size++;
+      return this;
+    };
+    SparseMap.prototype.delete = function(member) {
+      var index = this.sparse[member];
+      if (index >= this.size || this.dense[index] !== member)
+        return false;
+      index = this.dense[this.size - 1];
+      this.dense[this.sparse[member]] = index;
+      this.sparse[index] = this.sparse[member];
+      this.size--;
+      return true;
+    };
+    SparseMap.prototype.forEach = function(callback, scope) {
+      scope = arguments.length > 1 ? scope : this;
+      for (var i = 0; i < this.size; i++)
+        callback.call(scope, this.vals[i], this.dense[i]);
+    };
+    SparseMap.prototype.keys = function() {
+      var size = this.size, dense = this.dense, i = 0;
+      return new Iterator3(function() {
+        if (i < size) {
+          var item = dense[i];
+          i++;
+          return {
+            value: item
+          };
+        }
+        return {
+          done: true
+        };
+      });
+    };
+    SparseMap.prototype.values = function() {
+      var size = this.size, values = this.vals, i = 0;
+      return new Iterator3(function() {
+        if (i < size) {
+          var item = values[i];
+          i++;
+          return {
+            value: item
+          };
+        }
+        return {
+          done: true
+        };
+      });
+    };
+    SparseMap.prototype.entries = function() {
+      var size = this.size, dense = this.dense, values = this.vals, i = 0;
+      return new Iterator3(function() {
+        if (i < size) {
+          var item = [dense[i], values[i]];
+          i++;
+          return {
+            value: item
+          };
+        }
+        return {
+          done: true
+        };
+      });
+    };
+    if (typeof Symbol !== "undefined")
+      SparseMap.prototype[Symbol.iterator] = SparseMap.prototype.entries;
+    SparseMap.prototype.inspect = function() {
+      var proxy = /* @__PURE__ */ new Map();
+      for (var i = 0; i < this.size; i++)
+        proxy.set(this.dense[i], this.vals[i]);
+      Object.defineProperty(proxy, "constructor", {
+        value: SparseMap,
+        enumerable: false
+      });
+      proxy.length = this.length;
+      if (this.vals.constructor !== Array)
+        proxy.type = this.vals.constructor.name;
+      return proxy;
+    };
+    if (typeof Symbol !== "undefined")
+      SparseMap.prototype[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = SparseMap.prototype.inspect;
+    module.exports = SparseMap;
+  }
+});
+
+// ../../node_modules/mnemonist/sparse-queue-set.js
+var require_sparse_queue_set = __commonJS({
+  "../../node_modules/mnemonist/sparse-queue-set.js"(exports, module) {
+    "use strict";
+    var Iterator3 = require_iterator();
+    var getPointerArray = require_typed_arrays().getPointerArray;
+    function SparseQueueSet(capacity) {
+      var ByteArray = getPointerArray(capacity);
+      this.start = 0;
+      this.size = 0;
+      this.capacity = capacity;
+      this.dense = new ByteArray(capacity);
+      this.sparse = new ByteArray(capacity);
+    }
+    SparseQueueSet.prototype.clear = function() {
+      this.start = 0;
+      this.size = 0;
+    };
+    SparseQueueSet.prototype.has = function(member) {
+      if (this.size === 0)
+        return false;
+      var index = this.sparse[member];
+      var inBounds = index < this.capacity && (index >= this.start && index < this.start + this.size) || index < (this.start + this.size) % this.capacity;
+      return inBounds && this.dense[index] === member;
+    };
+    SparseQueueSet.prototype.enqueue = function(member) {
+      var index = this.sparse[member];
+      if (this.size !== 0) {
+        var inBounds = index < this.capacity && (index >= this.start && index < this.start + this.size) || index < (this.start + this.size) % this.capacity;
+        if (inBounds && this.dense[index] === member)
+          return this;
+      }
+      index = (this.start + this.size) % this.capacity;
+      this.dense[index] = member;
+      this.sparse[member] = index;
+      this.size++;
+      return this;
+    };
+    SparseQueueSet.prototype.dequeue = function() {
+      if (this.size === 0)
+        return;
+      var index = this.start;
+      this.size--;
+      this.start++;
+      if (this.start === this.capacity)
+        this.start = 0;
+      var member = this.dense[index];
+      this.sparse[member] = this.capacity;
+      return member;
+    };
+    SparseQueueSet.prototype.forEach = function(callback, scope) {
+      scope = arguments.length > 1 ? scope : this;
+      var c = this.capacity, l = this.size, i = this.start, j = 0;
+      while (j < l) {
+        callback.call(scope, this.dense[i], j, this);
+        i++;
+        j++;
+        if (i === c)
+          i = 0;
+      }
+    };
+    SparseQueueSet.prototype.values = function() {
+      var dense = this.dense, c = this.capacity, l = this.size, i = this.start, j = 0;
+      return new Iterator3(function() {
+        if (j >= l)
+          return {
+            done: true
+          };
+        var value = dense[i];
+        i++;
+        j++;
+        if (i === c)
+          i = 0;
+        return {
+          value,
+          done: false
+        };
+      });
+    };
+    if (typeof Symbol !== "undefined")
+      SparseQueueSet.prototype[Symbol.iterator] = SparseQueueSet.prototype.values;
+    SparseQueueSet.prototype.inspect = function() {
+      var proxy = [];
+      this.forEach(function(member) {
+        proxy.push(member);
+      });
+      Object.defineProperty(proxy, "constructor", {
+        value: SparseQueueSet,
+        enumerable: false
+      });
+      proxy.capacity = this.capacity;
+      return proxy;
+    };
+    if (typeof Symbol !== "undefined")
+      SparseQueueSet.prototype[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = SparseQueueSet.prototype.inspect;
+    module.exports = SparseQueueSet;
+  }
+});
+
+// ../../node_modules/pandemonium/random-index.js
+var require_random_index = __commonJS({
+  "../../node_modules/pandemonium/random-index.js"(exports, module) {
+    "use strict";
+    function createRandomIndex(rng) {
+      return function(length) {
+        if (typeof length !== "number") length = length.length;
+        return Math.floor(rng() * length);
+      };
+    }
+    var randomIndex = createRandomIndex(Math.random);
+    randomIndex.createRandomIndex = createRandomIndex;
+    module.exports = randomIndex;
+  }
+});
+
+// ../../node_modules/graphology-utils/getters.js
+var require_getters = __commonJS({
+  "../../node_modules/graphology-utils/getters.js"(exports) {
+    "use strict";
+    function coerceWeight(value) {
+      if (typeof value !== "number" || isNaN(value)) return 1;
+      return value;
+    }
+    function createNodeValueGetter(nameOrFunction, defaultValue) {
+      var getter = {};
+      var coerceToDefault = function(v) {
+        if (typeof v === "undefined") return defaultValue;
+        return v;
+      };
+      if (typeof defaultValue === "function") coerceToDefault = defaultValue;
+      var get2 = function(attributes) {
+        return coerceToDefault(attributes[nameOrFunction]);
+      };
+      var returnDefault = function() {
+        return coerceToDefault(void 0);
+      };
+      if (typeof nameOrFunction === "string") {
+        getter.fromAttributes = get2;
+        getter.fromGraph = function(graph, node) {
+          return get2(graph.getNodeAttributes(node));
+        };
+        getter.fromEntry = function(node, attributes) {
+          return get2(attributes);
+        };
+      } else if (typeof nameOrFunction === "function") {
+        getter.fromAttributes = function() {
+          throw new Error(
+            "graphology-utils/getters/createNodeValueGetter: irrelevant usage."
+          );
+        };
+        getter.fromGraph = function(graph, node) {
+          return coerceToDefault(
+            nameOrFunction(node, graph.getNodeAttributes(node))
+          );
+        };
+        getter.fromEntry = function(node, attributes) {
+          return coerceToDefault(nameOrFunction(node, attributes));
+        };
+      } else {
+        getter.fromAttributes = returnDefault;
+        getter.fromGraph = returnDefault;
+        getter.fromEntry = returnDefault;
+      }
+      return getter;
+    }
+    function createEdgeValueGetter(nameOrFunction, defaultValue) {
+      var getter = {};
+      var coerceToDefault = function(v) {
+        if (typeof v === "undefined") return defaultValue;
+        return v;
+      };
+      if (typeof defaultValue === "function") coerceToDefault = defaultValue;
+      var get2 = function(attributes) {
+        return coerceToDefault(attributes[nameOrFunction]);
+      };
+      var returnDefault = function() {
+        return coerceToDefault(void 0);
+      };
+      if (typeof nameOrFunction === "string") {
+        getter.fromAttributes = get2;
+        getter.fromGraph = function(graph, edge) {
+          return get2(graph.getEdgeAttributes(edge));
+        };
+        getter.fromEntry = function(edge, attributes) {
+          return get2(attributes);
+        };
+        getter.fromPartialEntry = getter.fromEntry;
+        getter.fromMinimalEntry = getter.fromEntry;
+      } else if (typeof nameOrFunction === "function") {
+        getter.fromAttributes = function() {
+          throw new Error(
+            "graphology-utils/getters/createEdgeValueGetter: irrelevant usage."
+          );
+        };
+        getter.fromGraph = function(graph, edge) {
+          var extremities = graph.extremities(edge);
+          return coerceToDefault(
+            nameOrFunction(
+              edge,
+              graph.getEdgeAttributes(edge),
+              extremities[0],
+              extremities[1],
+              graph.getNodeAttributes(extremities[0]),
+              graph.getNodeAttributes(extremities[1]),
+              graph.isUndirected(edge)
+            )
+          );
+        };
+        getter.fromEntry = function(e, a, s, t, sa, ta, u) {
+          return coerceToDefault(nameOrFunction(e, a, s, t, sa, ta, u));
+        };
+        getter.fromPartialEntry = function(e, a, s, t) {
+          return coerceToDefault(nameOrFunction(e, a, s, t));
+        };
+        getter.fromMinimalEntry = function(e, a) {
+          return coerceToDefault(nameOrFunction(e, a));
+        };
+      } else {
+        getter.fromAttributes = returnDefault;
+        getter.fromGraph = returnDefault;
+        getter.fromEntry = returnDefault;
+        getter.fromMinimalEntry = returnDefault;
+      }
+      return getter;
+    }
+    exports.createNodeValueGetter = createNodeValueGetter;
+    exports.createEdgeValueGetter = createEdgeValueGetter;
+    exports.createEdgeWeightGetter = function(name) {
+      return createEdgeValueGetter(name, coerceWeight);
+    };
+  }
+});
+
+// ../../node_modules/graphology-indices/louvain.js
+var require_louvain = __commonJS({
+  "../../node_modules/graphology-indices/louvain.js"(exports) {
+    "use strict";
+    var typed = require_typed_arrays();
+    var resolveDefaults = require_defaults2();
+    var createEdgeWeightGetter = require_getters().createEdgeWeightGetter;
+    var INSPECT = /* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom");
+    var DEFAULTS2 = {
+      getEdgeWeight: "weight",
+      keepDendrogram: false,
+      resolution: 1
+    };
+    function UndirectedLouvainIndex(graph, options) {
+      options = resolveDefaults(options, DEFAULTS2);
+      var resolution = options.resolution;
+      var getEdgeWeight = createEdgeWeightGetter(options.getEdgeWeight).fromEntry;
+      var size = (graph.size - graph.selfLoopCount) * 2;
+      var NeighborhoodPointerArray = typed.getPointerArray(size);
+      var NodesPointerArray = typed.getPointerArray(graph.order + 1);
+      var WeightsArray = options.getEdgeWeight ? Float64Array : typed.getPointerArray(graph.size * 2);
+      this.C = graph.order;
+      this.M = 0;
+      this.E = size;
+      this.U = 0;
+      this.resolution = resolution;
+      this.level = 0;
+      this.graph = graph;
+      this.nodes = new Array(graph.order);
+      this.keepDendrogram = options.keepDendrogram;
+      this.neighborhood = new NodesPointerArray(size);
+      this.weights = new WeightsArray(size);
+      this.loops = new WeightsArray(graph.order);
+      this.starts = new NeighborhoodPointerArray(graph.order + 1);
+      this.belongings = new NodesPointerArray(graph.order);
+      this.dendrogram = [];
+      this.mapping = null;
+      this.counts = new NodesPointerArray(graph.order);
+      this.unused = new NodesPointerArray(graph.order);
+      this.totalWeights = new WeightsArray(graph.order);
+      var ids = {};
+      var weight;
+      var i = 0, n = 0;
+      var self2 = this;
+      graph.forEachNode(function(node) {
+        self2.nodes[i] = node;
+        ids[node] = i;
+        n += graph.undirectedDegreeWithoutSelfLoops(node);
+        self2.starts[i] = n;
+        self2.belongings[i] = i;
+        self2.counts[i] = 1;
+        i++;
+      });
+      graph.forEachEdge(function(edge, attr, source, target, sa, ta, u) {
+        weight = getEdgeWeight(edge, attr, source, target, sa, ta, u);
+        source = ids[source];
+        target = ids[target];
+        self2.M += weight;
+        if (source === target) {
+          self2.totalWeights[source] += weight * 2;
+          self2.loops[source] = weight * 2;
+        } else {
+          self2.totalWeights[source] += weight;
+          self2.totalWeights[target] += weight;
+          var startSource = --self2.starts[source], startTarget = --self2.starts[target];
+          self2.neighborhood[startSource] = target;
+          self2.neighborhood[startTarget] = source;
+          self2.weights[startSource] = weight;
+          self2.weights[startTarget] = weight;
+        }
+      });
+      this.starts[i] = this.E;
+      if (this.keepDendrogram) this.dendrogram.push(this.belongings.slice());
+      else this.mapping = this.belongings.slice();
+    }
+    UndirectedLouvainIndex.prototype.isolate = function(i, degree) {
+      var currentCommunity = this.belongings[i];
+      if (this.counts[currentCommunity] === 1) return currentCommunity;
+      var newCommunity = this.unused[--this.U];
+      var loops = this.loops[i];
+      this.totalWeights[currentCommunity] -= degree + loops;
+      this.totalWeights[newCommunity] += degree + loops;
+      this.belongings[i] = newCommunity;
+      this.counts[currentCommunity]--;
+      this.counts[newCommunity]++;
+      return newCommunity;
+    };
+    UndirectedLouvainIndex.prototype.move = function(i, degree, targetCommunity) {
+      var currentCommunity = this.belongings[i], loops = this.loops[i];
+      this.totalWeights[currentCommunity] -= degree + loops;
+      this.totalWeights[targetCommunity] += degree + loops;
+      this.belongings[i] = targetCommunity;
+      var nowEmpty = this.counts[currentCommunity]-- === 1;
+      this.counts[targetCommunity]++;
+      if (nowEmpty) this.unused[this.U++] = currentCommunity;
+    };
+    UndirectedLouvainIndex.prototype.computeNodeDegree = function(i) {
+      var o, l, weight;
+      var degree = 0;
+      for (o = this.starts[i], l = this.starts[i + 1]; o < l; o++) {
+        weight = this.weights[o];
+        degree += weight;
+      }
+      return degree;
+    };
+    UndirectedLouvainIndex.prototype.expensiveIsolate = function(i) {
+      var degree = this.computeNodeDegree(i);
+      return this.isolate(i, degree);
+    };
+    UndirectedLouvainIndex.prototype.expensiveMove = function(i, ci) {
+      var degree = this.computeNodeDegree(i);
+      this.move(i, degree, ci);
+    };
+    UndirectedLouvainIndex.prototype.zoomOut = function() {
+      var inducedGraph = new Array(this.C - this.U), newLabels = {};
+      var N = this.nodes.length;
+      var C = 0, E = 0;
+      var i, j, l, m, n, ci, cj, data, adj;
+      for (i = 0, l = this.C; i < l; i++) {
+        ci = this.belongings[i];
+        if (!(ci in newLabels)) {
+          newLabels[ci] = C;
+          inducedGraph[C] = {
+            adj: {},
+            totalWeights: this.totalWeights[ci],
+            internalWeights: 0
+          };
+          C++;
+        }
+        this.belongings[i] = newLabels[ci];
+      }
+      var currentLevel, nextLevel;
+      if (this.keepDendrogram) {
+        currentLevel = this.dendrogram[this.level];
+        nextLevel = new (typed.getPointerArray(C))(N);
+        for (i = 0; i < N; i++) nextLevel[i] = this.belongings[currentLevel[i]];
+        this.dendrogram.push(nextLevel);
+      } else {
+        for (i = 0; i < N; i++) this.mapping[i] = this.belongings[this.mapping[i]];
+      }
+      for (i = 0, l = this.C; i < l; i++) {
+        ci = this.belongings[i];
+        data = inducedGraph[ci];
+        adj = data.adj;
+        data.internalWeights += this.loops[i];
+        for (j = this.starts[i], m = this.starts[i + 1]; j < m; j++) {
+          n = this.neighborhood[j];
+          cj = this.belongings[n];
+          if (ci === cj) {
+            data.internalWeights += this.weights[j];
+            continue;
+          }
+          if (!(cj in adj)) adj[cj] = 0;
+          adj[cj] += this.weights[j];
+        }
+      }
+      this.C = C;
+      n = 0;
+      for (ci = 0; ci < C; ci++) {
+        data = inducedGraph[ci];
+        adj = data.adj;
+        ci = +ci;
+        this.totalWeights[ci] = data.totalWeights;
+        this.loops[ci] = data.internalWeights;
+        this.counts[ci] = 1;
+        this.starts[ci] = n;
+        this.belongings[ci] = ci;
+        for (cj in adj) {
+          this.neighborhood[n] = +cj;
+          this.weights[n] = adj[cj];
+          E++;
+          n++;
+        }
+      }
+      this.starts[C] = E;
+      this.E = E;
+      this.U = 0;
+      this.level++;
+      return newLabels;
+    };
+    UndirectedLouvainIndex.prototype.modularity = function() {
+      var ci, cj, i, j, m;
+      var Q = 0;
+      var M2 = this.M * 2;
+      var internalWeights = new Float64Array(this.C);
+      for (i = 0; i < this.C; i++) {
+        ci = this.belongings[i];
+        internalWeights[ci] += this.loops[i];
+        for (j = this.starts[i], m = this.starts[i + 1]; j < m; j++) {
+          cj = this.belongings[this.neighborhood[j]];
+          if (ci !== cj) continue;
+          internalWeights[ci] += this.weights[j];
+        }
+      }
+      for (i = 0; i < this.C; i++) {
+        Q += internalWeights[i] / M2 - Math.pow(this.totalWeights[i] / M2, 2) * this.resolution;
+      }
+      return Q;
+    };
+    UndirectedLouvainIndex.prototype.delta = function(i, degree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalWeight = this.totalWeights[targetCommunity];
+      degree += this.loops[i];
+      return targetCommunityDegree / M - // NOTE: formula is a bit different here because targetCommunityDegree is passed without * 2
+      targetCommunityTotalWeight * degree * this.resolution / (2 * M * M);
+    };
+    UndirectedLouvainIndex.prototype.deltaWithOwnCommunity = function(i, degree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalWeight = this.totalWeights[targetCommunity];
+      degree += this.loops[i];
+      return targetCommunityDegree / M - // NOTE: formula is a bit different here because targetCommunityDegree is passed without * 2
+      (targetCommunityTotalWeight - degree) * degree * this.resolution / (2 * M * M);
+    };
+    UndirectedLouvainIndex.prototype.fastDelta = function(i, degree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalWeight = this.totalWeights[targetCommunity];
+      degree += this.loops[i];
+      return targetCommunityDegree - degree * targetCommunityTotalWeight * this.resolution / (2 * M);
+    };
+    UndirectedLouvainIndex.prototype.fastDeltaWithOwnCommunity = function(i, degree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalWeight = this.totalWeights[targetCommunity];
+      degree += this.loops[i];
+      return targetCommunityDegree - degree * (targetCommunityTotalWeight - degree) * this.resolution / (2 * M);
+    };
+    UndirectedLouvainIndex.prototype.bounds = function(i) {
+      return [this.starts[i], this.starts[i + 1]];
+    };
+    UndirectedLouvainIndex.prototype.project = function() {
+      var self2 = this;
+      var projection = {};
+      self2.nodes.slice(0, this.C).forEach(function(node, i) {
+        projection[node] = Array.from(
+          self2.neighborhood.slice(self2.starts[i], self2.starts[i + 1])
+        ).map(function(j) {
+          return self2.nodes[j];
+        });
+      });
+      return projection;
+    };
+    UndirectedLouvainIndex.prototype.collect = function(level) {
+      if (arguments.length < 1) level = this.level;
+      var o = {};
+      var mapping = this.keepDendrogram ? this.dendrogram[level] : this.mapping;
+      var i, l;
+      for (i = 0, l = mapping.length; i < l; i++) o[this.nodes[i]] = mapping[i];
+      return o;
+    };
+    UndirectedLouvainIndex.prototype.assign = function(prop, level) {
+      if (arguments.length < 2) level = this.level;
+      var mapping = this.keepDendrogram ? this.dendrogram[level] : this.mapping;
+      var i, l;
+      for (i = 0, l = mapping.length; i < l; i++)
+        this.graph.setNodeAttribute(this.nodes[i], prop, mapping[i]);
+    };
+    UndirectedLouvainIndex.prototype[INSPECT] = function() {
+      var proxy = {};
+      Object.defineProperty(proxy, "constructor", {
+        value: UndirectedLouvainIndex,
+        enumerable: false
+      });
+      proxy.C = this.C;
+      proxy.M = this.M;
+      proxy.E = this.E;
+      proxy.U = this.U;
+      proxy.resolution = this.resolution;
+      proxy.level = this.level;
+      proxy.nodes = this.nodes;
+      proxy.starts = this.starts.slice(0, proxy.C + 1);
+      var eTruncated = ["neighborhood", "weights"];
+      var cTruncated = ["counts", "loops", "belongings", "totalWeights"];
+      var self2 = this;
+      eTruncated.forEach(function(key) {
+        proxy[key] = self2[key].slice(0, proxy.E);
+      });
+      cTruncated.forEach(function(key) {
+        proxy[key] = self2[key].slice(0, proxy.C);
+      });
+      proxy.unused = this.unused.slice(0, this.U);
+      if (this.keepDendrogram) proxy.dendrogram = this.dendrogram;
+      else proxy.mapping = this.mapping;
+      return proxy;
+    };
+    function DirectedLouvainIndex(graph, options) {
+      options = resolveDefaults(options, DEFAULTS2);
+      var resolution = options.resolution;
+      var getEdgeWeight = createEdgeWeightGetter(options.getEdgeWeight).fromEntry;
+      var size = (graph.size - graph.selfLoopCount) * 2;
+      var NeighborhoodPointerArray = typed.getPointerArray(size);
+      var NodesPointerArray = typed.getPointerArray(graph.order + 1);
+      var WeightsArray = options.getEdgeWeight ? Float64Array : typed.getPointerArray(graph.size * 2);
+      this.C = graph.order;
+      this.M = 0;
+      this.E = size;
+      this.U = 0;
+      this.resolution = resolution;
+      this.level = 0;
+      this.graph = graph;
+      this.nodes = new Array(graph.order);
+      this.keepDendrogram = options.keepDendrogram;
+      this.neighborhood = new NodesPointerArray(size);
+      this.weights = new WeightsArray(size);
+      this.loops = new WeightsArray(graph.order);
+      this.starts = new NeighborhoodPointerArray(graph.order + 1);
+      this.offsets = new NeighborhoodPointerArray(graph.order);
+      this.belongings = new NodesPointerArray(graph.order);
+      this.dendrogram = [];
+      this.counts = new NodesPointerArray(graph.order);
+      this.unused = new NodesPointerArray(graph.order);
+      this.totalInWeights = new WeightsArray(graph.order);
+      this.totalOutWeights = new WeightsArray(graph.order);
+      var ids = {};
+      var weight;
+      var i = 0, n = 0;
+      var self2 = this;
+      graph.forEachNode(function(node) {
+        self2.nodes[i] = node;
+        ids[node] = i;
+        n += graph.outDegreeWithoutSelfLoops(node);
+        self2.starts[i] = n;
+        n += graph.inDegreeWithoutSelfLoops(node);
+        self2.offsets[i] = n;
+        self2.belongings[i] = i;
+        self2.counts[i] = 1;
+        i++;
+      });
+      graph.forEachEdge(function(edge, attr, source, target, sa, ta, u) {
+        weight = getEdgeWeight(edge, attr, source, target, sa, ta, u);
+        source = ids[source];
+        target = ids[target];
+        self2.M += weight;
+        if (source === target) {
+          self2.loops[source] += weight;
+          self2.totalInWeights[source] += weight;
+          self2.totalOutWeights[source] += weight;
+        } else {
+          self2.totalOutWeights[source] += weight;
+          self2.totalInWeights[target] += weight;
+          var startSource = --self2.starts[source], startTarget = --self2.offsets[target];
+          self2.neighborhood[startSource] = target;
+          self2.neighborhood[startTarget] = source;
+          self2.weights[startSource] = weight;
+          self2.weights[startTarget] = weight;
+        }
+      });
+      this.starts[i] = this.E;
+      if (this.keepDendrogram) this.dendrogram.push(this.belongings.slice());
+      else this.mapping = this.belongings.slice();
+    }
+    DirectedLouvainIndex.prototype.bounds = UndirectedLouvainIndex.prototype.bounds;
+    DirectedLouvainIndex.prototype.inBounds = function(i) {
+      return [this.offsets[i], this.starts[i + 1]];
+    };
+    DirectedLouvainIndex.prototype.outBounds = function(i) {
+      return [this.starts[i], this.offsets[i]];
+    };
+    DirectedLouvainIndex.prototype.project = UndirectedLouvainIndex.prototype.project;
+    DirectedLouvainIndex.prototype.projectIn = function() {
+      var self2 = this;
+      var projection = {};
+      self2.nodes.slice(0, this.C).forEach(function(node, i) {
+        projection[node] = Array.from(
+          self2.neighborhood.slice(self2.offsets[i], self2.starts[i + 1])
+        ).map(function(j) {
+          return self2.nodes[j];
+        });
+      });
+      return projection;
+    };
+    DirectedLouvainIndex.prototype.projectOut = function() {
+      var self2 = this;
+      var projection = {};
+      self2.nodes.slice(0, this.C).forEach(function(node, i) {
+        projection[node] = Array.from(
+          self2.neighborhood.slice(self2.starts[i], self2.offsets[i])
+        ).map(function(j) {
+          return self2.nodes[j];
+        });
+      });
+      return projection;
+    };
+    DirectedLouvainIndex.prototype.isolate = function(i, inDegree, outDegree) {
+      var currentCommunity = this.belongings[i];
+      if (this.counts[currentCommunity] === 1) return currentCommunity;
+      var newCommunity = this.unused[--this.U];
+      var loops = this.loops[i];
+      this.totalInWeights[currentCommunity] -= inDegree + loops;
+      this.totalInWeights[newCommunity] += inDegree + loops;
+      this.totalOutWeights[currentCommunity] -= outDegree + loops;
+      this.totalOutWeights[newCommunity] += outDegree + loops;
+      this.belongings[i] = newCommunity;
+      this.counts[currentCommunity]--;
+      this.counts[newCommunity]++;
+      return newCommunity;
+    };
+    DirectedLouvainIndex.prototype.move = function(i, inDegree, outDegree, targetCommunity) {
+      var currentCommunity = this.belongings[i], loops = this.loops[i];
+      this.totalInWeights[currentCommunity] -= inDegree + loops;
+      this.totalInWeights[targetCommunity] += inDegree + loops;
+      this.totalOutWeights[currentCommunity] -= outDegree + loops;
+      this.totalOutWeights[targetCommunity] += outDegree + loops;
+      this.belongings[i] = targetCommunity;
+      var nowEmpty = this.counts[currentCommunity]-- === 1;
+      this.counts[targetCommunity]++;
+      if (nowEmpty) this.unused[this.U++] = currentCommunity;
+    };
+    DirectedLouvainIndex.prototype.computeNodeInDegree = function(i) {
+      var o, l, weight;
+      var inDegree = 0;
+      for (o = this.offsets[i], l = this.starts[i + 1]; o < l; o++) {
+        weight = this.weights[o];
+        inDegree += weight;
+      }
+      return inDegree;
+    };
+    DirectedLouvainIndex.prototype.computeNodeOutDegree = function(i) {
+      var o, l, weight;
+      var outDegree = 0;
+      for (o = this.starts[i], l = this.offsets[i]; o < l; o++) {
+        weight = this.weights[o];
+        outDegree += weight;
+      }
+      return outDegree;
+    };
+    DirectedLouvainIndex.prototype.expensiveMove = function(i, ci) {
+      var inDegree = this.computeNodeInDegree(i), outDegree = this.computeNodeOutDegree(i);
+      this.move(i, inDegree, outDegree, ci);
+    };
+    DirectedLouvainIndex.prototype.zoomOut = function() {
+      var inducedGraph = new Array(this.C - this.U), newLabels = {};
+      var N = this.nodes.length;
+      var C = 0, E = 0;
+      var i, j, l, m, n, ci, cj, data, offset, out, adj, inAdj, outAdj;
+      for (i = 0, l = this.C; i < l; i++) {
+        ci = this.belongings[i];
+        if (!(ci in newLabels)) {
+          newLabels[ci] = C;
+          inducedGraph[C] = {
+            inAdj: {},
+            outAdj: {},
+            totalInWeights: this.totalInWeights[ci],
+            totalOutWeights: this.totalOutWeights[ci],
+            internalWeights: 0
+          };
+          C++;
+        }
+        this.belongings[i] = newLabels[ci];
+      }
+      var currentLevel, nextLevel;
+      if (this.keepDendrogram) {
+        currentLevel = this.dendrogram[this.level];
+        nextLevel = new (typed.getPointerArray(C))(N);
+        for (i = 0; i < N; i++) nextLevel[i] = this.belongings[currentLevel[i]];
+        this.dendrogram.push(nextLevel);
+      } else {
+        for (i = 0; i < N; i++) this.mapping[i] = this.belongings[this.mapping[i]];
+      }
+      for (i = 0, l = this.C; i < l; i++) {
+        ci = this.belongings[i];
+        offset = this.offsets[i];
+        data = inducedGraph[ci];
+        inAdj = data.inAdj;
+        outAdj = data.outAdj;
+        data.internalWeights += this.loops[i];
+        for (j = this.starts[i], m = this.starts[i + 1]; j < m; j++) {
+          n = this.neighborhood[j];
+          cj = this.belongings[n];
+          out = j < offset;
+          adj = out ? outAdj : inAdj;
+          if (ci === cj) {
+            if (out) data.internalWeights += this.weights[j];
+            continue;
+          }
+          if (!(cj in adj)) adj[cj] = 0;
+          adj[cj] += this.weights[j];
+        }
+      }
+      this.C = C;
+      n = 0;
+      for (ci = 0; ci < C; ci++) {
+        data = inducedGraph[ci];
+        inAdj = data.inAdj;
+        outAdj = data.outAdj;
+        ci = +ci;
+        this.totalInWeights[ci] = data.totalInWeights;
+        this.totalOutWeights[ci] = data.totalOutWeights;
+        this.loops[ci] = data.internalWeights;
+        this.counts[ci] = 1;
+        this.starts[ci] = n;
+        this.belongings[ci] = ci;
+        for (cj in outAdj) {
+          this.neighborhood[n] = +cj;
+          this.weights[n] = outAdj[cj];
+          E++;
+          n++;
+        }
+        this.offsets[ci] = n;
+        for (cj in inAdj) {
+          this.neighborhood[n] = +cj;
+          this.weights[n] = inAdj[cj];
+          E++;
+          n++;
+        }
+      }
+      this.starts[C] = E;
+      this.E = E;
+      this.U = 0;
+      this.level++;
+      return newLabels;
+    };
+    DirectedLouvainIndex.prototype.modularity = function() {
+      var ci, cj, i, j, m;
+      var Q = 0;
+      var M = this.M;
+      var internalWeights = new Float64Array(this.C);
+      for (i = 0; i < this.C; i++) {
+        ci = this.belongings[i];
+        internalWeights[ci] += this.loops[i];
+        for (j = this.starts[i], m = this.offsets[i]; j < m; j++) {
+          cj = this.belongings[this.neighborhood[j]];
+          if (ci !== cj) continue;
+          internalWeights[ci] += this.weights[j];
+        }
+      }
+      for (i = 0; i < this.C; i++)
+        Q += internalWeights[i] / M - this.totalInWeights[i] * this.totalOutWeights[i] / Math.pow(M, 2) * this.resolution;
+      return Q;
+    };
+    DirectedLouvainIndex.prototype.delta = function(i, inDegree, outDegree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalInWeight = this.totalInWeights[targetCommunity], targetCommunityTotalOutWeight = this.totalOutWeights[targetCommunity];
+      var loops = this.loops[i];
+      inDegree += loops;
+      outDegree += loops;
+      return targetCommunityDegree / M - (outDegree * targetCommunityTotalInWeight + inDegree * targetCommunityTotalOutWeight) * this.resolution / (M * M);
+    };
+    DirectedLouvainIndex.prototype.deltaWithOwnCommunity = function(i, inDegree, outDegree, targetCommunityDegree, targetCommunity) {
+      var M = this.M;
+      var targetCommunityTotalInWeight = this.totalInWeights[targetCommunity], targetCommunityTotalOutWeight = this.totalOutWeights[targetCommunity];
+      var loops = this.loops[i];
+      inDegree += loops;
+      outDegree += loops;
+      return targetCommunityDegree / M - (outDegree * (targetCommunityTotalInWeight - inDegree) + inDegree * (targetCommunityTotalOutWeight - outDegree)) * this.resolution / (M * M);
+    };
+    DirectedLouvainIndex.prototype.collect = UndirectedLouvainIndex.prototype.collect;
+    DirectedLouvainIndex.prototype.assign = UndirectedLouvainIndex.prototype.assign;
+    DirectedLouvainIndex.prototype[INSPECT] = function() {
+      var proxy = {};
+      Object.defineProperty(proxy, "constructor", {
+        value: DirectedLouvainIndex,
+        enumerable: false
+      });
+      proxy.C = this.C;
+      proxy.M = this.M;
+      proxy.E = this.E;
+      proxy.U = this.U;
+      proxy.resolution = this.resolution;
+      proxy.level = this.level;
+      proxy.nodes = this.nodes;
+      proxy.starts = this.starts.slice(0, proxy.C + 1);
+      var eTruncated = ["neighborhood", "weights"];
+      var cTruncated = [
+        "counts",
+        "offsets",
+        "loops",
+        "belongings",
+        "totalInWeights",
+        "totalOutWeights"
+      ];
+      var self2 = this;
+      eTruncated.forEach(function(key) {
+        proxy[key] = self2[key].slice(0, proxy.E);
+      });
+      cTruncated.forEach(function(key) {
+        proxy[key] = self2[key].slice(0, proxy.C);
+      });
+      proxy.unused = this.unused.slice(0, this.U);
+      if (this.keepDendrogram) proxy.dendrogram = this.dendrogram;
+      else proxy.mapping = this.mapping;
+      return proxy;
+    };
+    exports.UndirectedLouvainIndex = UndirectedLouvainIndex;
+    exports.DirectedLouvainIndex = DirectedLouvainIndex;
+  }
+});
+
+// ../../node_modules/graphology-communities-louvain/index.js
+var require_graphology_communities_louvain = __commonJS({
+  "../../node_modules/graphology-communities-louvain/index.js"(exports, module) {
+    "use strict";
+    var resolveDefaults = require_defaults2();
+    var isGraph = require_is_graph();
+    var inferType = require_infer_type();
+    var SparseMap = require_sparse_map();
+    var SparseQueueSet = require_sparse_queue_set();
+    var createRandomIndex = require_random_index().createRandomIndex;
+    var indices = require_louvain();
+    var UndirectedLouvainIndex = indices.UndirectedLouvainIndex;
+    var DirectedLouvainIndex = indices.DirectedLouvainIndex;
+    var DEFAULTS2 = {
+      nodeCommunityAttribute: "community",
+      getEdgeWeight: "weight",
+      fastLocalMoves: true,
+      randomWalk: true,
+      resolution: 1,
+      rng: Math.random
+    };
+    function addWeightToCommunity(map, community, weight) {
+      var currentWeight = map.get(community);
+      if (typeof currentWeight === "undefined") currentWeight = 0;
+      currentWeight += weight;
+      map.set(community, currentWeight);
+    }
+    var EPSILON = 1e-10;
+    function tieBreaker(bestCommunity, currentCommunity, targetCommunity, delta, bestDelta) {
+      if (Math.abs(delta - bestDelta) < EPSILON) {
+        if (bestCommunity === currentCommunity) {
+          return false;
+        } else {
+          return targetCommunity > bestCommunity;
+        }
+      } else if (delta > bestDelta) {
+        return true;
+      }
+      return false;
+    }
+    function undirectedLouvain(detailed, graph, options) {
+      var index = new UndirectedLouvainIndex(graph, {
+        getEdgeWeight: options.getEdgeWeight,
+        keepDendrogram: detailed,
+        resolution: options.resolution
+      });
+      var randomIndex = createRandomIndex(options.rng);
+      var moveWasMade = true, localMoveWasMade = true;
+      var currentCommunity, targetCommunity;
+      var communities = new SparseMap(Float64Array, index.C);
+      var queue, start2, end, weight, ci, ri, s, i, j, l;
+      var degree, targetCommunityDegree;
+      var bestCommunity, bestDelta, deltaIsBetter, delta;
+      var deltaComputations = 0, nodesVisited = 0, moves = [], localMoves, currentMoves;
+      if (options.fastLocalMoves) queue = new SparseQueueSet(index.C);
+      while (moveWasMade) {
+        l = index.C;
+        moveWasMade = false;
+        localMoveWasMade = true;
+        if (options.fastLocalMoves) {
+          currentMoves = 0;
+          ri = options.randomWalk ? randomIndex(l) : 0;
+          for (s = 0; s < l; s++, ri++) {
+            i = ri % l;
+            queue.enqueue(i);
+          }
+          while (queue.size !== 0) {
+            i = queue.dequeue();
+            nodesVisited++;
+            degree = 0;
+            communities.clear();
+            currentCommunity = index.belongings[i];
+            start2 = index.starts[i];
+            end = index.starts[i + 1];
+            for (; start2 < end; start2++) {
+              j = index.neighborhood[start2];
+              weight = index.weights[start2];
+              targetCommunity = index.belongings[j];
+              degree += weight;
+              addWeightToCommunity(communities, targetCommunity, weight);
+            }
+            bestDelta = index.fastDeltaWithOwnCommunity(
+              i,
+              degree,
+              communities.get(currentCommunity) || 0,
+              currentCommunity
+            );
+            bestCommunity = currentCommunity;
+            for (ci = 0; ci < communities.size; ci++) {
+              targetCommunity = communities.dense[ci];
+              if (targetCommunity === currentCommunity) continue;
+              targetCommunityDegree = communities.vals[ci];
+              deltaComputations++;
+              delta = index.fastDelta(
+                i,
+                degree,
+                targetCommunityDegree,
+                targetCommunity
+              );
+              deltaIsBetter = tieBreaker(
+                bestCommunity,
+                currentCommunity,
+                targetCommunity,
+                delta,
+                bestDelta
+              );
+              if (deltaIsBetter) {
+                bestDelta = delta;
+                bestCommunity = targetCommunity;
+              }
+            }
+            if (bestDelta < 0) {
+              bestCommunity = index.isolate(i, degree);
+              if (bestCommunity === currentCommunity) continue;
+            } else {
+              if (bestCommunity === currentCommunity) {
+                continue;
+              } else {
+                index.move(i, degree, bestCommunity);
+              }
+            }
+            moveWasMade = true;
+            currentMoves++;
+            start2 = index.starts[i];
+            end = index.starts[i + 1];
+            for (; start2 < end; start2++) {
+              j = index.neighborhood[start2];
+              targetCommunity = index.belongings[j];
+              if (targetCommunity !== bestCommunity) queue.enqueue(j);
+            }
+          }
+          moves.push(currentMoves);
+        } else {
+          localMoves = [];
+          moves.push(localMoves);
+          while (localMoveWasMade) {
+            localMoveWasMade = false;
+            currentMoves = 0;
+            ri = options.randomWalk ? randomIndex(l) : 0;
+            for (s = 0; s < l; s++, ri++) {
+              i = ri % l;
+              nodesVisited++;
+              degree = 0;
+              communities.clear();
+              currentCommunity = index.belongings[i];
+              start2 = index.starts[i];
+              end = index.starts[i + 1];
+              for (; start2 < end; start2++) {
+                j = index.neighborhood[start2];
+                weight = index.weights[start2];
+                targetCommunity = index.belongings[j];
+                degree += weight;
+                addWeightToCommunity(communities, targetCommunity, weight);
+              }
+              bestDelta = index.fastDeltaWithOwnCommunity(
+                i,
+                degree,
+                communities.get(currentCommunity) || 0,
+                currentCommunity
+              );
+              bestCommunity = currentCommunity;
+              for (ci = 0; ci < communities.size; ci++) {
+                targetCommunity = communities.dense[ci];
+                if (targetCommunity === currentCommunity) continue;
+                targetCommunityDegree = communities.vals[ci];
+                deltaComputations++;
+                delta = index.fastDelta(
+                  i,
+                  degree,
+                  targetCommunityDegree,
+                  targetCommunity
+                );
+                deltaIsBetter = tieBreaker(
+                  bestCommunity,
+                  currentCommunity,
+                  targetCommunity,
+                  delta,
+                  bestDelta
+                );
+                if (deltaIsBetter) {
+                  bestDelta = delta;
+                  bestCommunity = targetCommunity;
+                }
+              }
+              if (bestDelta < 0) {
+                bestCommunity = index.isolate(i, degree);
+                if (bestCommunity === currentCommunity) continue;
+              } else {
+                if (bestCommunity === currentCommunity) {
+                  continue;
+                } else {
+                  index.move(i, degree, bestCommunity);
+                }
+              }
+              localMoveWasMade = true;
+              currentMoves++;
+            }
+            localMoves.push(currentMoves);
+            moveWasMade = localMoveWasMade || moveWasMade;
+          }
+        }
+        if (moveWasMade) index.zoomOut();
+      }
+      var results = {
+        index,
+        deltaComputations,
+        nodesVisited,
+        moves
+      };
+      return results;
+    }
+    function directedLouvain(detailed, graph, options) {
+      var index = new DirectedLouvainIndex(graph, {
+        getEdgeWeight: options.getEdgeWeight,
+        keepDendrogram: detailed,
+        resolution: options.resolution
+      });
+      var randomIndex = createRandomIndex(options.rng);
+      var moveWasMade = true, localMoveWasMade = true;
+      var currentCommunity, targetCommunity;
+      var communities = new SparseMap(Float64Array, index.C);
+      var queue, start2, end, offset, out, weight, ci, ri, s, i, j, l;
+      var inDegree, outDegree, targetCommunityDegree;
+      var bestCommunity, bestDelta, deltaIsBetter, delta;
+      var deltaComputations = 0, nodesVisited = 0, moves = [], localMoves, currentMoves;
+      if (options.fastLocalMoves) queue = new SparseQueueSet(index.C);
+      while (moveWasMade) {
+        l = index.C;
+        moveWasMade = false;
+        localMoveWasMade = true;
+        if (options.fastLocalMoves) {
+          currentMoves = 0;
+          ri = options.randomWalk ? randomIndex(l) : 0;
+          for (s = 0; s < l; s++, ri++) {
+            i = ri % l;
+            queue.enqueue(i);
+          }
+          while (queue.size !== 0) {
+            i = queue.dequeue();
+            nodesVisited++;
+            inDegree = 0;
+            outDegree = 0;
+            communities.clear();
+            currentCommunity = index.belongings[i];
+            start2 = index.starts[i];
+            end = index.starts[i + 1];
+            offset = index.offsets[i];
+            for (; start2 < end; start2++) {
+              out = start2 < offset;
+              j = index.neighborhood[start2];
+              weight = index.weights[start2];
+              targetCommunity = index.belongings[j];
+              if (out) outDegree += weight;
+              else inDegree += weight;
+              addWeightToCommunity(communities, targetCommunity, weight);
+            }
+            bestDelta = index.deltaWithOwnCommunity(
+              i,
+              inDegree,
+              outDegree,
+              communities.get(currentCommunity) || 0,
+              currentCommunity
+            );
+            bestCommunity = currentCommunity;
+            for (ci = 0; ci < communities.size; ci++) {
+              targetCommunity = communities.dense[ci];
+              if (targetCommunity === currentCommunity) continue;
+              targetCommunityDegree = communities.vals[ci];
+              deltaComputations++;
+              delta = index.delta(
+                i,
+                inDegree,
+                outDegree,
+                targetCommunityDegree,
+                targetCommunity
+              );
+              deltaIsBetter = tieBreaker(
+                bestCommunity,
+                currentCommunity,
+                targetCommunity,
+                delta,
+                bestDelta
+              );
+              if (deltaIsBetter) {
+                bestDelta = delta;
+                bestCommunity = targetCommunity;
+              }
+            }
+            if (bestDelta < 0) {
+              bestCommunity = index.isolate(i, inDegree, outDegree);
+              if (bestCommunity === currentCommunity) continue;
+            } else {
+              if (bestCommunity === currentCommunity) {
+                continue;
+              } else {
+                index.move(i, inDegree, outDegree, bestCommunity);
+              }
+            }
+            moveWasMade = true;
+            currentMoves++;
+            start2 = index.starts[i];
+            end = index.starts[i + 1];
+            for (; start2 < end; start2++) {
+              j = index.neighborhood[start2];
+              targetCommunity = index.belongings[j];
+              if (targetCommunity !== bestCommunity) queue.enqueue(j);
+            }
+          }
+          moves.push(currentMoves);
+        } else {
+          localMoves = [];
+          moves.push(localMoves);
+          while (localMoveWasMade) {
+            localMoveWasMade = false;
+            currentMoves = 0;
+            ri = options.randomWalk ? randomIndex(l) : 0;
+            for (s = 0; s < l; s++, ri++) {
+              i = ri % l;
+              nodesVisited++;
+              inDegree = 0;
+              outDegree = 0;
+              communities.clear();
+              currentCommunity = index.belongings[i];
+              start2 = index.starts[i];
+              end = index.starts[i + 1];
+              offset = index.offsets[i];
+              for (; start2 < end; start2++) {
+                out = start2 < offset;
+                j = index.neighborhood[start2];
+                weight = index.weights[start2];
+                targetCommunity = index.belongings[j];
+                if (out) outDegree += weight;
+                else inDegree += weight;
+                addWeightToCommunity(communities, targetCommunity, weight);
+              }
+              bestDelta = index.deltaWithOwnCommunity(
+                i,
+                inDegree,
+                outDegree,
+                communities.get(currentCommunity) || 0,
+                currentCommunity
+              );
+              bestCommunity = currentCommunity;
+              for (ci = 0; ci < communities.size; ci++) {
+                targetCommunity = communities.dense[ci];
+                if (targetCommunity === currentCommunity) continue;
+                targetCommunityDegree = communities.vals[ci];
+                deltaComputations++;
+                delta = index.delta(
+                  i,
+                  inDegree,
+                  outDegree,
+                  targetCommunityDegree,
+                  targetCommunity
+                );
+                deltaIsBetter = tieBreaker(
+                  bestCommunity,
+                  currentCommunity,
+                  targetCommunity,
+                  delta,
+                  bestDelta
+                );
+                if (deltaIsBetter) {
+                  bestDelta = delta;
+                  bestCommunity = targetCommunity;
+                }
+              }
+              if (bestDelta < 0) {
+                bestCommunity = index.isolate(i, inDegree, outDegree);
+                if (bestCommunity === currentCommunity) continue;
+              } else {
+                if (bestCommunity === currentCommunity) {
+                  continue;
+                } else {
+                  index.move(i, inDegree, outDegree, bestCommunity);
+                }
+              }
+              localMoveWasMade = true;
+              currentMoves++;
+            }
+            localMoves.push(currentMoves);
+            moveWasMade = localMoveWasMade || moveWasMade;
+          }
+        }
+        if (moveWasMade) index.zoomOut();
+      }
+      var results = {
+        index,
+        deltaComputations,
+        nodesVisited,
+        moves
+      };
+      return results;
+    }
+    function louvain2(assign2, detailed, graph, options) {
+      if (!isGraph(graph))
+        throw new Error(
+          "graphology-communities-louvain: the given graph is not a valid graphology instance."
+        );
+      var type = inferType(graph);
+      if (type === "mixed")
+        throw new Error(
+          "graphology-communities-louvain: cannot run the algorithm on a true mixed graph."
+        );
+      options = resolveDefaults(options, DEFAULTS2);
+      var c = 0;
+      if (graph.size === 0) {
+        if (assign2) {
+          graph.forEachNode(function(node) {
+            graph.setNodeAttribute(node, options.nodeCommunityAttribute, c++);
+          });
+          return;
+        }
+        var communities = {};
+        graph.forEachNode(function(node) {
+          communities[node] = c++;
+        });
+        if (!detailed) return communities;
+        return {
+          communities,
+          count: graph.order,
+          deltaComputations: 0,
+          dendrogram: null,
+          level: 0,
+          modularity: NaN,
+          moves: null,
+          nodesVisited: 0,
+          resolution: options.resolution
+        };
+      }
+      var fn2 = type === "undirected" ? undirectedLouvain : directedLouvain;
+      var results = fn2(detailed, graph, options);
+      var index = results.index;
+      if (!detailed) {
+        if (assign2) {
+          index.assign(options.nodeCommunityAttribute);
+          return;
+        }
+        return index.collect();
+      }
+      var output = {
+        count: index.C,
+        deltaComputations: results.deltaComputations,
+        dendrogram: index.dendrogram,
+        level: index.level,
+        modularity: index.modularity(),
+        moves: results.moves,
+        nodesVisited: results.nodesVisited,
+        resolution: options.resolution
+      };
+      if (assign2) {
+        index.assign(options.nodeCommunityAttribute);
+        return output;
+      }
+      output.communities = index.collect();
+      return output;
+    }
+    var fn = louvain2.bind(null, false, false);
+    fn.assign = louvain2.bind(null, true, false);
+    fn.detailed = louvain2.bind(null, false, true);
+    fn.defaults = DEFAULTS2;
+    module.exports = fn;
+  }
+});
+
 // src/server.ts
 import { createServer } from "http";
 
@@ -7046,8 +8738,8 @@ function __awaiter(thisArg, _arguments, P2, generator) {
         reject(e);
       }
     }
-    function step(result) {
-      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    function step(result2) {
+      result2.done ? resolve(result2.value) : adopt(result2.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -7689,7 +9381,7 @@ ${cause.stack}`;
     var _this2 = this;
     let error2 = null;
     let data = null;
-    let count = null;
+    let count2 = null;
     let status = res.status;
     let statusText = res.statusText;
     if (res.ok) {
@@ -7704,7 +9396,7 @@ ${cause.stack}`;
       }
       const countHeader = (_this$headers$get2 = _this2.headers.get("Prefer")) === null || _this$headers$get2 === void 0 ? void 0 : _this$headers$get2.match(/count=(exact|planned|estimated)/);
       const contentRange = (_res$headers$get2 = res.headers.get("content-range")) === null || _res$headers$get2 === void 0 ? void 0 : _res$headers$get2.split("/");
-      if (countHeader && contentRange && contentRange.length > 1) count = parseInt(contentRange[1]);
+      if (countHeader && contentRange && contentRange.length > 1) count2 = parseInt(contentRange[1]);
       if (_this2.isMaybeSingle && Array.isArray(data)) if (data.length > 1) {
         error2 = {
           code: "PGRST116",
@@ -7713,7 +9405,7 @@ ${cause.stack}`;
           message: "JSON object requested, multiple (or no) rows returned"
         };
         data = null;
-        count = null;
+        count2 = null;
         status = 406;
         statusText = "Not Acceptable";
       } else if (data.length === 1) data = data[0];
@@ -7740,7 +9432,7 @@ ${cause.stack}`;
       success: error2 === null,
       error: error2,
       data,
-      count,
+      count: count2,
       status,
       statusText
     };
@@ -8202,9 +9894,9 @@ var PostgrestTransformBuilder = class extends PostgrestBuilder {
   * }
   * ```
   */
-  limit(count, { foreignTable, referencedTable = foreignTable } = {}) {
+  limit(count2, { foreignTable, referencedTable = foreignTable } = {}) {
     const key = typeof referencedTable === "undefined" ? "limit" : `${referencedTable}.limit`;
-    this.url.searchParams.set(key, `${count}`);
+    this.url.searchParams.set(key, `${count2}`);
     return this;
   }
   /**
@@ -11233,7 +12925,7 @@ var PostgrestQueryBuilder = class {
   * ```
   */
   select(columns, options) {
-    const { head: head2 = false, count } = options !== null && options !== void 0 ? options : {};
+    const { head: head2 = false, count: count2 } = options !== null && options !== void 0 ? options : {};
     const method = head2 ? "HEAD" : "GET";
     let quoted = false;
     const cleanedColumns = (columns !== null && columns !== void 0 ? columns : "*").split("").map((c) => {
@@ -11243,7 +12935,7 @@ var PostgrestQueryBuilder = class {
     }).join("");
     const { url, headers } = this.cloneRequestState();
     url.searchParams.set("select", cleanedColumns);
-    if (count) headers.append("Prefer", `count=${count}`);
+    if (count2) headers.append("Prefer", `count=${count2}`);
     return new PostgrestFilterBuilder({
       method,
       url,
@@ -11365,11 +13057,11 @@ var PostgrestQueryBuilder = class {
   * }
   * ```
   */
-  insert(values, { count, defaultToNull = true } = {}) {
+  insert(values, { count: count2, defaultToNull = true } = {}) {
     var _this$fetch;
     const method = "POST";
     const { url, headers } = this.cloneRequestState();
-    if (count) headers.append("Prefer", `count=${count}`);
+    if (count2) headers.append("Prefer", `count=${count2}`);
     if (!defaultToNull) headers.append("Prefer", `missing=default`);
     if (Array.isArray(values)) {
       const columns = values.reduce((acc, x) => acc.concat(Object.keys(x)), []);
@@ -11597,13 +13289,13 @@ var PostgrestQueryBuilder = class {
   * }
   * ```
   */
-  upsert(values, { onConflict, ignoreDuplicates = false, count, defaultToNull = true } = {}) {
+  upsert(values, { onConflict, ignoreDuplicates = false, count: count2, defaultToNull = true } = {}) {
     var _this$fetch2;
     const method = "POST";
     const { url, headers } = this.cloneRequestState();
     headers.append("Prefer", `resolution=${ignoreDuplicates ? "ignore" : "merge"}-duplicates`);
     if (onConflict !== void 0) url.searchParams.set("on_conflict", onConflict);
-    if (count) headers.append("Prefer", `count=${count}`);
+    if (count2) headers.append("Prefer", `count=${count2}`);
     if (!defaultToNull) headers.append("Prefer", "missing=default");
     if (Array.isArray(values)) {
       const columns = values.reduce((acc, x) => acc.concat(Object.keys(x)), []);
@@ -11762,11 +13454,11 @@ var PostgrestQueryBuilder = class {
   * }
   * ```
   */
-  update(values, { count } = {}) {
+  update(values, { count: count2 } = {}) {
     var _this$fetch3;
     const method = "PATCH";
     const { url, headers } = this.cloneRequestState();
-    if (count) headers.append("Prefer", `count=${count}`);
+    if (count2) headers.append("Prefer", `count=${count2}`);
     return new PostgrestFilterBuilder({
       method,
       url,
@@ -11896,11 +13588,11 @@ var PostgrestQueryBuilder = class {
   * }
   * ```
   */
-  delete({ count } = {}) {
+  delete({ count: count2 } = {}) {
     var _this$fetch4;
     const method = "DELETE";
     const { url, headers } = this.cloneRequestState();
-    if (count) headers.append("Prefer", `count=${count}`);
+    if (count2) headers.append("Prefer", `count=${count2}`);
     return new PostgrestFilterBuilder({
       method,
       url,
@@ -12054,9 +13746,9 @@ var PostgrestClient = class PostgrestClient2 {
   *
   * @category Database
   */
-  from(relation) {
-    if (!relation || typeof relation !== "string" || relation.trim() === "") throw new Error("Invalid relation name: relation must be a non-empty string.");
-    return new PostgrestQueryBuilder(new URL(`${this.url}/${relation}`), {
+  from(relation2) {
+    if (!relation2 || typeof relation2 !== "string" || relation2.trim() === "") throw new Error("Invalid relation name: relation must be a non-empty string.");
+    return new PostgrestQueryBuilder(new URL(`${this.url}/${relation2}`), {
       headers: new Headers(this.headers),
       schema: this.schemaName,
       fetch: this.fetch,
@@ -12247,7 +13939,7 @@ var PostgrestClient = class PostgrestClient2 {
   * }
   * ```
   */
-  rpc(fn, args = {}, { head: head2 = false, get: get2 = false, count } = {}) {
+  rpc(fn, args = {}, { head: head2 = false, get: get2 = false, count: count2 } = {}) {
     var _this$fetch;
     let method;
     const url = new URL(`${this.url}/rpc/${fn}`);
@@ -12267,8 +13959,8 @@ var PostgrestClient = class PostgrestClient2 {
       body = args;
     }
     const headers = new Headers(this.headers);
-    if (_hasObjectArg) headers.set("Prefer", count ? `count=${count},return=minimal` : "return=minimal");
-    else if (count) headers.set("Prefer", `count=${count}`);
+    if (_hasObjectArg) headers.set("Prefer", count2 ? `count=${count2},return=minimal` : "return=minimal");
+    else if (count2) headers.set("Prefer", `count=${count2}`);
     return new PostgrestFilterBuilder({
       method,
       url,
@@ -12512,8 +14204,8 @@ var Serializer = class {
   }
   decode(rawPayload, callback) {
     if (this._isArrayBuffer(rawPayload)) {
-      let result = this._binaryDecode(rawPayload);
-      return callback(result);
+      let result2 = this._binaryDecode(rawPayload);
+      return callback(result2);
     }
     if (typeof rawPayload === "string") {
       const jsonPayload = JSON.parse(rawPayload);
@@ -14392,9 +16084,9 @@ var Socket = class {
       this.log("push", `${topic} ${event} (${join_ref}, ${ref})`, payload);
     }
     if (this.isConnected()) {
-      this.encode(data, (result) => this.conn.send(result));
+      this.encode(data, (result2) => this.conn.send(result2));
     } else {
-      this.sendBuffer.push(() => this.encode(data, (result) => this.conn.send(result)));
+      this.sendBuffer.push(() => this.encode(data, (result2) => this.conn.send(result2)));
     }
   }
   /**
@@ -15712,13 +17404,13 @@ Option 2: Install and provide the "ws" package:
    */
   async removeAllChannels() {
     const promises = this.channels.map(async (channel) => {
-      const result2 = await channel.unsubscribe();
+      const result3 = await channel.unsubscribe();
       channel.teardown();
-      return result2;
+      return result3;
     });
-    const result = await Promise.all(promises);
+    const result2 = await Promise.all(promises);
     this.disconnect();
-    return result;
+    return result2;
   }
   /**
    * Logs the message.
@@ -16017,14 +17709,14 @@ Option 2: Install and provide the "ws" package:
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     this.worker = (_a = options === null || options === void 0 ? void 0 : options.worker) !== null && _a !== void 0 ? _a : false;
     this.accessToken = (_b = options === null || options === void 0 ? void 0 : options.accessToken) !== null && _b !== void 0 ? _b : null;
-    const result = {};
-    result.timeout = (_c = options === null || options === void 0 ? void 0 : options.timeout) !== null && _c !== void 0 ? _c : DEFAULT_TIMEOUT;
-    result.heartbeatIntervalMs = (_d = options === null || options === void 0 ? void 0 : options.heartbeatIntervalMs) !== null && _d !== void 0 ? _d : CONNECTION_TIMEOUTS.HEARTBEAT_INTERVAL;
-    result.transport = (_e = options === null || options === void 0 ? void 0 : options.transport) !== null && _e !== void 0 ? _e : websocket_factory_default.getWebSocketConstructor();
-    result.params = options === null || options === void 0 ? void 0 : options.params;
-    result.logger = options === null || options === void 0 ? void 0 : options.logger;
-    result.heartbeatCallback = this._wrapHeartbeatCallback(options === null || options === void 0 ? void 0 : options.heartbeatCallback);
-    result.reconnectAfterMs = (_f = options === null || options === void 0 ? void 0 : options.reconnectAfterMs) !== null && _f !== void 0 ? _f : ((tries) => {
+    const result2 = {};
+    result2.timeout = (_c = options === null || options === void 0 ? void 0 : options.timeout) !== null && _c !== void 0 ? _c : DEFAULT_TIMEOUT;
+    result2.heartbeatIntervalMs = (_d = options === null || options === void 0 ? void 0 : options.heartbeatIntervalMs) !== null && _d !== void 0 ? _d : CONNECTION_TIMEOUTS.HEARTBEAT_INTERVAL;
+    result2.transport = (_e = options === null || options === void 0 ? void 0 : options.transport) !== null && _e !== void 0 ? _e : websocket_factory_default.getWebSocketConstructor();
+    result2.params = options === null || options === void 0 ? void 0 : options.params;
+    result2.logger = options === null || options === void 0 ? void 0 : options.logger;
+    result2.heartbeatCallback = this._wrapHeartbeatCallback(options === null || options === void 0 ? void 0 : options.heartbeatCallback);
+    result2.reconnectAfterMs = (_f = options === null || options === void 0 ? void 0 : options.reconnectAfterMs) !== null && _f !== void 0 ? _f : ((tries) => {
       return RECONNECT_INTERVALS[tries - 1] || DEFAULT_RECONNECT_FALLBACK;
     });
     let defaultEncode;
@@ -16044,24 +17736,24 @@ Option 2: Install and provide the "ws" package:
         defaultDecode = this.serializer.decode.bind(this.serializer);
         break;
       default:
-        throw new Error(`Unsupported serializer version: ${result.vsn}`);
+        throw new Error(`Unsupported serializer version: ${result2.vsn}`);
     }
-    result.vsn = vsn;
-    result.encode = (_h = options === null || options === void 0 ? void 0 : options.encode) !== null && _h !== void 0 ? _h : defaultEncode;
-    result.decode = (_j = options === null || options === void 0 ? void 0 : options.decode) !== null && _j !== void 0 ? _j : defaultDecode;
-    result.beforeReconnect = this._reconnectAuth.bind(this);
+    result2.vsn = vsn;
+    result2.encode = (_h = options === null || options === void 0 ? void 0 : options.encode) !== null && _h !== void 0 ? _h : defaultEncode;
+    result2.decode = (_j = options === null || options === void 0 ? void 0 : options.decode) !== null && _j !== void 0 ? _j : defaultDecode;
+    result2.beforeReconnect = this._reconnectAuth.bind(this);
     if ((options === null || options === void 0 ? void 0 : options.logLevel) || (options === null || options === void 0 ? void 0 : options.log_level)) {
       this.logLevel = options.logLevel || options.log_level;
-      result.params = Object.assign(Object.assign({}, result.params), { log_level: this.logLevel });
+      result2.params = Object.assign(Object.assign({}, result2.params), { log_level: this.logLevel });
     }
     if (this.worker) {
       if (typeof window !== "undefined" && !window.Worker) {
         throw new Error("Web Worker is not supported");
       }
       this.workerUrl = options === null || options === void 0 ? void 0 : options.workerUrl;
-      result.autoSendHeartbeat = !this.worker;
+      result2.autoSendHeartbeat = !this.worker;
     }
-    return result;
+    return result2;
   }
   /** @internal */
   async _reconnectAuth() {
@@ -16708,12 +18400,12 @@ var isPlainObject = (value) => {
 var recursiveToCamel = (item) => {
   if (Array.isArray(item)) return item.map((el) => recursiveToCamel(el));
   else if (typeof item === "function" || item !== Object(item)) return item;
-  const result = {};
+  const result2 = {};
   Object.entries(item).forEach(([key, value]) => {
     const newKey = key.replace(/([-_][a-z])/gi, (c) => c.toUpperCase().replace(/[-_]/g, ""));
-    result[newKey] = recursiveToCamel(value);
+    result2[newKey] = recursiveToCamel(value);
   });
-  return result;
+  return result2;
 };
 var isValidBucketName = (bucketName) => {
   if (!bucketName || typeof bucketName !== "string") return false;
@@ -16765,15 +18457,15 @@ function setRequestHeader(headers, name, value) {
 }
 async function _handleRequest(fetcher, method, url, options, parameters, body, namespace) {
   return new Promise((resolve, reject) => {
-    fetcher(url, _getRequestParams(method, options, parameters, body)).then((result) => {
-      if (!result.ok) throw result;
-      if (options === null || options === void 0 ? void 0 : options.noResolveJson) return result;
+    fetcher(url, _getRequestParams(method, options, parameters, body)).then((result2) => {
+      if (!result2.ok) throw result2;
+      if (options === null || options === void 0 ? void 0 : options.noResolveJson) return result2;
       if (namespace === "vectors") {
-        const contentType = result.headers.get("content-type");
-        if (result.headers.get("content-length") === "0" || result.status === 204) return {};
+        const contentType = result2.headers.get("content-type");
+        if (result2.headers.get("content-length") === "0" || result2.status === 204) return {};
         if (!contentType || !contentType.includes("application/json")) return {};
       }
-      return result.json();
+      return result2.json();
     }).then((data) => resolve(data)).catch((error2) => handleError(error2, reject, options, namespace));
   });
 }
@@ -19434,30 +21126,30 @@ function stringFromUTF8(byte, state, emit) {
   }
 }
 function base64UrlToUint8Array(str) {
-  const result = [];
+  const result2 = [];
   const state = { queue: 0, queuedBits: 0 };
   const onByte = (byte) => {
-    result.push(byte);
+    result2.push(byte);
   };
   for (let i = 0; i < str.length; i += 1) {
     byteFromBase64URL(str.charCodeAt(i), state, onByte);
   }
-  return new Uint8Array(result);
+  return new Uint8Array(result2);
 }
 function stringToUint8Array(str) {
-  const result = [];
-  stringToUTF8(str, (byte) => result.push(byte));
-  return new Uint8Array(result);
+  const result2 = [];
+  stringToUTF8(str, (byte) => result2.push(byte));
+  return new Uint8Array(result2);
 }
 function bytesToBase64URL(bytes) {
-  const result = [];
+  const result2 = [];
   const state = { queue: 0, queuedBits: 0 };
   const onChar = (char) => {
-    result.push(char);
+    result2.push(char);
   };
   bytes.forEach((byte) => byteToBase64URL(byte, state, onChar));
   byteToBase64URL(null, state, onChar);
-  return result.join("");
+  return result2.join("");
 }
 
 // ../../node_modules/@supabase/auth-js/dist/module/lib/helpers.js
@@ -19500,21 +21192,21 @@ var supportsLocalStorage = () => {
   return localStorageWriteTests.writable;
 };
 function parseParametersFromURL(href) {
-  const result = {};
+  const result2 = {};
   const url = new URL(href);
   if (url.hash && url.hash[0] === "#") {
     try {
       const hashSearchParams = new URLSearchParams(url.hash.substring(1));
       hashSearchParams.forEach((value, key) => {
-        result[key] = value;
+        result2[key] = value;
       });
     } catch (e) {
     }
   }
   url.searchParams.forEach((value, key) => {
-    result[key] = value;
+    result2[key] = value;
   });
-  return result;
+  return result2;
 }
 var resolveFetch3 = (customFetch) => {
   if (customFetch) {
@@ -19586,9 +21278,9 @@ function retryable(fn, isRetryable) {
     (async () => {
       for (let attempt = 0; attempt < Infinity; attempt++) {
         try {
-          const result = await fn(attempt);
-          if (!isRetryable(attempt, null, result)) {
-            accept(result);
+          const result2 = await fn(attempt);
+          if (!isRetryable(attempt, null, result2)) {
+            accept(result2);
             return;
           }
         } catch (e) {
@@ -19808,21 +21500,21 @@ async function _request(fetcher, method, url, options) {
 }
 async function _handleRequest2(fetcher, method, url, options, parameters, body) {
   const requestParams = _getRequestParams2(method, options, parameters, body);
-  let result;
+  let result2;
   try {
-    result = await fetcher(url, Object.assign({}, requestParams));
+    result2 = await fetcher(url, Object.assign({}, requestParams));
   } catch (e) {
     console.error(e);
     throw new AuthRetryableFetchError(_getErrorMessage2(e), 0);
   }
-  if (!result.ok) {
-    await handleError2(result);
+  if (!result2.ok) {
+    await handleError2(result2);
   }
   if (options === null || options === void 0 ? void 0 : options.noResolveJson) {
-    return result;
+    return result2;
   }
   try {
-    return await result.json();
+    return await result2.json();
   } catch (e) {
     await handleError2(e);
   }
@@ -20954,8 +22646,8 @@ async function navigatorLock(name, acquireTimeout, fn) {
         } else {
           if (internals.debug) {
             try {
-              const result = await globalThis.navigator.locks.query();
-              console.log("@supabase/gotrue-js: Navigator LockManager state", JSON.stringify(result, null, "  "));
+              const result2 = await globalThis.navigator.locks.query();
+              console.log("@supabase/gotrue-js: Navigator LockManager state", JSON.stringify(result2, null, "  "));
             } catch (e) {
               console.warn("@supabase/gotrue-js: Error when querying Navigator LockManager state", e);
             }
@@ -21314,15 +23006,15 @@ function deserializeCredentialCreationOptions(options) {
   );
   const challenge = base64UrlToUint8Array(challengeStr).buffer;
   const user = Object.assign(Object.assign({}, userOpts), { id: base64UrlToUint8Array(userOpts.id).buffer });
-  const result = Object.assign(Object.assign({}, restOptions), {
+  const result2 = Object.assign(Object.assign({}, restOptions), {
     challenge,
     user
   });
   if (excludeCredentials && excludeCredentials.length > 0) {
-    result.excludeCredentials = new Array(excludeCredentials.length);
+    result2.excludeCredentials = new Array(excludeCredentials.length);
     for (let i = 0; i < excludeCredentials.length; i++) {
       const cred = excludeCredentials[i];
-      result.excludeCredentials[i] = Object.assign(Object.assign({}, cred), {
+      result2.excludeCredentials[i] = Object.assign(Object.assign({}, cred), {
         id: base64UrlToUint8Array(cred.id).buffer,
         type: cred.type || "public-key",
         // Cast transports to handle future transport types like "cable"
@@ -21330,7 +23022,7 @@ function deserializeCredentialCreationOptions(options) {
       });
     }
   }
-  return result;
+  return result2;
 }
 function deserializeCredentialRequestOptions(options) {
   if (!options) {
@@ -21344,12 +23036,12 @@ function deserializeCredentialRequestOptions(options) {
     ["challenge", "allowCredentials"]
   );
   const challenge = base64UrlToUint8Array(challengeStr).buffer;
-  const result = Object.assign(Object.assign({}, restOptions), { challenge });
+  const result2 = Object.assign(Object.assign({}, restOptions), { challenge });
   if (allowCredentials && allowCredentials.length > 0) {
-    result.allowCredentials = new Array(allowCredentials.length);
+    result2.allowCredentials = new Array(allowCredentials.length);
     for (let i = 0; i < allowCredentials.length; i++) {
       const cred = allowCredentials[i];
-      result.allowCredentials[i] = Object.assign(Object.assign({}, cred), {
+      result2.allowCredentials[i] = Object.assign(Object.assign({}, cred), {
         id: base64UrlToUint8Array(cred.id).buffer,
         type: cred.type || "public-key",
         // Cast transports to handle future transport types like "cable"
@@ -21357,7 +23049,7 @@ function deserializeCredentialRequestOptions(options) {
       });
     }
   }
-  return result;
+  return result2;
 }
 function serializeCredentialCreationResponse(credential) {
   var _a;
@@ -21490,7 +23182,7 @@ var DEFAULT_REQUEST_OPTIONS = {
 function deepMerge(...sources) {
   const isObject2 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
   const isArrayBufferLike = (val) => val instanceof ArrayBuffer || ArrayBuffer.isView(val);
-  const result = {};
+  const result2 = {};
   for (const source of sources) {
     if (!source)
       continue;
@@ -21499,22 +23191,22 @@ function deepMerge(...sources) {
       if (value === void 0)
         continue;
       if (Array.isArray(value)) {
-        result[key] = value;
+        result2[key] = value;
       } else if (isArrayBufferLike(value)) {
-        result[key] = value;
+        result2[key] = value;
       } else if (isObject2(value)) {
-        const existing = result[key];
+        const existing = result2[key];
         if (isObject2(existing)) {
-          result[key] = deepMerge(existing, value);
+          result2[key] = deepMerge(existing, value);
         } else {
-          result[key] = deepMerge(value);
+          result2[key] = deepMerge(value);
         }
       } else {
-        result[key] = value;
+        result2[key] = value;
       }
     }
   }
-  return result;
+  return result2;
 }
 function mergeCredentialCreationOptions(baseOptions, overrides) {
   return deepMerge(DEFAULT_CREATION_OPTIONS, baseOptions, overrides || {});
@@ -21965,11 +23657,11 @@ var GoTrueClient = class _GoTrueClient {
    * and the provided result contains a non-nullish error, the error is thrown instead of
    * being returned. This ensures consistent behavior across all public API methods.
    */
-  _returnResult(result) {
-    if (this.throwOnError && result && result.error) {
-      throw result.error;
+  _returnResult(result2) {
+    if (this.throwOnError && result2 && result2.error) {
+      throw result2.error;
     }
-    return result;
+    return result2;
   }
   _logPrefix() {
     return `GoTrueClient@${this.storageKey}:${this.instanceID} (${version3}) ${(/* @__PURE__ */ new Date()).toISOString()}`;
@@ -22915,14 +24607,14 @@ var GoTrueClient = class _GoTrueClient {
    * ```
    */
   async signInWithWeb3(credentials) {
-    const { chain } = credentials;
-    switch (chain) {
+    const { chain: chain2 } = credentials;
+    switch (chain2) {
       case "ethereum":
         return await this.signInWithEthereum(credentials);
       case "solana":
         return await this.signInWithSolana(credentials);
       default:
-        throw new Error(`@supabase/auth-js: Unsupported chain "${chain}"`);
+        throw new Error(`@supabase/auth-js: Unsupported chain "${chain2}"`);
     }
   }
   async signInWithEthereum(credentials) {
@@ -22933,7 +24625,7 @@ var GoTrueClient = class _GoTrueClient {
       message = credentials.message;
       signature = credentials.signature;
     } else {
-      const { chain, wallet, statement, options } = credentials;
+      const { chain: chain2, wallet, statement, options } = credentials;
       let resolvedWallet;
       if (!isBrowser()) {
         if (typeof wallet !== "object" || !(options === null || options === void 0 ? void 0 : options.url)) {
@@ -23024,7 +24716,7 @@ var GoTrueClient = class _GoTrueClient {
       message = credentials.message;
       signature = credentials.signature;
     } else {
-      const { chain, wallet, statement, options } = credentials;
+      const { chain: chain2, wallet, statement, options } = credentials;
       let resolvedWallet;
       if (!isBrowser()) {
         if (typeof wallet !== "object" || !(options === null || options === void 0 ? void 0 : options.url)) {
@@ -23629,15 +25321,15 @@ var GoTrueClient = class _GoTrueClient {
         ;
         [codeChallenge, codeChallengeMethod] = await getCodeChallengeAndMethod(this.storage, this.storageKey);
       }
-      const result = await _request(this.fetch, "POST", `${this.url}/sso`, {
+      const result2 = await _request(this.fetch, "POST", `${this.url}/sso`, {
         body: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, "providerId" in params ? { provider_id: params.providerId } : null), "domain" in params ? { domain: params.domain } : null), { redirect_to: (_b = (_a = params.options) === null || _a === void 0 ? void 0 : _a.redirectTo) !== null && _b !== void 0 ? _b : void 0 }), ((_c = params === null || params === void 0 ? void 0 : params.options) === null || _c === void 0 ? void 0 : _c.captchaToken) ? { gotrue_meta_security: { captcha_token: params.options.captchaToken } } : null), { skip_http_redirect: true, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod }),
         headers: this.headers,
         xform: _ssoResponse
       });
-      if (((_d = result.data) === null || _d === void 0 ? void 0 : _d.url) && isBrowser() && !((_e = params.options) === null || _e === void 0 ? void 0 : _e.skipBrowserRedirect)) {
-        window.location.assign(result.data.url);
+      if (((_d = result2.data) === null || _d === void 0 ? void 0 : _d.url) && isBrowser() && !((_e = params.options) === null || _e === void 0 ? void 0 : _e.skipBrowserRedirect)) {
+        window.location.assign(result2.data.url);
       }
-      return this._returnResult(result);
+      return this._returnResult(result2);
     } catch (error2) {
       await removeItemAsync(this.storage, `${this.storageKey}-code-verifier`);
       if (isAuthError(error2)) {
@@ -23675,8 +25367,8 @@ var GoTrueClient = class _GoTrueClient {
   }
   async _reauthenticate() {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError)
           throw sessionError;
         if (!session)
@@ -23878,12 +25570,12 @@ var GoTrueClient = class _GoTrueClient {
    */
   async getSession() {
     await this.initializePromise;
-    const result = await this._acquireLock(this.lockAcquireTimeout, async () => {
-      return this._useSession(async (result2) => {
-        return result2;
+    const result2 = await this._acquireLock(this.lockAcquireTimeout, async () => {
+      return this._useSession(async (result3) => {
+        return result3;
       });
     });
-    return result;
+    return result2;
   }
   /**
    * Acquires a global lock based on the storage key.
@@ -23893,36 +25585,36 @@ var GoTrueClient = class _GoTrueClient {
     try {
       if (this.lockAcquired) {
         const last = this.pendingInLock.length ? this.pendingInLock[this.pendingInLock.length - 1] : Promise.resolve();
-        const result = (async () => {
+        const result2 = (async () => {
           await last;
           return await fn();
         })();
         this.pendingInLock.push((async () => {
           try {
-            await result;
+            await result2;
           } catch (e) {
           }
         })());
-        return result;
+        return result2;
       }
       return await this.lock(`lock:${this.storageKey}`, acquireTimeout, async () => {
         this._debug("#_acquireLock", "lock acquired for storage key", this.storageKey);
         try {
           this.lockAcquired = true;
-          const result = fn();
+          const result2 = fn();
           this.pendingInLock.push((async () => {
             try {
-              await result;
+              await result2;
             } catch (e) {
             }
           })());
-          await result;
+          await result2;
           while (this.pendingInLock.length) {
             const waitOn = [...this.pendingInLock];
             await Promise.all(waitOn);
             this.pendingInLock.splice(0, waitOn.length);
           }
-          return await result;
+          return await result2;
         } finally {
           this._debug("#_acquireLock", "lock released for storage key", this.storageKey);
           this.lockAcquired = false;
@@ -23941,8 +25633,8 @@ var GoTrueClient = class _GoTrueClient {
   async _useSession(fn) {
     this._debug("#_useSession", "begin");
     try {
-      const result = await this.__loadSession();
-      return await fn(result);
+      const result2 = await this.__loadSession();
+      return await fn(result2);
     } finally {
       this._debug("#_useSession", "end");
     }
@@ -24082,13 +25774,13 @@ var GoTrueClient = class _GoTrueClient {
       return await this._getUser(jwt);
     }
     await this.initializePromise;
-    const result = await this._acquireLock(this.lockAcquireTimeout, async () => {
+    const result2 = await this._acquireLock(this.lockAcquireTimeout, async () => {
       return await this._getUser();
     });
-    if (result.data.user) {
+    if (result2.data.user) {
       this.suppressGetSessionWarning = true;
     }
-    return result;
+    return result2;
   }
   async _getUser(jwt) {
     try {
@@ -24099,9 +25791,9 @@ var GoTrueClient = class _GoTrueClient {
           xform: _userResponse
         });
       }
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a, _b, _c;
-        const { data, error: error2 } = result;
+        const { data, error: error2 } = result2;
         if (error2) {
           throw error2;
         }
@@ -24247,8 +25939,8 @@ var GoTrueClient = class _GoTrueClient {
   }
   async _updateUser(attributes, options = {}) {
     try {
-      return await this._useSession(async (result) => {
-        const { data: sessionData, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: sessionData, error: sessionError } = result2;
         if (sessionError) {
           throw sessionError;
         }
@@ -24595,10 +26287,10 @@ var GoTrueClient = class _GoTrueClient {
   }
   async _refreshSession(currentSession) {
     try {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a;
         if (!currentSession) {
-          const { data, error: error3 } = result;
+          const { data, error: error3 } = result2;
           if (error3) {
             throw error3;
           }
@@ -24761,9 +26453,9 @@ var GoTrueClient = class _GoTrueClient {
     });
   }
   async _signOut({ scope } = { scope: "global" }) {
-    return await this._useSession(async (result) => {
+    return await this._useSession(async (result2) => {
       var _a;
-      const { data, error: sessionError } = result;
+      const { data, error: sessionError } = result2;
       if (sessionError && !isAuthSessionMissingError(sessionError)) {
         return this._returnResult({ error: sessionError });
       }
@@ -24991,10 +26683,10 @@ var GoTrueClient = class _GoTrueClient {
     return { data: { subscription } };
   }
   async _emitInitialSession(id) {
-    return await this._useSession(async (result) => {
+    return await this._useSession(async (result2) => {
       var _a, _b;
       try {
-        const { data: { session }, error: error2 } = result;
+        const { data: { session }, error: error2 } = result2;
         if (error2)
           throw error2;
         await ((_a = this.stateChangeEmitters.get(id)) === null || _a === void 0 ? void 0 : _a.callback("INITIAL_SESSION", session));
@@ -25198,9 +26890,9 @@ var GoTrueClient = class _GoTrueClient {
   async linkIdentityOAuth(credentials) {
     var _a;
     try {
-      const { data, error: error2 } = await this._useSession(async (result) => {
+      const { data, error: error2 } = await this._useSession(async (result2) => {
         var _a2, _b, _c, _d, _e;
-        const { data: data2, error: error3 } = result;
+        const { data: data2, error: error3 } = result2;
         if (error3)
           throw error3;
         const url = await this._getUrlForProvider(`${this.url}/user/identities/authorize`, credentials.provider, {
@@ -25231,10 +26923,10 @@ var GoTrueClient = class _GoTrueClient {
     }
   }
   async linkIdentityIdToken(credentials) {
-    return await this._useSession(async (result) => {
+    return await this._useSession(async (result2) => {
       var _a;
       try {
-        const { error: sessionError, data: { session } } = result;
+        const { error: sessionError, data: { session } } = result2;
         if (sessionError)
           throw sessionError;
         const { options, provider, token, access_token, nonce } = credentials;
@@ -25299,15 +26991,15 @@ var GoTrueClient = class _GoTrueClient {
    * const { error } = await supabase.auth.unlinkIdentity(googleIdentity)
    * ```
    */
-  async unlinkIdentity(identity) {
+  async unlinkIdentity(identity2) {
     try {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a, _b;
-        const { data, error: error2 } = result;
+        const { data, error: error2 } = result2;
         if (error2) {
           throw error2;
         }
-        return await _request(this.fetch, "DELETE", `${this.url}/user/identities/${identity.identity_id}`, {
+        return await _request(this.fetch, "DELETE", `${this.url}/user/identities/${identity2.identity_id}`, {
           headers: this.headers,
           jwt: (_b = (_a = data.session) === null || _a === void 0 ? void 0 : _a.access_token) !== null && _b !== void 0 ? _b : void 0
         });
@@ -25463,18 +27155,18 @@ var GoTrueClient = class _GoTrueClient {
         throw new AuthSessionMissingError();
       await this._saveSession(data.session);
       await this._notifyAllSubscribers("TOKEN_REFRESHED", data.session);
-      const result = { data: data.session, error: null };
-      this.refreshingDeferred.resolve(result);
-      return result;
+      const result2 = { data: data.session, error: null };
+      this.refreshingDeferred.resolve(result2);
+      return result2;
     } catch (error2) {
       this._debug(debugName, "error", error2);
       if (isAuthError(error2)) {
-        const result = { data: null, error: error2 };
+        const result2 = { data: null, error: error2 };
         if (!isAuthRetryableFetchError(error2)) {
           await this._removeSession();
         }
-        (_a = this.refreshingDeferred) === null || _a === void 0 ? void 0 : _a.resolve(result);
-        return result;
+        (_a = this.refreshingDeferred) === null || _a === void 0 ? void 0 : _a.resolve(result2);
+        return result2;
       }
       (_b = this.refreshingDeferred) === null || _b === void 0 ? void 0 : _b.reject(error2);
       throw error2;
@@ -25698,8 +27390,8 @@ var GoTrueClient = class _GoTrueClient {
         try {
           const now = Date.now();
           try {
-            return await this._useSession(async (result) => {
-              const { data: { session } } = result;
+            return await this._useSession(async (result2) => {
+              const { data: { session } } = result2;
               if (!session || !session.refresh_token || !session.expires_at) {
                 this._debug("#_autoRefreshTokenTick()", "no session");
                 return;
@@ -25811,9 +27503,9 @@ var GoTrueClient = class _GoTrueClient {
   }
   async _unenroll(params) {
     try {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a;
-        const { data: sessionData, error: sessionError } = result;
+        const { data: sessionData, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -25831,9 +27523,9 @@ var GoTrueClient = class _GoTrueClient {
   }
   async _enroll(params) {
     try {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a, _b;
-        const { data: sessionData, error: sessionError } = result;
+        const { data: sessionData, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -25861,9 +27553,9 @@ var GoTrueClient = class _GoTrueClient {
   async _verify(params) {
     return this._acquireLock(this.lockAcquireTimeout, async () => {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a;
-          const { data: sessionData, error: sessionError } = result;
+          const { data: sessionData, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -25893,9 +27585,9 @@ var GoTrueClient = class _GoTrueClient {
   async _challenge(params) {
     return this._acquireLock(this.lockAcquireTimeout, async () => {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a;
-          const { data: sessionData, error: sessionError } = result;
+          const { data: sessionData, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -26038,8 +27730,8 @@ var GoTrueClient = class _GoTrueClient {
    */
   async _getAuthorizationDetails(authorizationId) {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -26065,8 +27757,8 @@ var GoTrueClient = class _GoTrueClient {
    */
   async _approveAuthorization(authorizationId, options) {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -26099,8 +27791,8 @@ var GoTrueClient = class _GoTrueClient {
    */
   async _denyAuthorization(authorizationId, options) {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -26133,8 +27825,8 @@ var GoTrueClient = class _GoTrueClient {
    */
   async _listOAuthGrants() {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -26160,8 +27852,8 @@ var GoTrueClient = class _GoTrueClient {
    */
   async _revokeOAuthGrant(options) {
     try {
-      return await this._useSession(async (result) => {
-        const { data: { session }, error: sessionError } = result;
+      return await this._useSession(async (result2) => {
+        const { data: { session }, error: sessionError } = result2;
         if (sessionError) {
           return this._returnResult({ data: null, error: sessionError });
         }
@@ -26429,7 +28121,7 @@ function applySettingDefaults(options, defaults) {
   var _DEFAULT_GLOBAL_OPTIO, _globalOptions$header;
   const { db: dbOptions, auth: authOptions, realtime: realtimeOptions, global: globalOptions } = options;
   const { db: DEFAULT_DB_OPTIONS$1, auth: DEFAULT_AUTH_OPTIONS$1, realtime: DEFAULT_REALTIME_OPTIONS$1, global: DEFAULT_GLOBAL_OPTIONS$1 } = defaults;
-  const result = {
+  const result2 = {
     db: _objectSpread23(_objectSpread23({}, DEFAULT_DB_OPTIONS$1), dbOptions),
     auth: _objectSpread23(_objectSpread23({}, DEFAULT_AUTH_OPTIONS$1), authOptions),
     realtime: _objectSpread23(_objectSpread23({}, DEFAULT_REALTIME_OPTIONS$1), realtimeOptions),
@@ -26437,9 +28129,9 @@ function applySettingDefaults(options, defaults) {
     global: _objectSpread23(_objectSpread23(_objectSpread23({}, DEFAULT_GLOBAL_OPTIONS$1), globalOptions), {}, { headers: _objectSpread23(_objectSpread23({}, (_DEFAULT_GLOBAL_OPTIO = DEFAULT_GLOBAL_OPTIONS$1 === null || DEFAULT_GLOBAL_OPTIONS$1 === void 0 ? void 0 : DEFAULT_GLOBAL_OPTIONS$1.headers) !== null && _DEFAULT_GLOBAL_OPTIO !== void 0 ? _DEFAULT_GLOBAL_OPTIO : {}), (_globalOptions$header = globalOptions === null || globalOptions === void 0 ? void 0 : globalOptions.headers) !== null && _globalOptions$header !== void 0 ? _globalOptions$header : {}) }),
     accessToken: async () => ""
   };
-  if (options.accessToken) result.accessToken = options.accessToken;
-  else delete result.accessToken;
-  return result;
+  if (options.accessToken) result2.accessToken = options.accessToken;
+  else delete result2.accessToken;
+  return result2;
 }
 function validateSupabaseUrl(supabaseUrl) {
   const trimmedUrl = supabaseUrl === null || supabaseUrl === void 0 ? void 0 : supabaseUrl.trim();
@@ -26656,13 +28348,13 @@ var SupabaseClient = class {
     this.storageUrl = new URL("storage/v1", baseUrl);
     this.functionsUrl = new URL("functions/v1", baseUrl);
     const defaultStorageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
-    const DEFAULTS = {
+    const DEFAULTS2 = {
       db: DEFAULT_DB_OPTIONS,
       realtime: DEFAULT_REALTIME_OPTIONS,
       auth: _objectSpread23(_objectSpread23({}, DEFAULT_AUTH_OPTIONS), {}, { storageKey: defaultStorageKey }),
       global: DEFAULT_GLOBAL_OPTIONS
     };
-    const settings = applySettingDefaults(options !== null && options !== void 0 ? options : {}, DEFAULTS);
+    const settings = applySettingDefaults(options !== null && options !== void 0 ? options : {}, DEFAULTS2);
     this.storageKey = (_settings$auth$storag = settings.auth.storageKey) !== null && _settings$auth$storag !== void 0 ? _settings$auth$storag : "";
     this.headers = (_settings$global$head = settings.global.headers) !== null && _settings$global$head !== void 0 ? _settings$global$head : {};
     if (!settings.accessToken) {
@@ -26704,8 +28396,8 @@ var SupabaseClient = class {
   *
   * @param relation - The table or view name to query
   */
-  from(relation) {
-    return this.rest.from(relation);
+  from(relation2) {
+    return this.rest.from(relation2);
   }
   /**
   * Select a schema to query or perform an function (rpc) call.
@@ -26935,11 +28627,11 @@ function normalizeFilesTouched(filesTouched, workspaceRoot) {
     const canonicalPaths = [];
     for (const raw of paths) {
       if (typeof raw !== "string") continue;
-      const result = normalize_workspace_path({ raw_path: raw, workspace_root: workspaceRoot });
-      if (result.ok) {
-        canonicalPaths.push(result.path);
+      const result2 = normalize_workspace_path({ raw_path: raw, workspace_root: workspaceRoot });
+      if (result2.ok) {
+        canonicalPaths.push(result2.path);
       } else {
-        dropped[result.reason] = (dropped[result.reason] ?? 0) + 1;
+        dropped[result2.reason] = (dropped[result2.reason] ?? 0) + 1;
       }
     }
     if (canonicalPaths.length > 0) {
@@ -27064,6 +28756,9 @@ function createTimeoutFetch(base, options = {}) {
   return timeoutFetch;
 }
 
+// ../shared/src/net/outbox.ts
+var DEFAULT_PARKED_RETRY_MS = 30 * 6e4;
+
 // ../shared/src/git-config.ts
 var import_ini = __toESM(require_ini(), 1);
 
@@ -27134,15 +28829,15 @@ function isSkillSlugUniqueViolation(err) {
 // ../shared/src/tools/content-edit.ts
 function countOccurrences(haystack, needle) {
   if (needle.length === 0) return 0;
-  let count = 0;
+  let count2 = 0;
   let from = 0;
   for (; ; ) {
     const idx = haystack.indexOf(needle, from);
     if (idx === -1) break;
-    count += 1;
+    count2 += 1;
     from = idx + needle.length;
   }
-  return count;
+  return count2;
 }
 var HEADING_RE = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 function headingText(raw) {
@@ -28424,7 +30119,7 @@ function resolveScriptCommand(command, packages) {
     return { status: "unresolved", runs: null, chain: [], reason: "no package.json data was available on this surface" };
   }
   const rootPkg = packages.find((p) => p.dir === "/");
-  const chain = [command];
+  const chain2 = [command];
   const seen = /* @__PURE__ */ new Set();
   const leaves = [];
   let unresolvedReason = null;
@@ -28446,8 +30141,8 @@ function resolveScriptCommand(command, packages) {
       }
       seen.add(key);
       const body = t.pkg.scripts[t.script];
-      if (chain.length < MAX_CHAIN) {
-        chain.push(`${t.pkg.name ?? t.pkg.dir}:${t.script} = ${body}`);
+      if (chain2.length < MAX_CHAIN) {
+        chain2.push(`${t.pkg.name ?? t.pkg.dir}:${t.script} = ${body}`);
       }
       for (const seg of segments(body)) walk(seg, depth + 1);
     }
@@ -28456,23 +30151,23 @@ function resolveScriptCommand(command, packages) {
   for (const leaf of leaves) {
     const why = provenNonTerminating(leaf);
     if (why) {
-      return { status: "non_terminating", runs: leaf, chain, reason: `${leaf}: ${why}` };
+      return { status: "non_terminating", runs: leaf, chain: chain2, reason: `${leaf}: ${why}` };
     }
   }
   const direct = provenNonTerminating(command);
-  if (direct) return { status: "non_terminating", runs: null, chain, reason: `${command}: ${direct}` };
+  if (direct) return { status: "non_terminating", runs: null, chain: chain2, reason: `${command}: ${direct}` };
   if (leaves.length === 0) {
     return {
       status: "unresolved",
       runs: null,
-      chain,
+      chain: chain2,
       reason: unresolvedReason ?? "the script chain reached no concrete command"
     };
   }
   return {
     status: "resolved",
     runs: leaves.length === 1 ? leaves[0] : null,
-    chain,
+    chain: chain2,
     reason: leaves.length === 1 ? null : `${leaves.length} concrete commands (recursive or chained)`
   };
 }
@@ -28672,7 +30367,7 @@ async function writeRuleHandler(ctx, args) {
       constraints = [proposal.value];
     }
     if (args.constraint_intent) {
-      const result = compileAndStampConstraint(
+      const result2 = compileAndStampConstraint(
         args.constraint_intent,
         args.policy_provenance ?? "inferred",
         constraints ?? [],
@@ -28680,8 +30375,8 @@ async function writeRuleHandler(ctx, args) {
         // claim is unprovable here and is refused rather than taken on trust.
         { storedContent: null, callAuthorsContent: true }
       );
-      if (!result.ok) return { ok: false, error: result.error };
-      constraints = [...constraints ?? [], result.value];
+      if (!result2.ok) return { ok: false, error: result2.error };
+      constraints = [...constraints ?? [], result2.value];
     }
     if (args.check) {
       const resolved = args.workspace_scripts?.length ? resolveScriptCommand(args.check.command, args.workspace_scripts) : void 0;
@@ -28765,14 +30460,14 @@ async function updateRuleHandler(ctx, args) {
     }
     if (args.patch.constraint_intent) {
       const base = constraints ?? current.constraints ?? [];
-      const result = compileAndStampConstraint(
+      const result2 = compileAndStampConstraint(
         args.patch.constraint_intent,
         args.policy_provenance ?? "inferred",
         base,
         { storedContent: current.content, callAuthorsContent: bodyRewritten }
       );
-      if (!result.ok) return { ok: false, error: result.error };
-      constraints = [...base.filter((a) => !result.supersedes.includes(a.id)), result.value];
+      if (!result2.ok) return { ok: false, error: result2.error };
+      constraints = [...base.filter((a) => !result2.supersedes.includes(a.id)), result2.value];
     } else if (bodyRewritten) {
       const base = constraints ?? current.constraints ?? [];
       const demoted = demoteUngroundedConstraints(base, resolved.content);
@@ -45024,7 +46719,7 @@ async function importPatternHandler(ctx, args) {
   const details = [];
   for (const piece of pattern.pieces) {
     const node_path = joinPatternPaths(args.node_path, piece.nodePath);
-    const result = piece.kind === "memory" ? await writeMemoryHandler(ctx, {
+    const result2 = piece.kind === "memory" ? await writeMemoryHandler(ctx, {
       node_path,
       title: piece.title,
       content: piece.body,
@@ -45044,7 +46739,7 @@ async function importPatternHandler(ctx, args) {
       // Provenance tag so imported skills are findable as a group.
       tags: [...piece.skillTags ?? [], patternProvenanceTag(pattern.slug)]
     });
-    if (result.ok) {
+    if (result2.ok) {
       if (piece.kind === "memory") imported.memories += 1;
       else if (piece.kind === "rule") imported.rules += 1;
       else imported.skills += 1;
@@ -45053,11 +46748,11 @@ async function importPatternHandler(ctx, args) {
         title: piece.title,
         path: node_path,
         status: "imported",
-        id: result.data.id
+        id: result2.data.id
       });
-    } else if (result.error.code === "duplicate") {
+    } else if (result2.error.code === "duplicate") {
       skipped += 1;
-      const existingId = result.error.detail && typeof result.error.detail === "object" ? result.error.detail.existing_id : void 0;
+      const existingId = result2.error.detail && typeof result2.error.detail === "object" ? result2.error.detail.existing_id : void 0;
       details.push({
         kind: piece.kind,
         title: piece.title,
@@ -45072,7 +46767,7 @@ async function importPatternHandler(ctx, args) {
         title: piece.title,
         path: node_path,
         status: "failed",
-        reason: result.error.message
+        reason: result2.error.message
       });
     }
   }
@@ -45729,14 +47424,14 @@ async function findOrCreateNodeForPath(supabase, workspaceId, rawRelativePath, l
       parent = existingHere;
       continue;
     }
-    const { count } = await supabase.from("nodes").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("parent_id", parent.id);
+    const { count: count2 } = await supabase.from("nodes").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("parent_id", parent.id);
     const { data, error: error2 } = await supabase.from("nodes").insert({
       workspace_id: workspaceId,
       parent_id: parent.id,
       name: seg,
       type,
       relative_path: pathFor(parent.relative_path, seg),
-      order_index: count ?? 0,
+      order_index: count2 ?? 0,
       status: "active"
     }).select("id, workspace_id, parent_id, name, type, relative_path").single();
     if (error2 || !data) {
@@ -45765,6 +47460,43 @@ async function ensureNodeForPath(supabase, workspaceId, rawRelativePath, leafTyp
     if ("error" in ensured) return ensured;
   }
   return findOrCreateNodeForPath(supabase, workspaceId, relativePath, leafType);
+}
+
+// ../shared/src/intelligence/activity-learning.ts
+var summarySources = /* @__PURE__ */ new Set(["agent_authored", "user_intent", "derived", "unknown"]);
+var fileSources = /* @__PURE__ */ new Set(["observed_tools", "agent_reported", "unknown"]);
+var count = (n) => typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+var identity = (s) => typeof s === "string" && /^[a-zA-Z0-9:_-]{1,160}$/.test(s) ? s : void 0;
+function normalizeActivityProvenance(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const p = value;
+  if (p.version !== 1) return void 0;
+  const stored = count(p.storedFileCount);
+  const observed = Math.max(stored, count(p.observedFileCount));
+  return {
+    version: 1,
+    summarySource: summarySources.has(String(p.summarySource)) ? p.summarySource : "unknown",
+    filesSource: fileSources.has(String(p.filesSource)) ? p.filesSource : "unknown",
+    threadId: identity(p.threadId),
+    turnId: identity(p.turnId),
+    observedFileCount: observed,
+    storedFileCount: stored,
+    filesTruncated: p.filesTruncated === true || observed > stored,
+    outcome: "unknown"
+  };
+}
+function isLearningSourcePath(path) {
+  if (!path || path.length > 512 || path.startsWith("/") || path.includes("\\") || /[\x00-\x1f:]/.test(path))
+    return false;
+  const parts = path.split("/");
+  if (parts.some((p) => !p || p === "." || p === "..")) return false;
+  if (parts.some(
+    (p) => /^(?:\.env(?:\..*)?|\.secrets?|secrets?|credentials?(?:\..*)?|\.git|node_modules|vendor|dist|build|coverage)$/i.test(
+      p
+    )
+  ))
+    return false;
+  return !/(?:\.(?:pem|key|p12|pfx|keystore)|(?:^|\/)id_(?:rsa|ed25519))$/i.test(path);
 }
 
 // ../shared/src/intelligence/team-prompt-signal.ts
@@ -45874,7 +47606,15 @@ async function writeActivityLog(ctx, input) {
   if (await ctx.backend.isDemoWorkspace(input.workspaceId)) {
     throw new Error(DEMO_READONLY_MESSAGE);
   }
+  const filesTouched = clampFilesTouched(input.filesTouched);
+  const supplied = normalizeActivityProvenance(input.provenance);
+  const provenance = supplied ? normalizeActivityProvenance({
+    ...supplied,
+    storedFileCount: filesTouched.total,
+    observedFileCount: Math.max(supplied.observedFileCount, filesTouched.total)
+  }) : void 0;
   const rec = await ctx.backend.logActivity({
+    provenance,
     workspaceId: input.workspaceId,
     nodePath: input.nodePath,
     domain: input.domain,
@@ -45882,7 +47622,7 @@ async function writeActivityLog(ctx, input) {
     scope: input.scope,
     subjects: input.subjects.slice(0, MAX_SUBJECTS),
     taskSummary: clampTaskSummary(input.taskSummary),
-    filesTouched: clampFilesTouched(input.filesTouched),
+    filesTouched,
     aiClient: input.aiClient,
     sessionId: input.sessionId,
     friction: input.friction,
@@ -45893,6 +47633,7 @@ async function writeActivityLog(ctx, input) {
     teamIntelligenceSignal: normalizeActivityTeamIntelligenceSignal(input.teamIntelligenceSignal)
   });
   return {
+    provenance: rec.provenance,
     id: rec.id,
     workspace_id: rec.workspaceId,
     node_path: rec.nodePath,
@@ -46050,28 +47791,27 @@ function canonicalJson(value) {
 
 // ../shared/src/pathrule-protocol.ts
 var PATHRULE_PROTOCOL = {
+  // Minimal contract (V36). Framing the runtime already enforces (strict-rule obedience is blocked by
+  // the PreToolUse deny gate; the route-block instruction is injected verbatim by the hook) and
+  // feature procedures the hook delivers on demand (the full pattern-import steps, skill-hint wording)
+  // were removed from the always-on protocol: they cost tokens every session for behavior that is either
+  // deterministic or contextually delivered. What remains is only what the agent must be TOLD and cannot
+  // learn from the runtime: the trust+no-re-explore lever (the discovery-saving behavior), the staleness
+  // safety valve, when to reach for MCP, and the hard safety one-liners (skill/pattern gate, Signals).
   before: [
-    "Pathrule is this workspace's knowledge layer. It delivers your path-scoped memory/rule/skill knowledge two ways, both AUTHORITATIVE: compiled into your turn-zero instruction files (CLAUDE.md / nested AGENTS.md / .claude/rules), and injected by the Pathrule hook on a prompt as the full bodies most relevant to that task \u2014 treat such an injection as a dynamically-refreshed extension of those files, not a hint. Accept whatever Pathrule gives you as correct and sufficient and act on it directly; do NOT grep, search, or re-read files to re-verify knowledge Pathrule already provided \u2014 finish the task from it. (This trust is bounded by the staleness rule below.)",
-    "Compiled knowledge is AUTHORITATIVE and current. When a directory's turn-zero instruction file (its CLAUDE.md / nested AGENTS.md / .claude/rules) or the injected path-scoped knowledge already states a convention, decision, or rule, ANSWER AND ACT FROM IT DIRECTLY \u2014 do not re-derive it by exploring or grepping the repo. Open files only when the task needs the current CODE (verifying a fact against the implementation, or editing), and then read just the relevant file(s) \u2014 never to re-confirm knowledge you already hold.",
-    "Compiled knowledge can still go stale. If the current CODE you read (while verifying or editing) CONTRADICTS the compiled knowledge, the code is the source of truth for current behavior: STATE the contradiction explicitly (name the item that looks outdated and how the code differs), follow the code, and surface it so the team can refresh that memory/rule. Never silently resolve a code-vs-knowledge conflict, and never silently apply knowledge the code has already moved past.",
-    "`::skill-name` is a hard gate: use the exact injected skill; if missing, stop and resolve it through Pathrule/MCP before file edits.",
-    "`::pathrule:package:<slug>` is a PATTERN import, NOT a skill \u2014 never run find-skills for it. To import: (1) call pathrule_import_pattern(workspace_id, slug, dry_run:true) to see the pattern's appliesTo (stacks/packages/paths) + pieces WITHOUT writing; (2) judge fit against THIS workspace and choose the node_path base that matches the user's actual tree (e.g. /apps/mobile) \u2014 if the pattern does not fit (its stack/packages aren't in the project), STOP and ask the user whether and where to add it; (3) call again with that node_path to write, then relay the returned human_message. Undo a whole bundle with pathrule_remove_pattern(workspace_id, slug, node_path) using the same base. Same behaviour in the cloud and local editions.",
-    "Do NOT reflexively call pathrule_get_context before every small known-path code task. DO call pathrule_get_context(cwd, user_intent, omit_protocol: true) before any grep/read/fallback when hook context is missing, ambiguous, stale, or the user asks for discovery, inventory, architecture, recent activity, or list/show/find/where/which style questions (including Turkish: listele, g\xF6ster, bul, nerede, hangi, neler).",
-    "Hook silence on a topic does not mean Pathrule has no relevant memory/rule. For discovery/inventory/architecture questions, call pathrule_get_context first; fall back to files, git, or general knowledge only after Pathrule returns nothing relevant. It's a single unified tool: the router classifies intent and returns a depth-appropriate response - minimal for ui_tweak/new_feature on a known path, focused for bug_fix/refactor, deep for debug/discovery.",
-    "For discovery/inventory questions, treat `subtree_memory_index`, `discovery_signal`, and `semantic_candidates` as Pathrule evidence before filesystem fallback. Semantic candidates are not answers or rules: call pathrule_read_memory(id) and inspect the body before citing or following one.",
-    "The response tells you `next_required_action.primary_files` when the router is confident \u2014 edit those directly. The hook's \u{1F9ED} route block carries the same signal on a prompt: read just the relevant part(s) of the listed path(s), confirm what you need, then act \u2014 do NOT grep/glob across the repo, and widen only if the routed path(s) prove insufficient. For full memory/rule bodies: pathrule_read_memory(id) / pathrule_read_rule(id).",
-    "Obey every rule the hooks surface (advisory + strict). When the hook injects a memory/skill BODY, that body IS the content \u2014 use it directly, do not fetch it again; only call pathrule_read_memory(id) for an item shown as a title/stub without its body.",
-    "Treat existing local edits as protected user/team work: inspect before touching overlapping files, never revert unrelated changes, and keep edits scoped to the user's request.",
-    "Pathrule Signals is this workspace's runtime-context layer: it links runtime errors, important events, and feedback back to the related code, feature, and Tasks \u2014 it is NOT analytics (no users, sessions, funnels, or PII). It is OPT-IN and PROPOSE-FIRST: never add Signals SDK calls to the user's code unless the user has enabled Signals AND explicitly approved the specific instrumentation. In Pathrule Studio the `/signals` command runs a READ-ONLY scan that proposes instrumentation points for review; the desktop then mints the per-workspace ingest key and applies only the approved points (the SDK is vendored, not an npm dependency). Do not invent a different setup flow, do not publish or install the SDK from a registry, and never claim Signals is active without a real ingest connection."
+    "Pathrule is this workspace's knowledge layer: it compiles your path-scoped memory/rule/skill knowledge into your turn-zero files (CLAUDE.md / AGENTS.md / .claude/rules) and, injected by the Pathrule hook on a prompt, delivers the task-relevant full bodies, both AUTHORITATIVE. When the hook injects a memory/skill body, that body IS the content: use it directly, do not fetch it again. Act on Pathrule's knowledge directly; do NOT grep, search, or re-read files to re-verify what it already gave you. Open files only to read the current CODE you must edit or check.",
+    "Compiled knowledge can go stale. If the current code contradicts it, the code wins for current behavior: STATE the contradiction (name the stale item and how the code differs), follow the code, and surface it so the team refreshes it. Never silently resolve a code-vs-knowledge conflict.",
+    "Do NOT reflexively call pathrule_get_context before every small known-path task. DO call pathrule_get_context(cwd, user_intent, omit_protocol: true) before any grep/read/fallback when hook context is missing, ambiguous, or stale, or for discovery, inventory, architecture, or list/show/find/where/which questions (including Turkish: listele, g\xF6ster, bul, nerede, hangi, neler). A semantic candidate is a lead, not an answer: call pathrule_read_memory(id) and read the body before citing one.",
+    "`::skill-name` is a hard gate: run the exact injected skill. `::pathrule:package:<slug>` is a PATTERN import, not a skill: call pathrule_import_pattern(dry_run: true) first, judge fit against this workspace, then write. Follow the instruction the hook gives for each; do not improvise one.",
+    "Pathrule Signals is opt-in and propose-first: never add Signals SDK calls to the user's code unless the user has enabled Signals AND approved the specific instrumentation."
   ],
   during: [
-    "Path-first writes: write_memory / write_rule / write_skill take a node_path string (e.g. '/apps/mobile'). Target the most specific path; missing nodes auto-create.",
-    "Fast edits: to UPDATE an existing memory/rule/skill you know by title/name (e.g. one shown in the compiled knowledge), call pathrule_resolve(query: <its title/name>) ONCE to get its id + version_id \u2014 do NOT pull the tree, list items, or read candidate bodies to hunt for the id. Then call pathrule_update_* with `content_edit` (append / str_replace / replace_section) to send only the delta; reserve full `content` (or patch.content) for a genuine rewrite. This is the required path \u2014 the old id-hunt wastes tens of thousands of tokens.",
-    "Never use local file-based memory (~/.claude/memory/, MEMORY.md). Pathrule is the single source of truth for all persistent knowledge.",
-    "After every write, summarise what you did in natural language \u2014 don't paste raw tool JSON."
+    "Path-first writes: write_memory / write_rule / write_skill take a node_path string (e.g. '/apps/mobile'); target the most specific path (missing nodes auto-create).",
+    "Fast edits: to UPDATE a memory/rule/skill you know by title, call pathrule_resolve(query) ONCE for its id + version_id (do NOT pull the tree or read bodies to hunt the id), then pathrule_update_* with a `content_edit` delta (append / str_replace / replace_section); reserve full `content` for a genuine rewrite.",
+    "Never use local file-based memory (~/.claude/memory/, MEMORY.md). Pathrule is the single source of truth for persistent knowledge."
   ],
   after: [
-    "Log EVERY file-modifying response with pathrule_log_activity. Trigger: did you modify files? \u2192 log it. Required fields: domain, action, scope, subjects (\u22645 keywords), files_touched, task_summary."
+    "Log EVERY file-modifying response with pathrule_log_activity (fields: domain, action, scope, subjects \u22645, files_touched, task_summary)."
   ]
 };
 var PATHRULE_PROTOCOL_VERSION = stableHash(PATHRULE_PROTOCOL);
@@ -46196,10 +47936,10 @@ async function getHotPaths(supabase, workspaceId) {
   if (!nodes) return [];
   const pathMap = /* @__PURE__ */ new Map();
   for (const n of nodes) pathMap.set(n.id, n.relative_path);
-  return sorted.map(([nodeId, count]) => {
+  return sorted.map(([nodeId, count2]) => {
     const path = pathMap.get(nodeId);
     if (!path) return null;
-    return { path, change_count: count };
+    return { path, change_count: count2 };
   }).filter((h) => h !== null);
 }
 
@@ -46314,6 +48054,28 @@ var FORMULAS = [
     findingType: "stale_knowledge",
     cadence: "on_change",
     confidenceBaseline: 0.55,
+    phase: 3,
+    active: true
+  },
+  // M202: structural findings from the knowledge map: near-duplicate memories
+  // (duplicate_knowledge) and rule/skill/memory companions that do not link each other
+  // (broken_reference, per-hit details.findingType). Deterministic and content-free
+  // evidence (item ids); never a model call.
+  {
+    id: "knowledge_map_structure",
+    findingType: "duplicate_knowledge",
+    cadence: "daily",
+    confidenceBaseline: 0.75,
+    phase: 3,
+    active: true
+  },
+  // M202: change that knowledge does not anchor (plan D10). Commits only; resolves itself
+  // when a learning claim or memory anchors the files (snapshot mode replace).
+  {
+    id: "knowledge_coverage_gap",
+    findingType: "missing_knowledge",
+    cadence: "on_change",
+    confidenceBaseline: 0.6,
     phase: 3,
     active: true
   },
@@ -46756,6 +48518,58 @@ var TWIN_TOOLS = [
     timeoutSecs: 10,
     surfaces: ["voice"],
     writes: true
+  },
+  // User Intelligence. Every other tool here reads or changes the PROJECT; these three are about the
+  // PERSON: what Pathrule has learned about how they like to work, and how they correct it. Twin is
+  // where that conversation belongs, because Twin is the one surface where Pathrule speaks as itself
+  // rather than brokering for a coding agent, and because a preference is most often stated out loud
+  // while watching work run.
+  {
+    name: "pathrule_user_context",
+    action: "userContext",
+    description: `Read what Pathrule has learned about how THIS USER likes to work: their
+      stated preferences, the ones still being confirmed, and where each came from. Use it
+      whenever they ask what you know about them, how you decide what they want, why you did
+      something a particular way, or what Pathrule has remembered about their preferences.
+      This is about the PERSON, not the project: pathrule_knowledge is the project.`,
+    params: [],
+    timeoutSecs: 10,
+    surfaces: BOTH,
+    writes: false
+  },
+  {
+    name: "pathrule_teach_preference",
+    action: "teachPreference",
+    description: `Record a lasting preference the user has just stated about how they want
+      work done, for example that they want short answers, small steps rather than rewrites,
+      or to be asked before anything is deleted. Use it ONLY when they are describing how they
+      ALWAYS want things, not what they want for the task at hand. Pass their own words.
+      Nothing is stored unless the preference can be grounded in what they actually said, so
+      report back whatever this returns rather than promising it was saved.`,
+    params: [
+      P("text", "string", true, `The preference in the USER'S OWN WORDS, as close to what they
+        said as possible. Do not rephrase, summarise or tidy it: a claim that cannot be found
+        in their own words is refused, so your paraphrase would simply be rejected.`)
+    ],
+    // Learning runs the on-device model, which may have to load first.
+    timeoutSecs: 30,
+    surfaces: BOTH,
+    writes: true
+  },
+  {
+    name: "pathrule_forget_preference",
+    action: "forgetPreference",
+    description: `Drop something Pathrule believes about how the user works, when they say it
+      is wrong, no longer true, or that they have changed their mind. Name the preference in a
+      few words and the closest match is retired. Use pathrule_user_context first if you are
+      not sure which one they mean; retiring the wrong belief is worse than asking.`,
+    params: [
+      P("query", "string", true, `A few words from the preference to retire, taken from what
+        the user said, for example short answers or small steps.`)
+    ],
+    timeoutSecs: 10,
+    surfaces: BOTH,
+    writes: true
   }
 ];
 
@@ -46854,6 +48668,38 @@ var STUDIO_DESIGN_SCHEDULED_ADDENDUM = [
   "- Nobody is available to answer questions. Do NOT ask anything; make tasteful, specific decisions yourself and note the key choice in your one opening sentence.",
   "- Produce a FRESH take on the brief each run: vary the concept, layout, or signature element rather than repeating a previous composition.",
   "- Always declare the canvas with <!-- pathrule:canvas WIDTHxHEIGHT --> as specified above."
+].join("\n");
+
+// ../shared/src/user-intelligence/decision-card.ts
+var CHOICE_TAGS = [
+  "minimal-change",
+  "refactor",
+  "adds-dependency",
+  "reuses-existing",
+  "new-abstraction",
+  "explicit",
+  "performance",
+  "simplicity",
+  "robustness",
+  "security",
+  "speed",
+  "tests",
+  "backward-compatible"
+];
+var STUDIO_DECISION_CARD_INSTRUCTION = [
+  "## Presenting a real choice as a decision card",
+  "When you would otherwise ask the user to choose between two to four materially different approaches",
+  "(not a yes/no, and not a detail you can settle yourself), end your reply with EXACTLY ONE fenced",
+  "```pathrule-decision block instead of listing the options in prose:",
+  "```pathrule-decision",
+  '{ "question": "<one line>", "options": [ { "id": "a", "label": "<short name>",',
+  '  "detail": "<one line trade-off>", "tags": ["<tag>"] } ], "recommended": "<option id or null>",',
+  '  "reason": "<one line why you recommend it>" }',
+  "```",
+  `Tags come ONLY from: ${CHOICE_TAGS.join(", ")}. Tag what actually differs between the options.`,
+  "Write the question, labels and details in the user's language. Never create a choice you would not",
+  "otherwise ask about, and never offer one that a workspace rule already decides. Then stop and wait",
+  "for their pick, exactly as you would after asking the question."
 ].join("\n");
 
 // ../shared/src/studio/design-outcome.ts
@@ -47241,6 +49087,86 @@ var STUDIO_SIGNALS_AUTHORING_INSTRUCTION = [
   "If it is NOT set up yet: do not hand-write an ingest key or install anything. Instead finish with ONE short human sentence plus ONE ```pathrule-signals fenced block of proposed points (kind, file, node, flow, label, rationale, confidence). The desktop then mints the per-workspace ingest key, vendors the single-file SDK, and applies only the points the user approves.",
   "LANGUAGE: reply to the user in their configured response language (the language they are chatting in). These instructions are written in English, but that is NOT the reply language: do not switch to English because of them. Only code identifiers, file paths, SDK call names, and any proposal label/rationale stay in English."
 ].join("\n\n");
+
+// ../shared/src/knowledge-map/links.ts
+var FENCE = /```[\s\S]*?```/g;
+var INLINE = /`[^`]*`/g;
+var WIKILINK = /\[\[([^\][]+)\]\]/g;
+var SKILL_REF = /(?<![A-Za-z0-9_:])::([a-z0-9][a-z0-9-]{2,})(?![a-z0-9:-])/g;
+var FILLER = /* @__PURE__ */ new Set(["and", "the", "a", "an", "of", "to"]);
+var MIN_LOOSE_WORDS = 3;
+function slugify(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+var withoutApostrophes = (value) => value.replace(/['’]/g, "");
+var squash = (value) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+var wordSet = (slug) => new Set(slug.split("-").filter((word) => word && !FILLER.has(word)));
+function extractLinkTargets(body) {
+  if (!body) return [];
+  const noFence = body.replace(FENCE, " ");
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  const add = (target) => {
+    const key = target.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(target);
+  };
+  for (const match of noFence.replace(INLINE, " ").matchAll(WIKILINK)) {
+    const target = (match[1] ?? "").split("|")[0].split("#")[0].trim();
+    if (target.replace(/[.\s]/g, "") !== "") add(target);
+  }
+  for (const match of noFence.matchAll(SKILL_REF)) add(`::${match[1]}`);
+  return out;
+}
+function createLinkResolver(items) {
+  const exact = /* @__PURE__ */ new Map();
+  const apostrophe = /* @__PURE__ */ new Map();
+  const squashed = /* @__PURE__ */ new Map();
+  const skills = /* @__PURE__ */ new Map();
+  const slugs = [];
+  const first = (map, key, id) => {
+    if (key && !map.has(key)) map.set(key, id);
+  };
+  for (const item of [...items].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+    const title = item.title.trim();
+    for (const name of item.slug ? [title, item.slug.trim()] : [title]) {
+      first(exact, name.toLowerCase(), item.id);
+      first(exact, slugify(name), item.id);
+    }
+    const slug = slugify(withoutApostrophes(title));
+    first(apostrophe, slug, item.id);
+    first(squashed, squash(slug), item.id);
+    if (item.kind === "skill") {
+      first(skills, title.toLowerCase(), item.id);
+      first(skills, slugify(title), item.id);
+    }
+    slugs.push({ id: item.id, slug, words: wordSet(slug) });
+  }
+  return {
+    resolve(target) {
+      if (target.startsWith("::")) {
+        const id = skills.get(target.slice(2).toLowerCase());
+        return id ? { id, stage: "exact" } : null;
+      }
+      const hit = exact.get(target.trim().toLowerCase()) ?? exact.get(slugify(target));
+      if (hit) return { id: hit, stage: "exact" };
+      const slug = slugify(withoutApostrophes(target));
+      if (!slug) return null;
+      const byApostrophe = apostrophe.get(slug);
+      if (byApostrophe) return { id: byApostrophe, stage: "apostrophe" };
+      const byPunctuation = squashed.get(squash(slug));
+      if (byPunctuation) return { id: byPunctuation, stage: "punctuation" };
+      if (slug.split("-").length < MIN_LOOSE_WORDS) return null;
+      const prefixed = slugs.filter((s) => s.slug.startsWith(`${slug}-`));
+      if (prefixed.length === 1) return { id: prefixed[0].id, stage: "prefix" };
+      const wanted = wordSet(slug);
+      if (wanted.size < MIN_LOOSE_WORDS) return null;
+      const subset = slugs.filter((s) => [...wanted].every((word) => s.words.has(word)));
+      return subset.length === 1 ? { id: subset[0].id, stage: "subset" } : null;
+    }
+  };
+}
 
 // src/env.ts
 function readCloudConnectorEnv(env = process.env) {
@@ -48203,9 +50129,9 @@ function nullish(input) {
   return input === null || input === void 0;
 }
 function cleanRegex(source) {
-  const start = source.startsWith("^") ? 1 : 0;
+  const start2 = source.startsWith("^") ? 1 : 0;
   const end = source.endsWith("$") ? source.length - 1 : source.length;
-  return source.slice(start, end);
+  return source.slice(start2, end);
 }
 function floatSafeRemainder(val, step) {
   const valDecCount = (val.toString().split(".")[1] || "").length;
@@ -48706,52 +50632,52 @@ function formatError(error2, _mapper) {
 // ../../node_modules/zod/v4/core/parse.js
 var _parse = (_Err) => (schema, value, _ctx, _params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: false }) : { async: false };
-  const result = schema._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise) {
+  const result2 = schema._zod.run({ value, issues: [] }, ctx);
+  if (result2 instanceof Promise) {
     throw new $ZodAsyncError();
   }
-  if (result.issues.length) {
-    const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+  if (result2.issues.length) {
+    const e = new (_params?.Err ?? _Err)(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())));
     captureStackTrace(e, _params?.callee);
     throw e;
   }
-  return result.value;
+  return result2.value;
 };
 var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
-  let result = schema._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise)
-    result = await result;
-  if (result.issues.length) {
-    const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+  let result2 = schema._zod.run({ value, issues: [] }, ctx);
+  if (result2 instanceof Promise)
+    result2 = await result2;
+  if (result2.issues.length) {
+    const e = new (params?.Err ?? _Err)(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())));
     captureStackTrace(e, params?.callee);
     throw e;
   }
-  return result.value;
+  return result2.value;
 };
 var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
 var _safeParse = (_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-  const result = schema._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise) {
+  const result2 = schema._zod.run({ value, issues: [] }, ctx);
+  if (result2 instanceof Promise) {
     throw new $ZodAsyncError();
   }
-  return result.issues.length ? {
+  return result2.issues.length ? {
     success: false,
-    error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
-  } : { success: true, data: result.value };
+    error: new (_Err ?? $ZodError)(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result2.value };
 };
 var safeParse = /* @__PURE__ */ _safeParse($ZodRealError);
 var _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: true }) : { async: true };
-  let result = schema._zod.run({ value, issues: [] }, ctx);
-  if (result instanceof Promise)
-    result = await result;
-  return result.issues.length ? {
+  let result2 = schema._zod.run({ value, issues: [] }, ctx);
+  if (result2 instanceof Promise)
+    result2 = await result2;
+  return result2.issues.length ? {
     success: false,
-    error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
-  } : { success: true, data: result.value };
+    error: new _Err(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result2.value };
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
 
@@ -49304,13 +51230,13 @@ var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
       return payload;
     };
     inst._zod.run = (payload, ctx) => {
-      const result = inst._zod.parse(payload, ctx);
-      if (result instanceof Promise) {
+      const result2 = inst._zod.parse(payload, ctx);
+      if (result2 instanceof Promise) {
         if (ctx.async === false)
           throw new $ZodAsyncError();
-        return result.then((result2) => runChecks(result2, checks, ctx));
+        return result2.then((result3) => runChecks(result3, checks, ctx));
       }
-      return runChecks(result, checks, ctx);
+      return runChecks(result2, checks, ctx);
     };
   }
   inst["~standard"] = {
@@ -49707,11 +51633,11 @@ var $ZodNever = /* @__PURE__ */ $constructor("$ZodNever", (inst, def) => {
     return payload;
   };
 });
-function handleArrayResult(result, final, index) {
-  if (result.issues.length) {
-    final.issues.push(...prefixIssues(index, result.issues));
+function handleArrayResult(result2, final, index) {
+  if (result2.issues.length) {
+    final.issues.push(...prefixIssues(index, result2.issues));
   }
-  final.value[index] = result.value;
+  final.value[index] = result2.value;
 }
 var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
   $ZodType.init(inst, def);
@@ -49730,14 +51656,14 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     const proms = [];
     for (let i = 0; i < input.length; i++) {
       const item = input[i];
-      const result = def.element._zod.run({
+      const result2 = def.element._zod.run({
         value: item,
         issues: []
       }, ctx);
-      if (result instanceof Promise) {
-        proms.push(result.then((result2) => handleArrayResult(result2, payload, i)));
+      if (result2 instanceof Promise) {
+        proms.push(result2.then((result3) => handleArrayResult(result3, payload, i)));
       } else {
-        handleArrayResult(result, payload, i);
+        handleArrayResult(result2, payload, i);
       }
     }
     if (proms.length) {
@@ -49746,28 +51672,28 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     return payload;
   };
 });
-function handleObjectResult(result, final, key) {
-  if (result.issues.length) {
-    final.issues.push(...prefixIssues(key, result.issues));
+function handleObjectResult(result2, final, key) {
+  if (result2.issues.length) {
+    final.issues.push(...prefixIssues(key, result2.issues));
   }
-  final.value[key] = result.value;
+  final.value[key] = result2.value;
 }
-function handleOptionalObjectResult(result, final, key, input) {
-  if (result.issues.length) {
+function handleOptionalObjectResult(result2, final, key, input) {
+  if (result2.issues.length) {
     if (input[key] === void 0) {
       if (key in input) {
         final.value[key] = void 0;
       } else {
-        final.value[key] = result.value;
+        final.value[key] = result2.value;
       }
     } else {
-      final.issues.push(...prefixIssues(key, result.issues));
+      final.issues.push(...prefixIssues(key, result2.issues));
     }
-  } else if (result.value === void 0) {
+  } else if (result2.value === void 0) {
     if (key in input)
       final.value[key] = void 0;
   } else {
-    final.value[key] = result.value;
+    final.value[key] = result2.value;
   }
 }
 var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
@@ -49933,9 +51859,9 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   };
 });
 function handleUnionResults(results, final, inst, ctx) {
-  for (const result of results) {
-    if (result.issues.length === 0) {
-      final.value = result.value;
+  for (const result2 of results) {
+    if (result2.issues.length === 0) {
+      final.value = result2.value;
       return final;
     }
   }
@@ -49943,7 +51869,7 @@ function handleUnionResults(results, final, inst, ctx) {
     code: "invalid_union",
     input: final.value,
     inst,
-    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+    errors: results.map((result2) => result2.issues.map((iss) => finalizeIssue(iss, ctx, config())))
   });
   return final;
 }
@@ -49968,17 +51894,17 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     let async = false;
     const results = [];
     for (const option of def.options) {
-      const result = option._zod.run({
+      const result2 = option._zod.run({
         value: payload.value,
         issues: []
       }, ctx);
-      if (result instanceof Promise) {
-        results.push(result);
+      if (result2 instanceof Promise) {
+        results.push(result2);
         async = true;
       } else {
-        if (result.issues.length === 0)
-          return result;
-        results.push(result);
+        if (result2.issues.length === 0)
+          return result2;
+        results.push(result2);
       }
     }
     if (!async)
@@ -50111,21 +52037,21 @@ function mergeValues(a, b) {
   }
   return { valid: false, mergeErrorPath: [] };
 }
-function handleIntersectionResults(result, left, right) {
+function handleIntersectionResults(result2, left, right) {
   if (left.issues.length) {
-    result.issues.push(...left.issues);
+    result2.issues.push(...left.issues);
   }
   if (right.issues.length) {
-    result.issues.push(...right.issues);
+    result2.issues.push(...right.issues);
   }
-  if (aborted(result))
-    return result;
+  if (aborted(result2))
+    return result2;
   const merged = mergeValues(left.value, right.value);
   if (!merged.valid) {
     throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
   }
-  result.value = merged.data;
-  return result;
+  result2.value = merged.data;
+  return result2;
 }
 var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
   $ZodType.init(inst, def);
@@ -50146,19 +52072,19 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
       payload.value = {};
       for (const key of values) {
         if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
-          if (result instanceof Promise) {
-            proms.push(result.then((result2) => {
-              if (result2.issues.length) {
-                payload.issues.push(...prefixIssues(key, result2.issues));
+          const result2 = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+          if (result2 instanceof Promise) {
+            proms.push(result2.then((result3) => {
+              if (result3.issues.length) {
+                payload.issues.push(...prefixIssues(key, result3.issues));
               }
-              payload.value[key] = result2.value;
+              payload.value[key] = result3.value;
             }));
           } else {
-            if (result.issues.length) {
-              payload.issues.push(...prefixIssues(key, result.issues));
+            if (result2.issues.length) {
+              payload.issues.push(...prefixIssues(key, result2.issues));
             }
-            payload.value[key] = result.value;
+            payload.value[key] = result2.value;
           }
         }
       }
@@ -50198,19 +52124,19 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
           payload.value[keyResult.value] = keyResult.value;
           continue;
         }
-        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
-        if (result instanceof Promise) {
-          proms.push(result.then((result2) => {
-            if (result2.issues.length) {
-              payload.issues.push(...prefixIssues(key, result2.issues));
+        const result2 = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+        if (result2 instanceof Promise) {
+          proms.push(result2.then((result3) => {
+            if (result3.issues.length) {
+              payload.issues.push(...prefixIssues(key, result3.issues));
             }
-            payload.value[keyResult.value] = result2.value;
+            payload.value[keyResult.value] = result3.value;
           }));
         } else {
-          if (result.issues.length) {
-            payload.issues.push(...prefixIssues(key, result.issues));
+          if (result2.issues.length) {
+            payload.issues.push(...prefixIssues(key, result2.issues));
           }
-          payload.value[keyResult.value] = result.value;
+          payload.value[keyResult.value] = result2.value;
         }
       }
     }
@@ -50322,11 +52248,11 @@ var $ZodDefault = /* @__PURE__ */ $constructor("$ZodDefault", (inst, def) => {
       payload.value = def.defaultValue;
       return payload;
     }
-    const result = def.innerType._zod.run(payload, ctx);
-    if (result instanceof Promise) {
-      return result.then((result2) => handleDefaultResult(result2, def));
+    const result2 = def.innerType._zod.run(payload, ctx);
+    if (result2 instanceof Promise) {
+      return result2.then((result3) => handleDefaultResult(result3, def));
     }
-    return handleDefaultResult(result, def);
+    return handleDefaultResult(result2, def);
   };
 });
 function handleDefaultResult(payload, def) {
@@ -50353,11 +52279,11 @@ var $ZodNonOptional = /* @__PURE__ */ $constructor("$ZodNonOptional", (inst, def
     return v ? new Set([...v].filter((x) => x !== void 0)) : void 0;
   });
   inst._zod.parse = (payload, ctx) => {
-    const result = def.innerType._zod.run(payload, ctx);
-    if (result instanceof Promise) {
-      return result.then((result2) => handleNonOptionalResult(result2, inst));
+    const result2 = def.innerType._zod.run(payload, ctx);
+    if (result2 instanceof Promise) {
+      return result2.then((result3) => handleNonOptionalResult(result3, inst));
     }
-    return handleNonOptionalResult(result, inst);
+    return handleNonOptionalResult(result2, inst);
   };
 });
 function handleNonOptionalResult(payload, inst) {
@@ -50377,15 +52303,15 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
   defineLazy(inst._zod, "optout", () => def.innerType._zod.optout);
   defineLazy(inst._zod, "values", () => def.innerType._zod.values);
   inst._zod.parse = (payload, ctx) => {
-    const result = def.innerType._zod.run(payload, ctx);
-    if (result instanceof Promise) {
-      return result.then((result2) => {
-        payload.value = result2.value;
-        if (result2.issues.length) {
+    const result2 = def.innerType._zod.run(payload, ctx);
+    if (result2 instanceof Promise) {
+      return result2.then((result3) => {
+        payload.value = result3.value;
+        if (result3.issues.length) {
           payload.value = def.catchValue({
             ...payload,
             error: {
-              issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+              issues: result3.issues.map((iss) => finalizeIssue(iss, ctx, config()))
             },
             input: payload.value
           });
@@ -50394,12 +52320,12 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
         return payload;
       });
     }
-    payload.value = result.value;
-    if (result.issues.length) {
+    payload.value = result2.value;
+    if (result2.issues.length) {
       payload.value = def.catchValue({
         ...payload,
         error: {
-          issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+          issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config()))
         },
         input: payload.value
       });
@@ -50434,11 +52360,11 @@ var $ZodReadonly = /* @__PURE__ */ $constructor("$ZodReadonly", (inst, def) => {
   defineLazy(inst._zod, "optin", () => def.innerType._zod.optin);
   defineLazy(inst._zod, "optout", () => def.innerType._zod.optout);
   inst._zod.parse = (payload, ctx) => {
-    const result = def.innerType._zod.run(payload, ctx);
-    if (result instanceof Promise) {
-      return result.then(handleReadonlyResult);
+    const result2 = def.innerType._zod.run(payload, ctx);
+    if (result2 instanceof Promise) {
+      return result2.then(handleReadonlyResult);
     }
-    return handleReadonlyResult(result);
+    return handleReadonlyResult(result2);
   };
 });
 function handleReadonlyResult(payload) {
@@ -50461,8 +52387,8 @@ var $ZodCustom = /* @__PURE__ */ $constructor("$ZodCustom", (inst, def) => {
     return;
   };
 });
-function handleRefineResult(result, payload, input, inst) {
-  if (!result) {
+function handleRefineResult(result2, payload, input, inst) {
+  if (!result2) {
     const _iss = {
       code: "custom",
       input,
@@ -51116,11 +53042,11 @@ var JSONSchemaGenerator = class {
       }
       return seen.schema;
     }
-    const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
-    this.seen.set(schema, result);
+    const result2 = { schema: {}, count: 1, cycle: void 0, path: _params.path };
+    this.seen.set(schema, result2);
     const overrideSchema = schema._zod.toJSONSchema?.();
     if (overrideSchema) {
-      result.schema = overrideSchema;
+      result2.schema = overrideSchema;
     } else {
       const params = {
         ..._params,
@@ -51129,11 +53055,11 @@ var JSONSchemaGenerator = class {
       };
       const parent = schema._zod.parent;
       if (parent) {
-        result.ref = parent;
+        result2.ref = parent;
         this.process(parent, params);
         this.seen.get(parent).isParent = true;
       } else {
-        const _json = result.schema;
+        const _json = result2.schema;
         switch (def.type) {
           case "string": {
             const json = _json;
@@ -51155,7 +53081,7 @@ var JSONSchemaGenerator = class {
               if (regexes.length === 1)
                 json.pattern = regexes[0].source;
               else if (regexes.length > 1) {
-                result.schema.allOf = [
+                result2.schema.allOf = [
                   ...regexes.map((regex) => ({
                     ...this.target === "draft-7" ? { type: "string" } : {},
                     pattern: regex.source
@@ -51462,7 +53388,7 @@ var JSONSchemaGenerator = class {
           }
           case "nonoptional": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             break;
           }
           case "success": {
@@ -51472,20 +53398,20 @@ var JSONSchemaGenerator = class {
           }
           case "default": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             _json.default = JSON.parse(JSON.stringify(def.defaultValue));
             break;
           }
           case "prefault": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             if (this.io === "input")
               _json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
             break;
           }
           case "catch": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             let catchValue;
             try {
               catchValue = def.catchValue(void 0);
@@ -51513,30 +53439,30 @@ var JSONSchemaGenerator = class {
           case "pipe": {
             const innerType = this.io === "input" ? def.in._zod.def.type === "transform" ? def.out : def.in : def.out;
             this.process(innerType, params);
-            result.ref = innerType;
+            result2.ref = innerType;
             break;
           }
           case "readonly": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             _json.readOnly = true;
             break;
           }
           // passthrough types
           case "promise": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             break;
           }
           case "optional": {
             this.process(def.innerType, params);
-            result.ref = def.innerType;
+            result2.ref = def.innerType;
             break;
           }
           case "lazy": {
             const innerType = schema._zod.innerType;
             this.process(innerType, params);
-            result.ref = innerType;
+            result2.ref = innerType;
             break;
           }
           case "custom": {
@@ -51553,14 +53479,14 @@ var JSONSchemaGenerator = class {
     }
     const meta = this.metadataRegistry.get(schema);
     if (meta)
-      Object.assign(result.schema, meta);
+      Object.assign(result2.schema, meta);
     if (this.io === "input" && isTransforming(schema)) {
-      delete result.schema.examples;
-      delete result.schema.default;
+      delete result2.schema.examples;
+      delete result2.schema.default;
     }
-    if (this.io === "input" && result.schema._prefault)
-      (_a = result.schema).default ?? (_a.default = result.schema._prefault);
-    delete result.schema._prefault;
+    if (this.io === "input" && result2.schema._prefault)
+      (_a = result2.schema).default ?? (_a.default = result2.schema._prefault);
+    delete result2.schema._prefault;
     const _result = this.seen.get(schema);
     return _result.schema;
   }
@@ -51679,11 +53605,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
     for (const entry of [...this.seen.entries()].reverse()) {
       flattenRef(entry[0], { target: this.target });
     }
-    const result = {};
+    const result2 = {};
     if (this.target === "draft-2020-12") {
-      result.$schema = "https://json-schema.org/draft/2020-12/schema";
+      result2.$schema = "https://json-schema.org/draft/2020-12/schema";
     } else if (this.target === "draft-7") {
-      result.$schema = "http://json-schema.org/draft-07/schema#";
+      result2.$schema = "http://json-schema.org/draft-07/schema#";
     } else {
       console.warn(`Invalid target: ${this.target}`);
     }
@@ -51691,9 +53617,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       const id = params.external.registry.get(schema)?.id;
       if (!id)
         throw new Error("Schema is missing an `id` property");
-      result.$id = params.external.uri(id);
+      result2.$id = params.external.uri(id);
     }
-    Object.assign(result, root.def);
+    Object.assign(result2, root.def);
     const defs = params.external?.defs ?? {};
     for (const entry of this.seen.entries()) {
       const seen = entry[1];
@@ -51705,14 +53631,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
     } else {
       if (Object.keys(defs).length > 0) {
         if (this.target === "draft-2020-12") {
-          result.$defs = defs;
+          result2.$defs = defs;
         } else {
-          result.definitions = defs;
+          result2.definitions = defs;
         }
       }
     }
     try {
-      return JSON.parse(JSON.stringify(result));
+      return JSON.parse(JSON.stringify(result2));
     } catch (_err) {
       throw new Error("Error converting schema to JSON.");
     }
@@ -55396,9 +57322,9 @@ var ParseInputLazyPath = class {
     return this._cachedPath;
   }
 };
-var handleResult = (ctx, result) => {
-  if (isValid(result)) {
-    return { success: true, data: result.value };
+var handleResult = (ctx, result2) => {
+  if (isValid(result2)) {
+    return { success: true, data: result2.value };
   } else {
     if (!ctx.common.issues.length) {
       throw new Error("Validation failed but no issues detected.");
@@ -55469,21 +57395,21 @@ var ZodType2 = class {
     };
   }
   _parseSync(input) {
-    const result = this._parse(input);
-    if (isAsync(result)) {
+    const result2 = this._parse(input);
+    if (isAsync(result2)) {
       throw new Error("Synchronous parse encountered promise.");
     }
-    return result;
+    return result2;
   }
   _parseAsync(input) {
-    const result = this._parse(input);
-    return Promise.resolve(result);
+    const result2 = this._parse(input);
+    return Promise.resolve(result2);
   }
   parse(data, params) {
-    const result = this.safeParse(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
+    const result2 = this.safeParse(data, params);
+    if (result2.success)
+      return result2.data;
+    throw result2.error;
   }
   safeParse(data, params) {
     const ctx = {
@@ -55498,8 +57424,8 @@ var ZodType2 = class {
       data,
       parsedType: getParsedType2(data)
     };
-    const result = this._parseSync({ data, path: ctx.path, parent: ctx });
-    return handleResult(ctx, result);
+    const result2 = this._parseSync({ data, path: ctx.path, parent: ctx });
+    return handleResult(ctx, result2);
   }
   "~validate"(data) {
     const ctx = {
@@ -55515,9 +57441,9 @@ var ZodType2 = class {
     };
     if (!this["~standard"].async) {
       try {
-        const result = this._parseSync({ data, path: [], parent: ctx });
-        return isValid(result) ? {
-          value: result.value
+        const result2 = this._parseSync({ data, path: [], parent: ctx });
+        return isValid(result2) ? {
+          value: result2.value
         } : {
           issues: ctx.common.issues
         };
@@ -55531,17 +57457,17 @@ var ZodType2 = class {
         };
       }
     }
-    return this._parseAsync({ data, path: [], parent: ctx }).then((result) => isValid(result) ? {
-      value: result.value
+    return this._parseAsync({ data, path: [], parent: ctx }).then((result2) => isValid(result2) ? {
+      value: result2.value
     } : {
       issues: ctx.common.issues
     });
   }
   async parseAsync(data, params) {
-    const result = await this.safeParseAsync(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
+    const result2 = await this.safeParseAsync(data, params);
+    if (result2.success)
+      return result2.data;
+    throw result2.error;
   }
   async safeParseAsync(data, params) {
     const ctx = {
@@ -55557,8 +57483,8 @@ var ZodType2 = class {
       parsedType: getParsedType2(data)
     };
     const maybeAsyncResult = this._parse({ data, path: ctx.path, parent: ctx });
-    const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
-    return handleResult(ctx, result);
+    const result2 = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
+    return handleResult(ctx, result2);
   }
   refine(check2, message) {
     const getIssueProperties = (val) => {
@@ -55571,13 +57497,13 @@ var ZodType2 = class {
       }
     };
     return this._refinement((val, ctx) => {
-      const result = check2(val);
+      const result2 = check2(val);
       const setError = () => ctx.addIssue({
         code: ZodIssueCode.custom,
         ...getIssueProperties(val)
       });
-      if (typeof Promise !== "undefined" && result instanceof Promise) {
-        return result.then((data) => {
+      if (typeof Promise !== "undefined" && result2 instanceof Promise) {
+        return result2.then((data) => {
           if (!data) {
             setError();
             return false;
@@ -55586,7 +57512,7 @@ var ZodType2 = class {
           }
         });
       }
-      if (!result) {
+      if (!result2) {
         setError();
         return false;
       } else {
@@ -57081,14 +59007,14 @@ var ZodArray2 = class _ZodArray extends ZodType2 {
     if (ctx.common.async) {
       return Promise.all([...ctx.data].map((item, i) => {
         return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i));
-      })).then((result2) => {
-        return ParseStatus.mergeArray(status, result2);
+      })).then((result3) => {
+        return ParseStatus.mergeArray(status, result3);
       });
     }
-    const result = [...ctx.data].map((item, i) => {
+    const result2 = [...ctx.data].map((item, i) => {
       return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i));
     });
-    return ParseStatus.mergeArray(status, result);
+    return ParseStatus.mergeArray(status, result2);
   }
   get element() {
     return this._def.type;
@@ -57494,18 +59420,18 @@ var ZodUnion2 = class extends ZodType2 {
     const { ctx } = this._processInputParams(input);
     const options = this._def.options;
     function handleResults(results) {
-      for (const result of results) {
-        if (result.result.status === "valid") {
-          return result.result;
+      for (const result2 of results) {
+        if (result2.result.status === "valid") {
+          return result2.result;
         }
       }
-      for (const result of results) {
-        if (result.result.status === "dirty") {
-          ctx.common.issues.push(...result.ctx.common.issues);
-          return result.result;
+      for (const result2 of results) {
+        if (result2.result.status === "dirty") {
+          ctx.common.issues.push(...result2.ctx.common.issues);
+          return result2.result;
         }
       }
-      const unionErrors = results.map((result) => new ZodError2(result.ctx.common.issues));
+      const unionErrors = results.map((result2) => new ZodError2(result2.ctx.common.issues));
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_union,
         unionErrors
@@ -57543,15 +59469,15 @@ var ZodUnion2 = class extends ZodType2 {
           },
           parent: null
         };
-        const result = option._parseSync({
+        const result2 = option._parseSync({
           data: ctx.data,
           path: ctx.path,
           parent: childCtx
         });
-        if (result.status === "valid") {
-          return result;
-        } else if (result.status === "dirty" && !dirty) {
-          dirty = { result, ctx: childCtx };
+        if (result2.status === "valid") {
+          return result2;
+        } else if (result2.status === "dirty" && !dirty) {
+          dirty = { result: result2, ctx: childCtx };
         }
         if (childCtx.common.issues.length) {
           issues.push(childCtx.common.issues);
@@ -58096,9 +60022,9 @@ var ZodFunction = class _ZodFunction extends ZodType2 {
           error2.addIssue(makeArgsIssue(args, e));
           throw error2;
         });
-        const result = await Reflect.apply(fn, this, parsedArgs);
-        const parsedReturns = await me._def.returns._def.type.parseAsync(result, params).catch((e) => {
-          error2.addIssue(makeReturnsIssue(result, e));
+        const result2 = await Reflect.apply(fn, this, parsedArgs);
+        const parsedReturns = await me._def.returns._def.type.parseAsync(result2, params).catch((e) => {
+          error2.addIssue(makeReturnsIssue(result2, e));
           throw error2;
         });
         return parsedReturns;
@@ -58110,10 +60036,10 @@ var ZodFunction = class _ZodFunction extends ZodType2 {
         if (!parsedArgs.success) {
           throw new ZodError2([makeArgsIssue(args, parsedArgs.error)]);
         }
-        const result = Reflect.apply(fn, this, parsedArgs.data);
-        const parsedReturns = me._def.returns.safeParse(result, params);
+        const result2 = Reflect.apply(fn, this, parsedArgs.data);
+        const parsedReturns = me._def.returns.safeParse(result2, params);
         if (!parsedReturns.success) {
-          throw new ZodError2([makeReturnsIssue(result, parsedReturns.error)]);
+          throw new ZodError2([makeReturnsIssue(result2, parsedReturns.error)]);
         }
         return parsedReturns.data;
       });
@@ -58365,43 +60291,43 @@ var ZodEffects = class extends ZodType2 {
         return Promise.resolve(processed).then(async (processed2) => {
           if (status.value === "aborted")
             return INVALID;
-          const result = await this._def.schema._parseAsync({
+          const result2 = await this._def.schema._parseAsync({
             data: processed2,
             path: ctx.path,
             parent: ctx
           });
-          if (result.status === "aborted")
+          if (result2.status === "aborted")
             return INVALID;
-          if (result.status === "dirty")
-            return DIRTY(result.value);
+          if (result2.status === "dirty")
+            return DIRTY(result2.value);
           if (status.value === "dirty")
-            return DIRTY(result.value);
-          return result;
+            return DIRTY(result2.value);
+          return result2;
         });
       } else {
         if (status.value === "aborted")
           return INVALID;
-        const result = this._def.schema._parseSync({
+        const result2 = this._def.schema._parseSync({
           data: processed,
           path: ctx.path,
           parent: ctx
         });
-        if (result.status === "aborted")
+        if (result2.status === "aborted")
           return INVALID;
-        if (result.status === "dirty")
-          return DIRTY(result.value);
+        if (result2.status === "dirty")
+          return DIRTY(result2.value);
         if (status.value === "dirty")
-          return DIRTY(result.value);
-        return result;
+          return DIRTY(result2.value);
+        return result2;
       }
     }
     if (effect.type === "refinement") {
       const executeRefinement = (acc) => {
-        const result = effect.refinement(acc, checkCtx);
+        const result2 = effect.refinement(acc, checkCtx);
         if (ctx.common.async) {
-          return Promise.resolve(result);
+          return Promise.resolve(result2);
         }
-        if (result instanceof Promise) {
+        if (result2 instanceof Promise) {
           throw new Error("Async refinement encountered during synchronous parse operation. Use .parseAsync instead.");
         }
         return acc;
@@ -58439,18 +60365,18 @@ var ZodEffects = class extends ZodType2 {
         });
         if (!isValid(base))
           return INVALID;
-        const result = effect.transform(base.value, checkCtx);
-        if (result instanceof Promise) {
+        const result2 = effect.transform(base.value, checkCtx);
+        if (result2 instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
-        return { status: status.value, value: result };
+        return { status: status.value, value: result2 };
       } else {
         return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
           if (!isValid(base))
             return INVALID;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result2) => ({
             status: status.value,
-            value: result
+            value: result2
           }));
         });
       }
@@ -58547,18 +60473,18 @@ var ZodCatch2 = class extends ZodType2 {
         issues: []
       }
     };
-    const result = this._def.innerType._parse({
+    const result2 = this._def.innerType._parse({
       data: newCtx.data,
       path: newCtx.path,
       parent: {
         ...newCtx
       }
     });
-    if (isAsync(result)) {
-      return result.then((result2) => {
+    if (isAsync(result2)) {
+      return result2.then((result3) => {
         return {
           status: "valid",
-          value: result2.status === "valid" ? result2.value : this._def.catchValue({
+          value: result3.status === "valid" ? result3.value : this._def.catchValue({
             get error() {
               return new ZodError2(newCtx.common.issues);
             },
@@ -58569,7 +60495,7 @@ var ZodCatch2 = class extends ZodType2 {
     } else {
       return {
         status: "valid",
-        value: result.status === "valid" ? result.value : this._def.catchValue({
+        value: result2.status === "valid" ? result2.value : this._def.catchValue({
           get error() {
             return new ZodError2(newCtx.common.issues);
           },
@@ -58683,14 +60609,14 @@ var ZodPipeline = class _ZodPipeline extends ZodType2 {
 };
 var ZodReadonly2 = class extends ZodType2 {
   _parse(input) {
-    const result = this._def.innerType._parse(input);
+    const result2 = this._def.innerType._parse(input);
     const freeze = (data) => {
       if (isValid(data)) {
         data.value = Object.freeze(data.value);
       }
       return data;
     };
-    return isAsync(result) ? result.then((data) => freeze(data)) : freeze(result);
+    return isAsync(result2) ? result2.then((data) => freeze(data)) : freeze(result2);
   }
   unwrap() {
     return this._def.innerType;
@@ -58889,21 +60815,21 @@ function objectFromShape(shape) {
 }
 function safeParse3(schema, data) {
   if (isZ4Schema(schema)) {
-    const result2 = safeParse(schema, data);
-    return result2;
+    const result3 = safeParse(schema, data);
+    return result3;
   }
   const v3Schema = schema;
-  const result = v3Schema.safeParse(data);
-  return result;
+  const result2 = v3Schema.safeParse(data);
+  return result2;
 }
 async function safeParseAsync3(schema, data) {
   if (isZ4Schema(schema)) {
-    const result2 = await safeParseAsync(schema, data);
-    return result2;
+    const result3 = await safeParseAsync(schema, data);
+    return result3;
   }
   const v3Schema = schema;
-  const result = await v3Schema.safeParseAsync(data);
-  return result;
+  const result2 = await v3Schema.safeParseAsync(data);
+  return result2;
 }
 function getObjectShape(schema) {
   if (!schema)
@@ -59529,14 +61455,14 @@ function escapeLiteralCheckValue(literal2, refs) {
 }
 var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
 function escapeNonAlphaNumeric(source) {
-  let result = "";
+  let result2 = "";
   for (let i = 0; i < source.length; i++) {
     if (!ALPHA_NUMERIC.has(source[i])) {
-      result += "\\";
+      result2 += "\\";
     }
-    result += source[i];
+    result2 += source[i];
   }
-  return result;
+  return result2;
 }
 function addFormat(schema, value, message, refs) {
   if (schema.format || schema.anyOf?.some((x) => x.format)) {
@@ -59933,7 +61859,7 @@ function parseNumberDef(def, refs) {
 // ../../node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 function parseObjectDef(def, refs) {
   const forceOptionalIntoNullable = refs.target === "openAi";
-  const result = {
+  const result2 = {
     type: "object",
     properties: {}
   };
@@ -59962,19 +61888,19 @@ function parseObjectDef(def, refs) {
     if (parsedDef === void 0) {
       continue;
     }
-    result.properties[propName] = parsedDef;
+    result2.properties[propName] = parsedDef;
     if (!propOptional) {
       required3.push(propName);
     }
   }
   if (required3.length) {
-    result.required = required3;
+    result2.required = required3;
   }
   const additionalProperties = decideAdditionalProperties(def, refs);
   if (additionalProperties !== void 0) {
-    result.additionalProperties = additionalProperties;
+    result2.additionalProperties = additionalProperties;
   }
-  return result;
+  return result2;
 }
 function decideAdditionalProperties(def, refs) {
   if (def.catchall._def.typeName !== "ZodNever") {
@@ -60338,11 +62264,11 @@ function getMethodLiteral(schema) {
   return value;
 }
 function parseWithCompat(schema, data) {
-  const result = safeParse3(schema, data);
-  if (!result.success) {
-    throw result.error;
+  const result2 = safeParse3(schema, data);
+  if (!result2.success) {
+    throw result2.error;
   }
-  return result.data;
+  return result2.data;
 }
 
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
@@ -60420,12 +62346,12 @@ var Protocol = class {
             return await handleTaskResult();
           }
           if (isTerminal(task.status)) {
-            const result = await this._taskStore.getTaskResult(taskId, extra.sessionId);
+            const result2 = await this._taskStore.getTaskResult(taskId, extra.sessionId);
             this._clearTaskQueue(taskId);
             return {
-              ...result,
+              ...result2,
               _meta: {
-                ...result._meta,
+                ...result2._meta,
                 [RELATED_TASK_META_KEY]: {
                   taskId
                 }
@@ -60650,12 +62576,12 @@ var Protocol = class {
       if (taskCreationParams) {
         this.assertTaskHandlerCapability(request.method);
       }
-    }).then(() => handler2(request, fullExtra)).then(async (result) => {
+    }).then(() => handler2(request, fullExtra)).then(async (result2) => {
       if (abortController.signal.aborted) {
         return;
       }
       const response = {
-        result,
+        result: result2,
         jsonrpc: "2.0",
         id: request.id
       };
@@ -60741,9 +62667,9 @@ var Protocol = class {
     this._cleanupTimeout(messageId);
     let isTaskResponse = false;
     if (isJSONRPCResultResponse(response) && response.result && typeof response.result === "object") {
-      const result = response.result;
-      if (result.task && typeof result.task === "object") {
-        const task = result.task;
+      const result2 = response.result;
+      if (result2.task && typeof result2.task === "object") {
+        const task = result2.task;
         if (typeof task.taskId === "string") {
           isTaskResponse = true;
           this._taskProgressTokens.set(task.taskId, messageId);
@@ -60800,8 +62726,8 @@ var Protocol = class {
     const { task } = options ?? {};
     if (!task) {
       try {
-        const result = await this.request(request, resultSchema, options);
-        yield { type: "result", result };
+        const result2 = await this.request(request, resultSchema, options);
+        yield { type: "result", result: result2 };
       } catch (error2) {
         yield {
           type: "error",
@@ -60824,8 +62750,8 @@ var Protocol = class {
         yield { type: "taskStatus", task: task2 };
         if (isTerminal(task2.status)) {
           if (task2.status === "completed") {
-            const result = await this.getTaskResult({ taskId }, resultSchema, options);
-            yield { type: "result", result };
+            const result2 = await this.getTaskResult({ taskId }, resultSchema, options);
+            yield { type: "result", result: result2 };
           } else if (task2.status === "failed") {
             yield {
               type: "error",
@@ -60840,8 +62766,8 @@ var Protocol = class {
           return;
         }
         if (task2.status === "input_required") {
-          const result = await this.getTaskResult({ taskId }, resultSchema, options);
-          yield { type: "result", result };
+          const result2 = await this.getTaskResult({ taskId }, resultSchema, options);
+          yield { type: "result", result: result2 };
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
@@ -61235,8 +63161,8 @@ var Protocol = class {
         }
         return task;
       },
-      storeTaskResult: async (taskId, status, result) => {
-        await taskStore.storeTaskResult(taskId, status, result, sessionId);
+      storeTaskResult: async (taskId, status, result2) => {
+        await taskStore.storeTaskResult(taskId, status, result2, sessionId);
         const task = await taskStore.getTask(taskId, sessionId);
         if (task) {
           const notification = TaskStatusNotificationSchema.parse({
@@ -61283,20 +63209,20 @@ function isPlainObject3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function mergeCapabilities(base, additional) {
-  const result = { ...base };
+  const result2 = { ...base };
   for (const key in additional) {
     const k = key;
     const addValue = additional[k];
     if (addValue === void 0)
       continue;
-    const baseValue = result[k];
+    const baseValue = result2[k];
     if (isPlainObject3(baseValue) && isPlainObject3(addValue)) {
-      result[k] = { ...baseValue, ...addValue };
+      result2[k] = { ...baseValue, ...addValue };
     } else {
-      result[k] = addValue;
+      result2[k] = addValue;
     }
   }
-  return result;
+  return result2;
 }
 
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
@@ -61703,16 +63629,16 @@ var Server = class extends Protocol {
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call request: ${errorMessage2}`);
         }
         const { params } = validatedRequest.data;
-        const result = await Promise.resolve(handler2(request, extra));
+        const result2 = await Promise.resolve(handler2(request, extra));
         if (params.task) {
-          const taskValidationResult = safeParse3(CreateTaskResultSchema, result);
+          const taskValidationResult = safeParse3(CreateTaskResultSchema, result2);
           if (!taskValidationResult.success) {
             const errorMessage2 = taskValidationResult.error instanceof Error ? taskValidationResult.error.message : String(taskValidationResult.error);
             throw new McpError(ErrorCode.InvalidParams, `Invalid task creation result: ${errorMessage2}`);
           }
           return taskValidationResult.data;
         }
-        const validationResult = safeParse3(CallToolResultSchema, result);
+        const validationResult = safeParse3(CallToolResultSchema, result2);
         if (!validationResult.success) {
           const errorMessage2 = validationResult.error instanceof Error ? validationResult.error.message : String(validationResult.error);
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call result: ${errorMessage2}`);
@@ -61921,11 +63847,11 @@ var Server = class extends Protocol {
           throw new Error("Client does not support form elicitation.");
         }
         const formParams = params.mode === "form" ? params : { ...params, mode: "form" };
-        const result = await this.request({ method: "elicitation/create", params: formParams }, ElicitResultSchema, options);
-        if (result.action === "accept" && result.content && formParams.requestedSchema) {
+        const result2 = await this.request({ method: "elicitation/create", params: formParams }, ElicitResultSchema, options);
+        if (result2.action === "accept" && result2.content && formParams.requestedSchema) {
           try {
             const validator = this._jsonSchemaValidator.getValidator(formParams.requestedSchema);
-            const validationResult = validator(result.content);
+            const validationResult = validator(result2.content);
             if (!validationResult.valid) {
               throw new McpError(ErrorCode.InvalidParams, `Elicitation response content does not match requested schema: ${validationResult.errorMessage}`);
             }
@@ -61936,7 +63862,7 @@ var Server = class extends Protocol {
             throw new McpError(ErrorCode.InternalError, `Error validating elicitation response: ${error2 instanceof Error ? error2.message : String(error2)}`);
           }
         }
-        return result;
+        return result2;
       }
     }
   }
@@ -62062,9 +63988,9 @@ function issueToolNameWarning(name, warnings) {
   }
 }
 function validateAndWarnToolName(name) {
-  const result = validateToolName(name);
-  issueToolNameWarning(name, result.warnings);
-  return result.isValid;
+  const result2 = validateToolName(name);
+  issueToolNameWarning(name, result2.warnings);
+  return result2.isValid;
 }
 
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
@@ -62186,12 +64112,12 @@ var McpServer = class {
           return await this.handleAutomaticTaskPolling(tool, request, extra);
         }
         const args = await this.validateToolInput(tool, request.params.arguments, request.params.name);
-        const result = await this.executeToolHandler(tool, args, extra);
+        const result2 = await this.executeToolHandler(tool, args, extra);
         if (isTaskRequest) {
-          return result;
+          return result2;
         }
-        await this.validateToolOutput(tool, result, request.params.name);
-        return result;
+        await this.validateToolOutput(tool, result2, request.params.name);
+        return result2;
       } catch (error2) {
         if (error2 instanceof McpError) {
           if (error2.code === ErrorCode.UrlElicitationRequired) {
@@ -62240,21 +64166,21 @@ var McpServer = class {
   /**
    * Validates tool output against the tool's output schema.
    */
-  async validateToolOutput(tool, result, toolName) {
+  async validateToolOutput(tool, result2, toolName) {
     if (!tool.outputSchema) {
       return;
     }
-    if (!("content" in result)) {
+    if (!("content" in result2)) {
       return;
     }
-    if (result.isError) {
+    if (result2.isError) {
       return;
     }
-    if (!result.structuredContent) {
+    if (!result2.structuredContent) {
       throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
     }
     const outputObj = normalizeObjectSchema(tool.outputSchema);
-    const parseResult = await safeParseAsync3(outputObj, result.structuredContent);
+    const parseResult = await safeParseAsync3(outputObj, result2.structuredContent);
     if (!parseResult.success) {
       const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage2 = getParseErrorMessage(error2);
@@ -62398,8 +64324,8 @@ var McpServer = class {
         if (!template.resourceTemplate.listCallback) {
           continue;
         }
-        const result = await template.resourceTemplate.listCallback(extra);
-        for (const resource of result.resources) {
+        const result2 = await template.resourceTemplate.listCallback(extra);
+        for (const resource of result2.resources) {
           templateResources.push({
             ...template.metadata,
             // the defined resource metadata should override the template metadata if present
@@ -63147,11 +65073,11 @@ async function enforceWriteToolRateLimit(tool, args, ctx) {
     max: 60
   });
 }
-function getResultErrorCode(result) {
-  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
-  const ok = "ok" in result ? result.ok : void 0;
-  if (ok !== false || !("error" in result)) return null;
-  const error2 = result.error;
+function getResultErrorCode(result2) {
+  if (!result2 || typeof result2 !== "object" || Array.isArray(result2)) return null;
+  const ok = "ok" in result2 ? result2.ok : void 0;
+  if (ok !== false || !("error" in result2)) return null;
+  const error2 = result2.error;
   if (!error2 || typeof error2 !== "object" || !("code" in error2)) return null;
   const code = error2.code;
   return typeof code === "string" ? code : null;
@@ -63203,7 +65129,7 @@ function createRemoteToolContext(authInfo) {
 async function runRemoteTool(tool, args, ctx) {
   const startedAt = Date.now();
   const workspaceId = typeof args.workspace_id === "string" ? args.workspace_id : null;
-  async function logToolResult(result2, fallbackErrorCode) {
+  async function logToolResult(result3, fallbackErrorCode) {
     await logConnectorEvent({
       supabase: ctx.supabase,
       eventType: "tool_call",
@@ -63213,29 +65139,29 @@ async function runRemoteTool(tool, args, ctx) {
       connectorSessionId: ctx.sessionId,
       toolName: tool.name,
       startedAt,
-      errorCode: fallbackErrorCode ?? getResultErrorCode(result2),
+      errorCode: fallbackErrorCode ?? getResultErrorCode(result3),
       metadata: { mode: tool.mode }
     });
   }
   const missingScopes = tool.requiredScopes.filter((scope) => !ctx.scopes.includes(scope));
   if (missingScopes.length > 0) {
-    const result2 = createRemoteError(
+    const result3 = createRemoteError(
       "insufficient_scope",
       "Connector token is missing required scope.",
       {
         missing_scopes: missingScopes
       }
     );
-    await logToolResult(result2);
-    return result2;
+    await logToolResult(result3);
+    return result3;
   }
   if (tool.workspace.required && !workspaceId) {
-    const result2 = createRemoteError(
+    const result3 = createRemoteError(
       "workspace_id_required",
       "workspace_id is required. Call pathrule_list_workspaces first and ask the user which workspace to use when there is more than one."
     );
-    await logToolResult(result2);
-    return result2;
+    await logToolResult(result3);
+    return result3;
   }
   if (tool.workspace.subscriptionRequired && workspaceId) {
     try {
@@ -63255,12 +65181,12 @@ async function runRemoteTool(tool, args, ctx) {
   try {
     const allowed = await enforceHighCostToolRateLimit(tool, args, ctx);
     if (!allowed) {
-      const result2 = createRemoteError(
+      const result3 = createRemoteError(
         "rate_limited",
         "Too many Remote MCP context requests. Try again later."
       );
-      await logToolResult(result2);
-      return result2;
+      await logToolResult(result3);
+      return result3;
     }
   } catch (error2) {
     await logToolResult(null, "rate_limit_unavailable");
@@ -63272,12 +65198,12 @@ async function runRemoteTool(tool, args, ctx) {
   try {
     const writeAllowed = await enforceWriteToolRateLimit(tool, args, ctx);
     if (!writeAllowed) {
-      const result2 = createRemoteError(
+      const result3 = createRemoteError(
         "rate_limited",
         "Too many Remote MCP write operations for this workspace. Try again later."
       );
-      await logToolResult(result2);
-      return result2;
+      await logToolResult(result3);
+      return result3;
     }
   } catch (error2) {
     await logToolResult(null, "rate_limit_unavailable");
@@ -63286,14 +65212,14 @@ async function runRemoteTool(tool, args, ctx) {
       { code: "rate_limit_unavailable" }
     );
   }
-  const result = await tool.handler(args, ctx);
-  if (tool.response.includeLocalRuntimeCta && result && typeof result === "object" && !Array.isArray(result) && !("local_runtime" in result)) {
-    const withCta = { ...result, local_runtime: { cta: LOCAL_RUNTIME_CTA } };
+  const result2 = await tool.handler(args, ctx);
+  if (tool.response.includeLocalRuntimeCta && result2 && typeof result2 === "object" && !Array.isArray(result2) && !("local_runtime" in result2)) {
+    const withCta = { ...result2, local_runtime: { cta: LOCAL_RUNTIME_CTA } };
     await logToolResult(withCta);
     return withCta;
   }
-  await logToolResult(result);
-  return result;
+  await logToolResult(result2);
+  return result2;
 }
 
 // src/mcp/output-schemas.ts
@@ -63472,6 +65398,479 @@ var listWorkspacesTool = {
   handler: async (_args, ctx) => listWorkspaces(ctx)
 };
 
+// ../cloud-backend/src/activity-rows.ts
+function buildActivityRow(input, userId) {
+  const subjects = [
+    ...new Set((input.subjects ?? []).map((s) => s.toLowerCase().trim()).filter(Boolean))
+  ].slice(0, 5);
+  const friction = normalizeActivityFriction(
+    input.friction ? {
+      toolCallCount: input.friction.toolCallCount,
+      toolFailureCount: input.friction.toolFailureCount,
+      toolFailureCodes: input.friction.toolFailureCodes
+    } : void 0
+  );
+  const teamIntelligenceSignal = normalizeActivityTeamIntelligenceSignal(
+    input.teamIntelligenceSignal
+  );
+  return {
+    ...input.provenance ? { provenance: normalizeActivityProvenance(input.provenance) } : {},
+    workspace_id: input.workspaceId,
+    user_id: userId,
+    node_path: input.nodePath || "/",
+    domain: input.domain,
+    action: input.action,
+    scope: input.scope,
+    subjects,
+    task_summary: input.taskSummary,
+    files_touched: input.filesTouched ?? { total: 0, by_area: {} },
+    ai_client: input.aiClient ?? "claude-code",
+    session_id: input.sessionId ?? null,
+    ...friction,
+    // M105 exploration-suppression signal (observational). NULL when the turn
+    // had no tool stream to judge (kept out of the weekly rate denominator).
+    explore_calls: input.exploreCalls ?? null,
+    edit_calls: input.editCalls ?? null,
+    context_sufficiency: input.contextSufficiency ?? null,
+    team_intelligence_score: teamIntelligenceSignal?.score ?? null,
+    team_intelligence_category: teamIntelligenceSignal?.category ?? null,
+    team_intelligence_surface: teamIntelligenceSignal?.surface ?? null
+  };
+}
+async function insertActivityRow(supabase, activity) {
+  const insert = (values) => supabase.from("activity_logs").insert(values).select().single();
+  let { data, error: error2 } = await insert(activity);
+  if (activity.provenance && error2 && /provenance/.test(error2.message) && ["42703", "PGRST204"].includes(error2.code)) {
+    const { provenance: _provenance, ...legacy } = activity;
+    ({ data, error: error2 } = await insert(legacy));
+  }
+  return { data, error: error2 };
+}
+function activityRecordFromRow(row) {
+  return {
+    id: row["id"],
+    workspaceId: row["workspace_id"],
+    provenance: normalizeActivityProvenance(row["provenance"]),
+    nodePath: row["node_path"] ?? "/",
+    domain: row["domain"],
+    action: row["action"],
+    scope: row["scope"],
+    subjects: row["subjects"] ?? [],
+    taskSummary: row["task_summary"] ?? "",
+    filesTouched: row["files_touched"] ?? {
+      total: 0,
+      by_area: {}
+    },
+    aiClient: row["ai_client"] ?? "claude-code",
+    detailLevel: row["detail_level"] ?? void 0,
+    status: row["status"] ?? void 0,
+    createdAt: row["created_at"],
+    toolCallCount: row["tool_call_count"] ?? void 0,
+    toolFailureCount: row["tool_failure_count"] ?? void 0,
+    toolFailureCodes: row["tool_failure_codes"] ?? void 0,
+    exploreCalls: row["explore_calls"] ?? void 0,
+    editCalls: row["edit_calls"] ?? void 0,
+    contextSufficiency: row["context_sufficiency"] ?? void 0,
+    teamIntelligenceScore: row["team_intelligence_score"] ?? void 0,
+    teamIntelligenceCategory: row["team_intelligence_category"] ?? void 0,
+    teamIntelligenceSurface: row["team_intelligence_surface"] ?? void 0
+  };
+}
+
+// ../shared/src/project-learning/review-evidence.ts
+var validRepository = (value) => typeof value === "string" && /^[a-z0-9][a-z0-9-]{0,38}\/[a-z0-9_.-]{1,100}$/.test(value) && !value.endsWith("/.") && !value.endsWith("/..");
+var positiveId = (value) => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+function parseReviewEvidence(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw;
+  if (!validRepository(r.repository) || !positiveId(r.pullRequest) || !positiveId(r.id) || !["review", "review_comment"].includes(r.kind) || !["OWNER", "MEMBER", "COLLABORATOR"].includes(r.association) || !["APPROVED", "CHANGES_REQUESTED", "COMMENTED"].includes(r.state) || typeof r.digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(r.digest) || typeof r.commit !== "string" || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(r.commit) || typeof r.mergedAt !== "string" || !Number.isFinite(Date.parse(r.mergedAt)) || r.path !== void 0 && (typeof r.path !== "string" || !isLearningSourcePath(r.path)))
+    return null;
+  return {
+    repository: r.repository,
+    pullRequest: r.pullRequest,
+    kind: r.kind,
+    id: r.id,
+    digest: r.digest,
+    commit: r.commit,
+    mergedAt: r.mergedAt,
+    association: r.association,
+    state: r.state,
+    ...r.path ? { path: r.path } : {}
+  };
+}
+
+// ../shared/src/project-learning/claims.ts
+function requireLearningRevision(value) {
+  const raw = value;
+  if (!raw || typeof raw.workspaceId !== "string" || typeof raw.id !== "string" || !/^[\w-]{1,160}$/.test(raw.workspaceId) || !/^[a-f0-9]{64}$/.test(raw.id))
+    throw new Error("Invalid learning revision");
+  const replacement = raw.replacement === void 0 ? void 0 : requireWritableLearningClaim(raw.replacement);
+  if (replacement && (replacement.workspaceId !== raw.workspaceId || replacement.id === raw.id))
+    throw new Error("A revision requires a different claim in the same workspace");
+  return { workspaceId: raw.workspaceId, id: raw.id, ...replacement ? { replacement } : {} };
+}
+function learningClaimLimit(limit = 100) {
+  return Number.isFinite(limit) ? Math.max(1, Math.min(200, Math.floor(limit))) : 100;
+}
+function validLearningScope(value) {
+  return typeof value === "string" && (value === "/" || value.startsWith("/") && isLearningSourcePath(value.slice(1)));
+}
+function parseLearningClaim(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw;
+  if (c.version !== 1 || typeof c.id !== "string" || !/^[a-f0-9]{64}$/.test(c.id) || typeof c.workspaceId !== "string" || !/^[\w-]{1,160}$/.test(c.workspaceId) || !validLearningScope(c.nodePath) || typeof c.topic !== "string" || !c.topic.trim() || c.topic.length > 120 || typeof c.statement !== "string" || !c.statement.trim() || c.statement.length > 1200 || !["architecture", "convention", "decision"].includes(c.category) || c.origin !== "agent_synthesis" || !Array.isArray(c.sources) || c.sources.length < 1 || c.sources.length > 6 || !c.sources.every(
+    (s) => s && typeof s.path === "string" && isLearningSourcePath(s.path) && typeof s.digest === "string" && /^(?:sha256:[a-f0-9]{64}|git:(?:[a-f0-9]{40}|[a-f0-9]{64}))$/.test(s.digest)
+  ) || new Set(c.sources.map((s) => s.path)).size !== c.sources.length)
+    return null;
+  const reviews = c.reviewSources === void 0 ? void 0 : Array.isArray(c.reviewSources) && c.reviewSources.length > 0 && c.reviewSources.length <= 6 ? c.reviewSources.map(parseReviewEvidence) : null;
+  if (reviews === null || reviews?.some((r) => !r)) return null;
+  if (reviews && c.category === "convention" && new Set(reviews.map((r) => `${r.repository}:${r.pullRequest}`)).size < 2)
+    return null;
+  return {
+    version: 1,
+    id: c.id,
+    workspaceId: c.workspaceId,
+    nodePath: c.nodePath,
+    topic: c.topic,
+    statement: c.statement,
+    category: c.category,
+    sources: c.sources.map((s) => ({ path: s.path, digest: s.digest })),
+    origin: "agent_synthesis",
+    ...reviews ? { reviewSources: reviews } : {}
+  };
+}
+function requireLearningClaim(raw) {
+  const claim = parseLearningClaim(raw);
+  if (!claim) throw new Error("Invalid learning claim");
+  return claim;
+}
+function parseLearningClaimRows(rows, workspaceId) {
+  const claims = [];
+  let invalid = 0;
+  for (const raw of rows) {
+    const claim = parseLearningClaim(raw);
+    if (claim && claim.workspaceId === workspaceId) claims.push(claim);
+    else invalid += 1;
+  }
+  return { claims, invalid };
+}
+var warnedInvalidRows = /* @__PURE__ */ new Set();
+function warnInvalidLearningRows(store, workspaceId, invalid) {
+  if (invalid === 0 || warnedInvalidRows.has(`${store}:${workspaceId}`)) return;
+  warnedInvalidRows.add(`${store}:${workspaceId}`);
+  console.warn(
+    `[learning] skipped ${invalid} invalid learning claim row(s) from ${store} for workspace ${workspaceId}`
+  );
+}
+var MAX_LEARNING_CLAIM_BYTES = 12e3;
+function learningClaimBytes(claim) {
+  const encode = (value) => {
+    if (typeof value === "string") {
+      for (const char of value) {
+        const point = char.codePointAt(0);
+        if (point === 0 || point >= 55296 && point <= 57343)
+          throw Object.assign(
+            new Error("Learning claim contains text unsupported by PostgreSQL JSONB"),
+            { code: "22021" }
+          );
+      }
+    }
+    if (Array.isArray(value)) return `[${value.map(encode).join(", ")}]`;
+    if (value && typeof value === "object")
+      return `{${Object.entries(value).filter(([, item]) => item !== void 0).map(([key, item]) => `${JSON.stringify(key)}: ${encode(item)}`).join(", ")}}`;
+    return JSON.stringify(value);
+  };
+  return new TextEncoder().encode(encode(claim)).byteLength;
+}
+function requireWritableLearningClaim(raw) {
+  const claim = requireLearningClaim(raw);
+  const bytes = learningClaimBytes(claim);
+  if (bytes > MAX_LEARNING_CLAIM_BYTES)
+    throw Object.assign(
+      new Error(
+        `Learning claim is ${bytes} bytes; maximum is ${MAX_LEARNING_CLAIM_BYTES}. Shorten the synthesis or split it into independently sourced findings.`
+      ),
+      { code: "22001" }
+    );
+  return claim;
+}
+
+// ../cloud-backend/src/learning-store.ts
+async function putLearningClaimRow(supabase, userId, input) {
+  const claim = requireWritableLearningClaim(input);
+  const { error: error2 } = await supabase.from("learning_claims").upsert(
+    {
+      workspace_id: claim.workspaceId,
+      id: claim.id,
+      claim,
+      created_by: userId
+    },
+    { onConflict: "workspace_id,id", ignoreDuplicates: true }
+  );
+  if (error2) throw error2;
+  const { data, error: readError } = await supabase.from("learning_claims").select("claim").eq("workspace_id", claim.workspaceId).eq("id", claim.id).single();
+  if (readError) throw readError;
+  return requireLearningClaim(data?.claim);
+}
+async function retiredLearningClaimRows(supabase, workspaceId, ids) {
+  if (!ids.length) return [];
+  const { data, error: error2 } = await supabase.from("learning_claim_retirements").select("id").eq("workspace_id", workspaceId).in("id", ids.slice(0, 200));
+  if (error2) {
+    if (["42P01", "PGRST205"].includes(error2.code ?? "") && /learning_claim_retirements/.test(error2.message ?? ""))
+      return [];
+    throw error2;
+  }
+  return (data ?? []).map((row) => row.id);
+}
+async function reviseLearningClaimRow(supabase, raw) {
+  const input = requireLearningRevision(raw);
+  const { data, error: error2 } = await supabase.rpc("pathrule_revise_learning_claim", {
+    p_workspace: input.workspaceId,
+    p_id: input.id,
+    p_replacement: input.replacement ?? null
+  });
+  if (error2) throw error2;
+  if (data?.status !== "applied" || data?.id !== input.id)
+    throw new Error("Invalid learning revision response");
+  return { status: "applied", id: input.id };
+}
+async function listLearningClaimRows(supabase, workspaceId, limit = 100) {
+  const { data, error: error2 } = await supabase.from("learning_claims").select("claim").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(learningClaimLimit(limit));
+  if (error2) throw error2;
+  const { claims, invalid } = parseLearningClaimRows(
+    (data ?? []).map((row) => row.claim),
+    workspaceId
+  );
+  warnInvalidLearningRows("cloud", workspaceId, invalid);
+  return claims;
+}
+async function learningActivityRows(supabase, workspaceId, limit = 200) {
+  const query = (columns) => supabase.from("activity_logs").select(columns).eq("workspace_id", workspaceId).eq("status", "active").order("created_at", { ascending: false }).limit(Math.max(1, Math.min(200, limit)));
+  let result2 = await query("id, created_at, files_touched, provenance");
+  if (result2.error && /provenance/.test(result2.error.message) && ["42703", "PGRST204"].includes(result2.error.code)) {
+    result2 = await query("id, created_at, files_touched");
+  }
+  if (result2.error) throw result2.error;
+  return (result2.data ?? []).map((value) => {
+    const row = value;
+    return {
+      id: String(row.id),
+      createdAt: String(row.created_at),
+      filesTouched: row.files_touched ?? {},
+      provenance: normalizeActivityProvenance(row.provenance)
+    };
+  });
+}
+
+// ../shared/src/agent-ir/entry-rendering.ts
+var STRENGTH_LABEL = {
+  HUMAN_AUTHORED: "standing guidance",
+  REPEATED_SUCCESS: "worked repeatedly",
+  OBSERVED_SUCCESS: "observed to work",
+  SPECULATIVE: "speculative",
+  ATTEMPTED: "attempted",
+  FAILED: "failed",
+  SUPERSEDED: "superseded"
+};
+function renderAdvisoryLine(a) {
+  const cond = a.condition_grounded ? a.condition : `${a.condition} (paraphrased)`;
+  const strength = STRENGTH_LABEL[a.strength];
+  return a.variant === "bind" ? `- Instead of ${JSON.stringify(cond)}, the approved choice is: ${a.action}. [${strength}]` : `- When ${JSON.stringify(cond)}, this corrective action is approved: ${a.action}. [${strength}]`;
+}
+function renderSelectionLine(a) {
+  const ctx = a.context ? a.context_grounded ? a.context : `${a.context} (paraphrased)` : "";
+  const where = ctx ? `When ${JSON.stringify(ctx)}, ` : "";
+  const over = a.alternatives.length > 0 ? ` over ${a.alternatives.join(" / ")}` : "";
+  return `- ${where}the preferred choice is ${a.preferred}${over}. [preference]`;
+}
+function renderProcedureLine(a) {
+  const op = a.operation ? a.operation_grounded ? a.operation : `${a.operation} (paraphrased)` : "this operation";
+  const steps = a.steps.map((s, i) => `  ${i + 1}. ${s}`).join("\n");
+  return `- Procedure for ${JSON.stringify(op)}:
+${steps} [ordered guidance]`;
+}
+function renderContextLine(a) {
+  const fact = a.fact_grounded ? a.fact : `${a.fact} (paraphrased)`;
+  return `- Fact: ${fact}. [context]`;
+}
+function renderRationaleLine(a) {
+  const subj = a.subject ? `${a.subject}: ` : "";
+  return `- Why ${subj}${a.reason}. [rationale]`;
+}
+function entryKnowledgeText(e) {
+  const parts = [];
+  switch (e.type) {
+    case "remedy":
+      parts.push(e.condition, e.action);
+      break;
+    case "selection":
+      parts.push(e.context, e.preferred, ...e.alternatives);
+      break;
+    case "procedure":
+      parts.push(e.operation, ...e.steps);
+      break;
+    case "context":
+      parts.push(e.fact);
+      break;
+    case "rationale":
+      parts.push(e.subject, e.reason);
+      break;
+  }
+  const reason = e.attached_reason;
+  if (reason) parts.push(reason);
+  return parts.filter((p) => p.trim().length > 0).join("\n");
+}
+
+// ../shared/src/knowledge/ir-completeness-gate.ts
+var REL_MARKER = /\b(takes precedence over|precedence over|instead of|rather than|do not use|must not use|prefer\b)/i;
+var REL_LOSER_RE = /\b(?:takes precedence over|precedence over|instead of|rather than|not use|do not use|must not use|deprecated|over)\s+([A-Za-z_$][\w$.]{2,})/gi;
+var REL_MARKER_TR = /(?<![\p{L}\p{N}_])(?:yerine|kullanma)/iu;
+var REL_LOSER_TR_RE = new RegExp("([\\p{L}_$][\\p{L}\\p{N}_$.]{2,})(?:['\u2019]\\p{L}+)?\\s+(?:yerine|kullanma)", "giu");
+var PROC_MARKER = /\b(first,|, then\b|then,|next,|finally,|step \d|in order|all three|in this order)/i;
+var PROC_MARKER_TR = /(?<![\p{L}\p{N}_])(?:ilk olarak|ardından|son olarak|sırasıyla|sırayla|adım \d|önce[^.\n]{0,80}sonra)/iu;
+var OP_SENTENCE = /\b(must|never|always|use|return|guard|prefer|throws|via|through|before|after|only)\b/;
+var OP_SENTENCE_TR = /(?<![\p{L}\p{N}_])(?:kullan|asla|her zaman|mutlaka|zorunda|gerek|olmalı|yalnızca|sadece|önce|sonra|yerine|üzerinden|döndür|çağır)/u;
+var INLINE_CODE_RE = /`([^`\n]{2,80})`/g;
+var DOTTED_RE = /(?<![\w$./-])[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+/g;
+var CAMEL_RE = /(?<![\w$])(?:[a-z][a-z0-9]*[A-Z]|[A-Z][a-z0-9]+[A-Z])[A-Za-z0-9]*/g;
+var SNAKE_RE = /(?<![\w$])[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+/g;
+var CALL_RE = /(?<![\w$.])([A-Za-z_$][\w$]{2,})\(/g;
+var FILE_RE = /(?<![\w./-])(?:[\w-]+\/)+[\w-]+\.[A-Za-z0-9]{1,5}(?![\w])/g;
+function namedLiterals(src) {
+  const out = /* @__PURE__ */ new Set();
+  const add = (raw) => {
+    const t = raw.trim().replace(/[.,;:]+$/, "");
+    if (t.length < 3) return;
+    const parts = t.split(".");
+    if (parts.length > 1 && parts.every((p) => p.length <= 2)) return;
+    out.add(t.toLowerCase());
+  };
+  let rest = src;
+  for (const re of [INLINE_CODE_RE, FILE_RE, DOTTED_RE]) {
+    for (const m of rest.matchAll(re)) add(m[1] ?? m[0]);
+    rest = rest.replace(re, " ");
+  }
+  for (const re of [CAMEL_RE, SNAKE_RE]) for (const m of rest.matchAll(re)) add(m[0]);
+  for (const m of rest.matchAll(CALL_RE)) add(m[1] ?? "");
+  return [...out];
+}
+function carries(delivered, literal2) {
+  if (delivered.includes(literal2)) return true;
+  if (/\s/.test(literal2) || !literal2.includes(".") || literal2.includes("/")) return false;
+  const head2 = literal2.split(".")[0] ?? "";
+  return head2.length >= 3 && delivered.includes(head2);
+}
+function irCompletenessGate(input) {
+  if (input.atomCount <= 0) return { decision: "PROSE", level: "ZERO", reason: "zero_atoms" };
+  const src = input.sourceText;
+  const delivered = input.deliveredText.toLowerCase();
+  const losers = /* @__PURE__ */ new Set();
+  const collect = (re) => {
+    for (const m of src.matchAll(re)) {
+      const l = (m[1] ?? "").replace(/[.,;].*$/, "").trim().toLowerCase();
+      if (l.length >= 3) losers.add(l);
+    }
+  };
+  if (REL_MARKER.test(src)) collect(new RegExp(REL_LOSER_RE.source, "gi"));
+  if (REL_MARKER_TR.test(src)) collect(new RegExp(REL_LOSER_TR_RE.source, "giu"));
+  for (const loser of losers) {
+    const head2 = loser.split(".")[0] ?? loser;
+    if (!delivered.includes(loser) && !delivered.includes(head2)) {
+      return { decision: "PROSE", level: "PARTIAL", reason: `relationship_loser_missing:${loser}` };
+    }
+  }
+  if ((PROC_MARKER.test(src) || PROC_MARKER_TR.test(src)) && input.atomCount < 2) {
+    return { decision: "PROSE", level: "PARTIAL", reason: "procedure_steps_missing" };
+  }
+  for (const literal2 of namedLiterals(src)) {
+    if (!carries(delivered, literal2)) {
+      return { decision: "PROSE", level: "PARTIAL", reason: `named_literal_missing:${literal2}` };
+    }
+  }
+  const opSent = src.split(/[.\n]/).map((s) => s.trim().toLowerCase()).filter((s) => s.length >= 18 && (OP_SENTENCE.test(s) || OP_SENTENCE_TR.test(s)));
+  if (opSent.length >= 2) {
+    const covered = opSent.filter((s) => {
+      const key = s.slice(0, 28);
+      if (delivered.includes(key)) return true;
+      return key.split(" ").filter((w) => w.length > 3 && delivered.includes(w)).length >= 2;
+    }).length;
+    if (covered / opSent.length < 0.5) return { decision: "PROSE", level: "PARTIAL", reason: `low_coverage:${covered}/${opSent.length}` };
+  }
+  return { decision: "IR", level: "FULL", reason: "sufficient" };
+}
+
+// ../shared/src/knowledge/ir-delivery.ts
+function decideDelivery(input) {
+  if (!input.compiledIrAvailable || !input.deliveredText || !(input.atomCount && input.atomCount > 0)) {
+    return { mode: "prose", reason: input.modelAvailable === false ? "model_unavailable" : "ir_not_compiled_yet" };
+  }
+  const gate = irCompletenessGate({ atomCount: input.atomCount, deliveredText: input.deliveredText, sourceText: input.sourceText });
+  return gate.decision === "IR" ? { mode: "ir", reason: gate.reason, gate } : { mode: "prose", reason: `gate:${gate.reason}`, gate };
+}
+
+// ../shared/src/agent-ir/compiled-delivery.ts
+function compiledMemoryText(memoryId, lines) {
+  return [
+    `_Compiled form of this memory (advisory, never overrides a rule). Full text: pathrule_read_memory("${memoryId}")._`,
+    ...lines
+  ].join("\n");
+}
+function planCompiledDelivery(lines, memories) {
+  const source = new Map(memories.map((m) => [m.id, m.content]));
+  const groups = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  for (const l of lines) {
+    if (!l.sourceMemoryId || !source.has(l.sourceMemoryId) || seen.has(l.ref)) continue;
+    seen.add(l.ref);
+    const group = groups.get(l.sourceMemoryId);
+    if (group) group.push(l);
+    else groups.set(l.sourceMemoryId, [l]);
+  }
+  const plan = { compiled: /* @__PURE__ */ new Map(), withheldRefs: /* @__PURE__ */ new Set(), decisions: [] };
+  for (const [memoryId, group] of groups) {
+    const refs = group.map((l) => l.ref);
+    const decision = decideDelivery({
+      compiledIrAvailable: true,
+      deliveredText: group.map((l) => l.knowledge).join("\n"),
+      atomCount: group.length,
+      sourceText: source.get(memoryId) ?? ""
+    });
+    plan.decisions.push({ memoryId, mode: decision.mode, reason: decision.reason, refs });
+    if (decision.mode === "ir") {
+      plan.compiled.set(memoryId, {
+        memoryId,
+        refs,
+        text: compiledMemoryText(memoryId, group.map((l) => l.line)),
+        reason: decision.reason
+      });
+    } else {
+      for (const ref of refs) plan.withheldRefs.add(ref);
+    }
+  }
+  return plan;
+}
+
+// ../core/src/backend/compiled-delivery.ts
+function sourcedAdvisoryLines(input) {
+  const sources = input.advisorySources ?? {};
+  const out = [];
+  const add = (entry, line) => {
+    out.push({ ref: entry.ref, line, knowledge: entryKnowledgeText(entry), sourceMemoryId: sources[entry.ref] ?? null, scope: entry.scope });
+  };
+  for (const a of input.advisories ?? []) add(a, renderAdvisoryLine(a));
+  for (const s of input.selections ?? []) add(s, renderSelectionLine(s));
+  for (const p of input.procedures ?? []) add(p, renderProcedureLine(p));
+  for (const c of input.contexts ?? []) add(c, renderContextLine(c));
+  for (const r of input.rationales ?? []) add(r, renderRationaleLine(r));
+  return out;
+}
+function compiledDeliveryPlan(input) {
+  return planCompiledDelivery(sourcedAdvisoryLines(input), input.memories);
+}
+function deliveredMemoryBody(m, plan) {
+  return plan.compiled.get(m.id)?.text ?? m.content;
+}
+
 // ../core/src/backend/knowledge-compiler.ts
 var DIR_BUDGET_CHARS = 12e3;
 var ROOT_BUDGET_CHARS = 6e3;
@@ -63510,12 +65909,13 @@ function assembleKnowledgeNodes(input, opts) {
       });
     }
   }
+  const plan = compiledDeliveryPlan(input);
   for (const m of input.memories) {
     const { dir, leaf } = toDirPath(m.node_path);
     bucket(dir).memories.push({
       id: m.id,
       title: leaf ? `${m.title} (${leaf})` : m.title,
-      content: m.content,
+      content: deliveredMemoryBody(m, plan),
       at: leaf
     });
   }
@@ -63613,6 +66013,136 @@ ${s.content.trim()}
     });
   }
   return out;
+}
+
+// ../shared/src/knowledge-map/input.ts
+var KINDS = /* @__PURE__ */ new Set(["memory", "rule", "skill"]);
+function parseKnowledgeMapInput(workspaceId, raw) {
+  const value = raw;
+  if (!value || !Array.isArray(value.items)) throw new Error("knowledge_map_input: items missing");
+  const items = value.items.map((row) => {
+    const r = row ?? {};
+    if (typeof r.id !== "string" || !KINDS.has(String(r.kind)) || typeof r.title !== "string") {
+      throw new Error("knowledge_map_input: bad item");
+    }
+    return {
+      id: r.id,
+      kind: r.kind,
+      title: r.title,
+      description: typeof r.description === "string" ? r.description : null,
+      body: typeof r.body === "string" ? r.body : "",
+      nodePaths: Array.isArray(r.node_paths) ? r.node_paths.filter((p) => typeof p === "string") : [],
+      updatedAt: typeof r.updated_at === "string" ? r.updated_at : ""
+    };
+  });
+  const neighbours = (Array.isArray(value.neighbours) ? value.neighbours : []).flatMap((row) => {
+    if (!Array.isArray(row)) return [];
+    const [a, b, s] = row;
+    return typeof a === "string" && typeof b === "string" && typeof s === "number" && Number.isFinite(s) ? [[a, b, s]] : [];
+  });
+  const semantic = value.semantic === "voyage" || value.semantic === "local" ? value.semantic : "lexical";
+  const usage = value.usage && typeof value.usage === "object" && !Array.isArray(value.usage) ? Object.fromEntries(
+    Object.entries(value.usage).filter(
+      ([, n]) => typeof n === "number" && Number.isFinite(n)
+    )
+  ) : null;
+  const usageWindowDays = typeof value.usage_window_days === "number" ? value.usage_window_days : null;
+  return { workspaceId, items, neighbours, semantic: neighbours.length > 0 ? semantic : "lexical", usage, usageWindowDays };
+}
+
+// ../shared/src/knowledge-map/anchors.ts
+var MAX_ANCHORS_PER_ITEM = 64;
+var PATH_RE = /(?:^|[\s`"'([])(?:\.\/|\/)?((?:[\p{L}\p{N}_.@-]+\/)+[\p{L}\p{N}_.@-]+)/gu;
+var TRAILING = /[.,;:!?)\]}'"`]+$/;
+function normalizeAnchorPath(path) {
+  return path.replace(/^\.\//, "").replace(/^\/+/, "").replace(/\/+$/, "").replace(TRAILING, "");
+}
+function extractPathAnchors(body) {
+  if (!body) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const match of body.matchAll(PATH_RE)) {
+    const path = normalizeAnchorPath(match[1] ?? "");
+    const segments2 = path.split("/").filter(Boolean);
+    if (segments2.length < 2 || segments2.some((segment) => segment === "." || segment === "..")) continue;
+    if (seen.has(path)) continue;
+    seen.add(path);
+    out.push(path);
+    if (out.length >= MAX_ANCHORS_PER_ITEM) break;
+  }
+  return out;
+}
+function resolveNodeAnchor(anchor, nodePath) {
+  const node = normalizeAnchorPath(nodePath).split("/").filter(Boolean);
+  const ref = normalizeAnchorPath(anchor).split("/").filter(Boolean);
+  if (node.length === 0 || ref.length === 0 || ref[0] === node[0]) return null;
+  const at = node.lastIndexOf(ref[0]);
+  return [...at >= 0 ? node.slice(0, at) : node, ...ref].join("/");
+}
+function resolveItemAnchors(anchors, nodePaths) {
+  const out = new Set(anchors);
+  for (const anchor of anchors) {
+    for (const node of nodePaths) {
+      const resolved = resolveNodeAnchor(anchor, node);
+      if (resolved) out.add(resolved);
+    }
+  }
+  return [...out];
+}
+function ancestorDirectories(path) {
+  const segments2 = normalizeAnchorPath(path).split("/").filter(Boolean);
+  const out = [];
+  for (let i = segments2.length - 1; i >= 1; i--) out.push(segments2.slice(0, i).join("/"));
+  return out;
+}
+function pathDepth(path) {
+  return normalizeAnchorPath(path).split("/").filter(Boolean).length;
+}
+
+// ../shared/src/knowledge-map/gap-suppression.ts
+var GAP_SUPPRESS_DAYS = 180;
+var GAP_CLOSED_WINDOW_DAYS = 30;
+var GAP_DETECTOR_ID = "legacy:knowledge_coverage_gap";
+var DAY_MS2 = 864e5;
+function failure(what, error2) {
+  return new Error(`${what} failed: ${error2?.message ?? "unknown error"}`);
+}
+async function suppressedGapScopes(supabase, workspaceId, now = Date.now()) {
+  const { data: findings, error: error2 } = await supabase.from("maintenance_findings").select("id, subject_path").eq("workspace_id", workspaceId).eq("detector_id", GAP_DETECTOR_ID).eq("subject_kind", "path").gte("last_seen_at", new Date(now - GAP_SUPPRESS_DAYS * DAY_MS2).toISOString());
+  if (error2) throw failure("gap findings read", error2);
+  const rows = findings ?? [];
+  if (rows.length === 0) return [];
+  const { data: links, error: linkError } = await supabase.from("maintenance_case_findings").select("case_id, finding_id").in("finding_id", rows.map((row) => row.id)).is("detached_at", null);
+  if (linkError) throw failure("gap case links read", linkError);
+  const linkRows = links ?? [];
+  const caseIds = [...new Set(linkRows.map((link) => link.case_id))];
+  if (caseIds.length === 0) return [];
+  const [{ data: cases, error: caseError }, { data: states, error: stateError }] = await Promise.all([
+    supabase.from("maintenance_cases").select("id, status").in("id", caseIds),
+    // RLS returns only the caller's own rows: a snooze is personal.
+    supabase.from("maintenance_case_user_state").select("case_id, snoozed_until").in("case_id", caseIds)
+  ]);
+  if (caseError || stateError) throw failure("gap case state read", caseError ?? stateError);
+  const dismissed = /* @__PURE__ */ new Set();
+  for (const c of cases ?? []) if (c.status === "rejected") dismissed.add(c.id);
+  for (const s of states ?? []) {
+    if (s.snoozed_until && Date.parse(s.snoozed_until) > now) dismissed.add(s.case_id);
+  }
+  const caseOf = new Map(linkRows.map((link) => [link.finding_id, link.case_id]));
+  return rows.filter((row) => row.subject_path && dismissed.has(caseOf.get(row.id) ?? "")).map((row) => normalizeAnchorPath(row.subject_path));
+}
+async function knowledgeGapSummary(supabase, workspaceId, now = Date.now()) {
+  const [open, closed] = await Promise.all([
+    supabase.from("maintenance_findings").select("subject_path").eq("workspace_id", workspaceId).eq("detector_id", GAP_DETECTOR_ID).eq("status", "active"),
+    supabase.from("maintenance_findings").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("detector_id", GAP_DETECTOR_ID).eq("status", "resolved").gte("resolved_at", new Date(now - GAP_CLOSED_WINDOW_DAYS * DAY_MS2).toISOString())
+  ]);
+  if (open.error || closed.error) throw failure("gap summary read", open.error ?? closed.error);
+  const openScopes = [
+    ...new Set(
+      (open.data ?? []).map((row) => row.subject_path ? normalizeAnchorPath(row.subject_path) : "").filter(Boolean)
+    )
+  ].sort();
+  return { openScopes, closedLast30Days: closed.count ?? 0 };
 }
 
 // ../cloud-backend/src/cloud-backend.ts
@@ -63736,27 +66266,27 @@ var CloudBackend = class {
       p_expected_version_id: input.expectedVersionId ?? null
     });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) {
-      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    const result2 = data;
+    if (!result2.ok) {
+      return result2.error === "conflict" ? { status: "conflict", currentVersionId: result2.current_version_id ?? "" } : { status: "rejected", reason: result2.error };
     }
     return {
       status: "deleted",
-      id: result.id,
-      workspaceId: result.workspace_id,
-      nodeId: result.node_id
+      id: result2.id,
+      workspaceId: result2.workspace_id,
+      nodeId: result2.node_id
     };
   }
   async restoreMemory(id) {
     const { data, error: error2 } = await this.supabase.rpc("restore_memory_rpc", { p_memory_id: id });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) return { status: "rejected", reason: result.error };
+    const result2 = data;
+    if (!result2.ok) return { status: "rejected", reason: result2.error };
     return {
       status: "restored",
-      id: result.id,
-      workspaceId: result.workspace_id,
-      nodeId: result.node_id
+      id: result2.id,
+      workspaceId: result2.workspace_id,
+      nodeId: result2.node_id
     };
   }
   async listMemories(query) {
@@ -63863,18 +66393,18 @@ var CloudBackend = class {
       p_expected_version_id: input.expectedVersionId ?? null
     });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) {
-      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    const result2 = data;
+    if (!result2.ok) {
+      return result2.error === "conflict" ? { status: "conflict", currentVersionId: result2.current_version_id ?? "" } : { status: "rejected", reason: result2.error };
     }
-    return { status: "deleted", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+    return { status: "deleted", id: result2.id, workspaceId: result2.workspace_id, nodeId: null };
   }
   async restoreRule(id) {
     const { data, error: error2 } = await this.supabase.rpc("restore_rule_rpc", { p_rule_id: id });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) return { status: "rejected", reason: result.error };
-    return { status: "restored", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+    const result2 = data;
+    if (!result2.ok) return { status: "rejected", reason: result2.error };
+    return { status: "restored", id: result2.id, workspaceId: result2.workspace_id, nodeId: null };
   }
   async listRules(query) {
     const { data, error: error2 } = await this.supabase.from("rules").select("*").eq("workspace_id", query.workspaceId).eq("status", query.status ?? "active");
@@ -64009,18 +66539,18 @@ var CloudBackend = class {
       p_expected_version_id: input.expectedVersionId ?? null
     });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) {
-      return result.error === "conflict" ? { status: "conflict", currentVersionId: result.current_version_id ?? "" } : { status: "rejected", reason: result.error };
+    const result2 = data;
+    if (!result2.ok) {
+      return result2.error === "conflict" ? { status: "conflict", currentVersionId: result2.current_version_id ?? "" } : { status: "rejected", reason: result2.error };
     }
-    return { status: "deleted", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+    return { status: "deleted", id: result2.id, workspaceId: result2.workspace_id, nodeId: null };
   }
   async restoreSkill(id) {
     const { data, error: error2 } = await this.supabase.rpc("restore_skill_rpc", { p_skill_id: id });
     if (error2) throw error2;
-    const result = data;
-    if (!result.ok) return { status: "rejected", reason: result.error };
-    return { status: "restored", id: result.id, workspaceId: result.workspace_id, nodeId: null };
+    const result2 = data;
+    if (!result2.ok) return { status: "rejected", reason: result2.error };
+    return { status: "restored", id: result2.id, workspaceId: result2.workspace_id, nodeId: null };
   }
   async listSkills(query) {
     const { data, error: error2 } = await this.supabase.from("skills").select("*").eq("workspace_id", query.workspaceId).eq("status", query.status ?? "active");
@@ -64343,6 +66873,29 @@ var CloudBackend = class {
     if (error2) throw error2;
     return data ?? null;
   }
+  // M202: one read for the knowledge map (items with bodies and node paths, exact top-12
+  // memory vector neighbours up to 600 vectors, per-item session counts) and its cache key.
+  async buildKnowledgeMapInput(workspaceId) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_knowledge_map_input", {
+      p_workspace_id: workspaceId,
+      p_neighbours: 12
+    });
+    if (error2) throw error2;
+    return data ? parseKnowledgeMapInput(workspaceId, data) : null;
+  }
+  async knowledgeMapFingerprint(workspaceId) {
+    const { data, error: error2 } = await this.supabase.rpc("pathrule_knowledge_map_fingerprint", {
+      p_workspace_id: workspaceId
+    });
+    if (error2) throw error2;
+    return typeof data === "string" && data.length > 0 ? data : null;
+  }
+  async knowledgeGapSuppressedScopes(workspaceId) {
+    return suppressedGapScopes(this.supabase, workspaceId);
+  }
+  async knowledgeGapSummary(workspaceId) {
+    return knowledgeGapSummary(this.supabase, workspaceId);
+  }
   // Native Knowledge Compilation: fetch full bodies client-side and run the same
   // pure assemblers every backend uses, so compiled knowledge and the warehouse are
   // byte-identical across editions for the same content.
@@ -64462,7 +67015,7 @@ var CloudBackend = class {
   }
   // ── activity ───────────────────────────────────────────────────────────────────
   async logActivity(input) {
-    const { data, error: error2 } = await this.supabase.from("activity_logs").insert(this.activityRow(input)).select().single();
+    const { data, error: error2 } = await insertActivityRow(this.supabase, this.activityRow(input));
     if (error2) throw error2;
     const row = data;
     const applied = (input.appliedMemoryIds ?? []).map((id) => id?.trim()).filter((id) => Boolean(id));
@@ -64477,33 +67030,7 @@ var CloudBackend = class {
       } catch {
       }
     }
-    return {
-      id: row["id"],
-      workspaceId: row["workspace_id"],
-      nodePath: row["node_path"] ?? "/",
-      domain: row["domain"],
-      action: row["action"],
-      scope: row["scope"],
-      subjects: row["subjects"] ?? [],
-      taskSummary: row["task_summary"] ?? "",
-      filesTouched: row["files_touched"] ?? {
-        total: 0,
-        by_area: {}
-      },
-      aiClient: row["ai_client"] ?? "claude-code",
-      detailLevel: row["detail_level"] ?? void 0,
-      status: row["status"] ?? void 0,
-      createdAt: row["created_at"],
-      toolCallCount: row["tool_call_count"] ?? void 0,
-      toolFailureCount: row["tool_failure_count"] ?? void 0,
-      toolFailureCodes: row["tool_failure_codes"] ?? void 0,
-      exploreCalls: row["explore_calls"] ?? void 0,
-      editCalls: row["edit_calls"] ?? void 0,
-      contextSufficiency: row["context_sufficiency"] ?? void 0,
-      teamIntelligenceScore: row["team_intelligence_score"] ?? void 0,
-      teamIntelligenceCategory: row["team_intelligence_category"] ?? void 0,
-      teamIntelligenceSurface: row["team_intelligence_surface"] ?? void 0
-    };
+    return activityRecordFromRow(row);
   }
   /**
    * The `activity_logs` row for one activity.
@@ -64514,41 +67041,23 @@ var CloudBackend = class {
    * change that caused it.
    */
   activityRow(input) {
-    const subjects = [
-      ...new Set((input.subjects ?? []).map((s) => s.toLowerCase().trim()).filter(Boolean))
-    ].slice(0, 5);
-    const friction = normalizeActivityFriction(
-      input.friction ? {
-        toolCallCount: input.friction.toolCallCount,
-        toolFailureCount: input.friction.toolFailureCount,
-        toolFailureCodes: input.friction.toolFailureCodes
-      } : void 0
-    );
-    const teamIntelligenceSignal = normalizeActivityTeamIntelligenceSignal(
-      input.teamIntelligenceSignal
-    );
-    return {
-      workspace_id: input.workspaceId,
-      user_id: this.userId,
-      node_path: input.nodePath || "/",
-      domain: input.domain,
-      action: input.action,
-      scope: input.scope,
-      subjects,
-      task_summary: input.taskSummary,
-      files_touched: input.filesTouched ?? { total: 0, by_area: {} },
-      ai_client: input.aiClient ?? "claude-code",
-      session_id: input.sessionId ?? null,
-      ...friction,
-      // M105 exploration-suppression signal (observational). NULL when the turn
-      // had no tool stream to judge (kept out of the weekly rate denominator).
-      explore_calls: input.exploreCalls ?? null,
-      edit_calls: input.editCalls ?? null,
-      context_sufficiency: input.contextSufficiency ?? null,
-      team_intelligence_score: teamIntelligenceSignal?.score ?? null,
-      team_intelligence_category: teamIntelligenceSignal?.category ?? null,
-      team_intelligence_surface: teamIntelligenceSignal?.surface ?? null
-    };
+    return buildActivityRow(input, this.userId);
+  }
+  // Learning claims and learning activity evidence (learning-store.ts).
+  putLearningClaim(input) {
+    return putLearningClaimRow(this.supabase, this.userId, input);
+  }
+  retiredLearningClaimIds(workspaceId, ids) {
+    return retiredLearningClaimRows(this.supabase, workspaceId, ids);
+  }
+  reviseLearningClaim(raw) {
+    return reviseLearningClaimRow(this.supabase, raw);
+  }
+  listLearningClaims(workspaceId, limit = 100) {
+    return listLearningClaimRows(this.supabase, workspaceId, limit);
+  }
+  learningActivities(workspaceId, limit = 200) {
+    return learningActivityRows(this.supabase, workspaceId, limit);
   }
   async recentActivities(scope, limit) {
     const { data, error: error2 } = await this.supabase.from("activity_logs").select("id, node_path, domain, action, task_summary, created_at").eq("workspace_id", scope.workspaceId).order("created_at", { ascending: false }).limit(limit);
@@ -64780,16 +67289,16 @@ var listPendingRefreshesTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await listPendingRefreshesHandler(toToolContext(ctx, args.workspace_id), {
+      const result2 = await listPendingRefreshesHandler(toToolContext(ctx, args.workspace_id), {
         workspace_id: args.workspace_id,
         include_in_progress: args.include_in_progress
       });
-      if (!result.ok) return formatToolError(result.error);
+      if (!result2.ok) return formatToolError(result2.error);
       return {
         ok: true,
-        refreshes: result.data,
-        total: result.data.length,
-        human_message: result.data.length === 0 ? "No pending refresh tasks." : `${result.data.length} refresh task(s) waiting. Use pathrule_get_refresh_brief on one to start.`
+        refreshes: result2.data,
+        total: result2.data.length,
+        human_message: result2.data.length === 0 ? "No pending refresh tasks." : `${result2.data.length} refresh task(s) waiting. Use pathrule_get_refresh_brief on one to start.`
       };
     } catch (error2) {
       return formatThrown(error2);
@@ -64826,12 +67335,12 @@ var getRefreshBriefTool = {
   response: { includeLocalRuntimeCta: true },
   handler: async (args, ctx) => {
     try {
-      const result = await getRefreshBriefHandler(toToolContext(ctx, null), {
+      const result2 = await getRefreshBriefHandler(toToolContext(ctx, null), {
         refresh_id: args.refresh_id,
         claimed_by: "cloud-connector"
       });
-      if (!result.ok) return formatToolError(result.error);
-      const { brief, id, status, subjectType, subjectId, formulaId } = result.data;
+      if (!result2.ok) return formatToolError(result2.error);
+      const { brief, id, status, subjectType, subjectId, formulaId } = result2.data;
       const proposedPatch = brief.proposedPatch ?? null;
       return {
         ok: true,
@@ -64847,7 +67356,7 @@ var getRefreshBriefTool = {
         signal: brief.signal ?? {
           formulaId,
           humanReason: formulaId,
-          detectedAt: result.data.createdAt,
+          detectedAt: result2.data.createdAt,
           rawSignals: {}
         },
         ai_instructions: brief.aiInstructions ?? "",
@@ -64895,18 +67404,18 @@ var resolveRefreshTool = {
           }
         };
       }
-      const result = await resolveRefreshHandler(toToolContext(ctx, null), {
+      const result2 = await resolveRefreshHandler(toToolContext(ctx, null), {
         refresh_id: args.refresh_id,
         status: args.status,
         note: args.note,
         claimed_by: "cloud-connector"
       });
-      if (!result.ok) return formatToolError(result.error);
+      if (!result2.ok) return formatToolError(result2.error);
       return {
         ok: true,
-        refresh_id: result.data.id,
-        status: result.data.status,
-        resolved_at: result.data.resolvedAt,
+        refresh_id: result2.data.id,
+        status: result2.data.status,
+        resolved_at: result2.data.resolvedAt,
         human_message: `Refresh task marked ${args.status}.`
       };
     } catch (error2) {
@@ -64965,7 +67474,7 @@ var logActivityTool = {
         const relRoot = ws?.relative_path_root ?? "/";
         workspaceRoot = relRoot === "/" ? "" : relRoot;
       }
-      const { normalized: normalizedFiles } = normalizeFilesTouched(
+      const { normalized: normalizedFiles, dropped: droppedCounts } = normalizeFilesTouched(
         args.files_touched,
         workspaceRoot
       );
@@ -64978,6 +67487,15 @@ var logActivityTool = {
         subjects: args.subjects ?? [],
         taskSummary: args.task_summary,
         filesTouched: normalizedFiles,
+        provenance: {
+          version: 1,
+          summarySource: "agent_authored",
+          filesSource: "agent_reported",
+          observedFileCount: normalizedFiles.total,
+          storedFileCount: normalizedFiles.total,
+          filesTruncated: Object.values(droppedCounts).some((count2) => count2 > 0),
+          outcome: "unknown"
+        },
         aiClient: "cloud-connector"
       });
       const taskSummaryChars = activityCharCount(args.task_summary);
@@ -65012,6 +67530,5332 @@ var refreshActivityTools = [
   resolveRefreshTool,
   logActivityTool
 ];
+
+// ../shared/src/knowledge-map/lexical.ts
+var LEXICAL_MAX_DF = 0.4;
+var CSLS_K = 10;
+var TITLE_REPEAT = 3;
+var WORD = /[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*/gu;
+var NO_SPACE_LETTER = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+var MARK = new RegExp("\\p{M}", "u");
+var DIGITS = new RegExp("^\\p{N}+$", "u");
+function pushNoSpaceRun(units, out) {
+  if (units.length === 1) out.push(units[0]);
+  for (let i = 1; i < units.length; i++) out.push(units[i - 1] + units[i]);
+}
+function tokenize(text) {
+  const out = [];
+  for (const match of text.normalize("NFKC").toLowerCase().matchAll(WORD)) {
+    const word = match[0].replace(/^[-_]+|[-_]+$/g, "");
+    if (!word || DIGITS.test(word)) continue;
+    if (!NO_SPACE_LETTER.test(word)) {
+      out.push(word);
+      continue;
+    }
+    let spaced = "";
+    let units = [];
+    const flushSpaced = () => {
+      const run = spaced.replace(/^[-_]+|[-_]+$/g, "");
+      if (run && !DIGITS.test(run)) out.push(run);
+      spaced = "";
+    };
+    for (const char of word) {
+      if (MARK.test(char)) {
+        if (units.length > 0) units[units.length - 1] += char;
+        else spaced += char;
+      } else if (NO_SPACE_LETTER.test(char)) {
+        flushSpaced();
+        units.push(char);
+      } else {
+        if (units.length > 0) {
+          pushNoSpaceRun(units, out);
+          units = [];
+        }
+        spaced += char;
+      }
+    }
+    flushSpaced();
+    if (units.length > 0) pushNoSpaceRun(units, out);
+  }
+  return out;
+}
+var byId = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function buildLexicalIndex(documents) {
+  const docs = [...documents].sort((a, b) => byId(a.id, b.id));
+  const termsOf = /* @__PURE__ */ new Map();
+  const df = /* @__PURE__ */ new Map();
+  for (const doc of docs) {
+    const title = tokenize(doc.title);
+    const terms = [];
+    for (let i = 0; i < TITLE_REPEAT; i++) terms.push(...title);
+    terms.push(...tokenize(doc.text));
+    termsOf.set(doc.id, terms);
+    for (const term of new Set(terms)) df.set(term, (df.get(term) ?? 0) + 1);
+  }
+  const n = docs.length;
+  const idf = /* @__PURE__ */ new Map();
+  for (const [term, count2] of [...df.entries()].sort((a, b) => byId(a[0], b[0]))) {
+    if (count2 / n <= LEXICAL_MAX_DF) idf.set(term, Math.log(n / count2));
+  }
+  const vectors = /* @__PURE__ */ new Map();
+  const postings = /* @__PURE__ */ new Map();
+  for (const doc of docs) {
+    const tf = /* @__PURE__ */ new Map();
+    for (const term of termsOf.get(doc.id)) if (idf.has(term)) tf.set(term, (tf.get(term) ?? 0) + 1);
+    const raw = [...tf.entries()].sort((a, b) => byId(a[0], b[0])).map(([term, count2]) => [term, (1 + Math.log(count2)) * idf.get(term)]);
+    const norm = Math.sqrt(raw.reduce((sum, [, w]) => sum + w * w, 0)) || 1;
+    const vector = /* @__PURE__ */ new Map();
+    for (const [term, w] of raw) {
+      const weight = w / norm;
+      vector.set(term, weight);
+      let list = postings.get(term);
+      if (!list) postings.set(term, list = []);
+      list.push([doc.id, weight]);
+    }
+    vectors.set(doc.id, vector);
+  }
+  return { vectors, postings, idf };
+}
+var byScore = (a, b) => b[1] - a[1] || byId(a[0], b[0]);
+function cosineNeighbours(index, id, pool) {
+  const acc = /* @__PURE__ */ new Map();
+  for (const [term, x] of index.vectors.get(id) ?? []) {
+    for (const [other, y] of index.postings.get(term) ?? []) {
+      if (other !== id && pool.has(other)) acc.set(other, (acc.get(other) ?? 0) + x * y);
+    }
+  }
+  return [...acc.entries()].sort(byScore);
+}
+function lexicalNeighbourLists(index, pool) {
+  const ids = [...new Set(pool)].sort(byId);
+  const members = new Set(ids);
+  const cosine = /* @__PURE__ */ new Map();
+  const meanTop = /* @__PURE__ */ new Map();
+  for (const id of ids) {
+    const list = cosineNeighbours(index, id, members);
+    cosine.set(id, list);
+    const top = list.slice(0, CSLS_K);
+    meanTop.set(id, top.length ? top.reduce((sum, [, s]) => sum + s, 0) / top.length : 0);
+  }
+  const out = /* @__PURE__ */ new Map();
+  for (const id of ids) {
+    const ri = meanTop.get(id);
+    out.set(
+      id,
+      cosine.get(id).map(([other, s]) => ({ id: other, csls: 2 * s - ri - (meanTop.get(other) ?? 0), cosine: s })).sort((a, b) => b.csls - a.csls || byId(a.id, b.id))
+    );
+  }
+  return out;
+}
+function queryScores(index, text) {
+  const tf = /* @__PURE__ */ new Map();
+  for (const term of tokenize(text)) if (index.idf.has(term)) tf.set(term, (tf.get(term) ?? 0) + 1);
+  const raw = [...tf.entries()].map(([term, count2]) => [term, (1 + Math.log(count2)) * index.idf.get(term)]);
+  const norm = Math.sqrt(raw.reduce((sum, [, w]) => sum + w * w, 0)) || 1;
+  const acc = /* @__PURE__ */ new Map();
+  for (const [term, w] of raw) {
+    for (const [id, y] of index.postings.get(term) ?? []) acc.set(id, (acc.get(id) ?? 0) + w / norm * y);
+  }
+  return [...acc.entries()].sort(byScore);
+}
+function quantileScale(lexicalSorted, vectorSorted) {
+  return (score) => {
+    if (lexicalSorted.length === 0 || vectorSorted.length === 0) return 0;
+    let lo = 0;
+    let hi = lexicalSorted.length;
+    while (lo < hi) {
+      const mid = lo + hi >> 1;
+      if (lexicalSorted[mid] < score) lo = mid + 1;
+      else hi = mid;
+    }
+    const q = lo / lexicalSorted.length;
+    return vectorSorted[Math.min(vectorSorted.length - 1, Math.floor(q * vectorSorted.length))];
+  };
+}
+var LEXICAL_TO_VECTOR_KNOTS = [
+  [99e-4, 0.3785],
+  [0.0479, 0.5203],
+  [0.0572, 0.5484],
+  [0.0658, 0.5662],
+  [0.0725, 0.5825],
+  [0.0791, 0.5951],
+  [0.0839, 0.6054],
+  [0.0902, 0.6139],
+  [0.0951, 0.6216],
+  [0.0999, 0.6299],
+  [0.1061, 0.6387],
+  [0.1103, 0.6481],
+  [0.1165, 0.6572],
+  [0.1234, 0.666],
+  [0.1326, 0.6777],
+  [0.1425, 0.6892],
+  [0.1542, 0.7025],
+  [0.1718, 0.7198],
+  [0.1999, 0.7444],
+  [0.2483, 0.7794],
+  [0.5064, 0.9624]
+];
+function knotScale(score, knots = LEXICAL_TO_VECTOR_KNOTS) {
+  if (knots.length === 0) return 0;
+  if (score <= knots[0][0]) return knots[0][1];
+  const last = knots[knots.length - 1];
+  if (score >= last[0]) return last[1];
+  for (let i = 1; i < knots.length; i++) {
+    const [x1, y1] = knots[i];
+    if (score <= x1) {
+      const [x0, y0] = knots[i - 1];
+      return x1 === x0 ? y1 : y0 + (score - x0) / (x1 - x0) * (y1 - y0);
+    }
+  }
+  return last[1];
+}
+
+// ../shared/src/knowledge-map/types.ts
+var KNOWLEDGE_MAP_ALGORITHM = "m202.v1";
+
+// ../../node_modules/graphology/dist/graphology.esm.js
+var import_iterator = __toESM(require_iterator());
+var import_take = __toESM(require_take());
+var import_chain = __toESM(require_chain());
+import { EventEmitter } from "events";
+function assignPolyfill() {
+  const target = arguments[0];
+  for (let i = 1, l = arguments.length; i < l; i++) {
+    if (!arguments[i]) continue;
+    for (const k in arguments[i]) target[k] = arguments[i][k];
+  }
+  return target;
+}
+var assign = assignPolyfill;
+if (typeof Object.assign === "function") assign = Object.assign;
+function getMatchingEdge(graph, source, target, type) {
+  const sourceData = graph._nodes.get(source);
+  let edge = null;
+  if (!sourceData) return edge;
+  if (type === "mixed") {
+    edge = sourceData.out && sourceData.out[target] || sourceData.undirected && sourceData.undirected[target];
+  } else if (type === "directed") {
+    edge = sourceData.out && sourceData.out[target];
+  } else {
+    edge = sourceData.undirected && sourceData.undirected[target];
+  }
+  return edge;
+}
+function isPlainObject4(value) {
+  return typeof value === "object" && value !== null;
+}
+function isEmpty(o) {
+  let k;
+  for (k in o) return false;
+  return true;
+}
+function privateProperty(target, name, value) {
+  Object.defineProperty(target, name, {
+    enumerable: false,
+    configurable: false,
+    writable: true,
+    value
+  });
+}
+function readOnlyProperty(target, name, value) {
+  const descriptor = {
+    enumerable: true,
+    configurable: true
+  };
+  if (typeof value === "function") {
+    descriptor.get = value;
+  } else {
+    descriptor.value = value;
+    descriptor.writable = false;
+  }
+  Object.defineProperty(target, name, descriptor);
+}
+function validateHints(hints) {
+  if (!isPlainObject4(hints)) return false;
+  if (hints.attributes && !Array.isArray(hints.attributes)) return false;
+  return true;
+}
+function incrementalIdStartingFromRandomByte() {
+  let i = Math.floor(Math.random() * 256) & 255;
+  return () => {
+    return i++;
+  };
+}
+var GraphError = class extends Error {
+  constructor(message) {
+    super();
+    this.name = "GraphError";
+    this.message = message;
+  }
+};
+var InvalidArgumentsGraphError = class _InvalidArgumentsGraphError extends GraphError {
+  constructor(message) {
+    super(message);
+    this.name = "InvalidArgumentsGraphError";
+    if (typeof Error.captureStackTrace === "function")
+      Error.captureStackTrace(
+        this,
+        _InvalidArgumentsGraphError.prototype.constructor
+      );
+  }
+};
+var NotFoundGraphError = class _NotFoundGraphError extends GraphError {
+  constructor(message) {
+    super(message);
+    this.name = "NotFoundGraphError";
+    if (typeof Error.captureStackTrace === "function")
+      Error.captureStackTrace(this, _NotFoundGraphError.prototype.constructor);
+  }
+};
+var UsageGraphError = class _UsageGraphError extends GraphError {
+  constructor(message) {
+    super(message);
+    this.name = "UsageGraphError";
+    if (typeof Error.captureStackTrace === "function")
+      Error.captureStackTrace(this, _UsageGraphError.prototype.constructor);
+  }
+};
+function MixedNodeData(key, attributes) {
+  this.key = key;
+  this.attributes = attributes;
+  this.clear();
+}
+MixedNodeData.prototype.clear = function() {
+  this.inDegree = 0;
+  this.outDegree = 0;
+  this.undirectedDegree = 0;
+  this.undirectedLoops = 0;
+  this.directedLoops = 0;
+  this.in = {};
+  this.out = {};
+  this.undirected = {};
+};
+function DirectedNodeData(key, attributes) {
+  this.key = key;
+  this.attributes = attributes;
+  this.clear();
+}
+DirectedNodeData.prototype.clear = function() {
+  this.inDegree = 0;
+  this.outDegree = 0;
+  this.directedLoops = 0;
+  this.in = {};
+  this.out = {};
+};
+function UndirectedNodeData(key, attributes) {
+  this.key = key;
+  this.attributes = attributes;
+  this.clear();
+}
+UndirectedNodeData.prototype.clear = function() {
+  this.undirectedDegree = 0;
+  this.undirectedLoops = 0;
+  this.undirected = {};
+};
+function EdgeData(undirected, key, source, target, attributes) {
+  this.key = key;
+  this.attributes = attributes;
+  this.undirected = undirected;
+  this.source = source;
+  this.target = target;
+}
+EdgeData.prototype.attach = function() {
+  let outKey = "out";
+  let inKey = "in";
+  if (this.undirected) outKey = inKey = "undirected";
+  const source = this.source.key;
+  const target = this.target.key;
+  this.source[outKey][target] = this;
+  if (this.undirected && source === target) return;
+  this.target[inKey][source] = this;
+};
+EdgeData.prototype.attachMulti = function() {
+  let outKey = "out";
+  let inKey = "in";
+  const source = this.source.key;
+  const target = this.target.key;
+  if (this.undirected) outKey = inKey = "undirected";
+  const adj = this.source[outKey];
+  const head2 = adj[target];
+  if (typeof head2 === "undefined") {
+    adj[target] = this;
+    if (!(this.undirected && source === target)) {
+      this.target[inKey][source] = this;
+    }
+    return;
+  }
+  head2.previous = this;
+  this.next = head2;
+  adj[target] = this;
+  this.target[inKey][source] = this;
+};
+EdgeData.prototype.detach = function() {
+  const source = this.source.key;
+  const target = this.target.key;
+  let outKey = "out";
+  let inKey = "in";
+  if (this.undirected) outKey = inKey = "undirected";
+  delete this.source[outKey][target];
+  delete this.target[inKey][source];
+};
+EdgeData.prototype.detachMulti = function() {
+  const source = this.source.key;
+  const target = this.target.key;
+  let outKey = "out";
+  let inKey = "in";
+  if (this.undirected) outKey = inKey = "undirected";
+  if (this.previous === void 0) {
+    if (this.next === void 0) {
+      delete this.source[outKey][target];
+      delete this.target[inKey][source];
+    } else {
+      this.next.previous = void 0;
+      this.source[outKey][target] = this.next;
+      this.target[inKey][source] = this.next;
+    }
+  } else {
+    this.previous.next = this.next;
+    if (this.next !== void 0) {
+      this.next.previous = this.previous;
+    }
+  }
+};
+var NODE = 0;
+var SOURCE = 1;
+var TARGET = 2;
+var OPPOSITE = 3;
+function findRelevantNodeData(graph, method, mode, nodeOrEdge, nameOrEdge, add1, add2) {
+  let nodeData, edgeData, arg1, arg2;
+  nodeOrEdge = "" + nodeOrEdge;
+  if (mode === NODE) {
+    nodeData = graph._nodes.get(nodeOrEdge);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.${method}: could not find the "${nodeOrEdge}" node in the graph.`
+      );
+    arg1 = nameOrEdge;
+    arg2 = add1;
+  } else if (mode === OPPOSITE) {
+    nameOrEdge = "" + nameOrEdge;
+    edgeData = graph._edges.get(nameOrEdge);
+    if (!edgeData)
+      throw new NotFoundGraphError(
+        `Graph.${method}: could not find the "${nameOrEdge}" edge in the graph.`
+      );
+    const source = edgeData.source.key;
+    const target = edgeData.target.key;
+    if (nodeOrEdge === source) {
+      nodeData = edgeData.target;
+    } else if (nodeOrEdge === target) {
+      nodeData = edgeData.source;
+    } else {
+      throw new NotFoundGraphError(
+        `Graph.${method}: the "${nodeOrEdge}" node is not attached to the "${nameOrEdge}" edge (${source}, ${target}).`
+      );
+    }
+    arg1 = add1;
+    arg2 = add2;
+  } else {
+    edgeData = graph._edges.get(nodeOrEdge);
+    if (!edgeData)
+      throw new NotFoundGraphError(
+        `Graph.${method}: could not find the "${nodeOrEdge}" edge in the graph.`
+      );
+    if (mode === SOURCE) {
+      nodeData = edgeData.source;
+    } else {
+      nodeData = edgeData.target;
+    }
+    arg1 = nameOrEdge;
+    arg2 = add1;
+  }
+  return [nodeData, arg1, arg2];
+}
+function attachNodeAttributeGetter(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, name] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    return data.attributes[name];
+  };
+}
+function attachNodeAttributesGetter(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge) {
+    const [data] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge
+    );
+    return data.attributes;
+  };
+}
+function attachNodeAttributeChecker(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, name] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    return data.attributes.hasOwnProperty(name);
+  };
+}
+function attachNodeAttributeSetter(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1, add2) {
+    const [data, name, value] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1,
+      add2
+    );
+    data.attributes[name] = value;
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "set",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachNodeAttributeUpdater(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1, add2) {
+    const [data, name, updater] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1,
+      add2
+    );
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: updater should be a function.`
+      );
+    const attributes = data.attributes;
+    const value = updater(attributes[name]);
+    attributes[name] = value;
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "set",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachNodeAttributeRemover(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, name] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    delete data.attributes[name];
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "remove",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachNodeAttributesReplacer(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, attributes] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided attributes are not a plain object.`
+      );
+    data.attributes = attributes;
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "replace",
+      attributes: data.attributes
+    });
+    return this;
+  };
+}
+function attachNodeAttributesMerger(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, attributes] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided attributes are not a plain object.`
+      );
+    assign(data.attributes, attributes);
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "merge",
+      attributes: data.attributes,
+      data: attributes
+    });
+    return this;
+  };
+}
+function attachNodeAttributesUpdater(Class2, method, mode) {
+  Class2.prototype[method] = function(nodeOrEdge, nameOrEdge, add1) {
+    const [data, updater] = findRelevantNodeData(
+      this,
+      method,
+      mode,
+      nodeOrEdge,
+      nameOrEdge,
+      add1
+    );
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided updater is not a function.`
+      );
+    data.attributes = updater(data.attributes);
+    this.emit("nodeAttributesUpdated", {
+      key: data.key,
+      type: "update",
+      attributes: data.attributes
+    });
+    return this;
+  };
+}
+var NODE_ATTRIBUTES_METHODS = [
+  {
+    name: (element) => `get${element}Attribute`,
+    attacher: attachNodeAttributeGetter
+  },
+  {
+    name: (element) => `get${element}Attributes`,
+    attacher: attachNodeAttributesGetter
+  },
+  {
+    name: (element) => `has${element}Attribute`,
+    attacher: attachNodeAttributeChecker
+  },
+  {
+    name: (element) => `set${element}Attribute`,
+    attacher: attachNodeAttributeSetter
+  },
+  {
+    name: (element) => `update${element}Attribute`,
+    attacher: attachNodeAttributeUpdater
+  },
+  {
+    name: (element) => `remove${element}Attribute`,
+    attacher: attachNodeAttributeRemover
+  },
+  {
+    name: (element) => `replace${element}Attributes`,
+    attacher: attachNodeAttributesReplacer
+  },
+  {
+    name: (element) => `merge${element}Attributes`,
+    attacher: attachNodeAttributesMerger
+  },
+  {
+    name: (element) => `update${element}Attributes`,
+    attacher: attachNodeAttributesUpdater
+  }
+];
+function attachNodeAttributesMethods(Graph3) {
+  NODE_ATTRIBUTES_METHODS.forEach(function({ name, attacher }) {
+    attacher(Graph3, name("Node"), NODE);
+    attacher(Graph3, name("Source"), SOURCE);
+    attacher(Graph3, name("Target"), TARGET);
+    attacher(Graph3, name("Opposite"), OPPOSITE);
+  });
+}
+function attachEdgeAttributeGetter(Class2, method, type) {
+  Class2.prototype[method] = function(element, name) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element;
+      const target = "" + name;
+      name = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    return data.attributes[name];
+  };
+}
+function attachEdgeAttributesGetter(Class2, method, type) {
+  Class2.prototype[method] = function(element) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 1) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element, target = "" + arguments[1];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    return data.attributes;
+  };
+}
+function attachEdgeAttributeChecker(Class2, method, type) {
+  Class2.prototype[method] = function(element, name) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element;
+      const target = "" + name;
+      name = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    return data.attributes.hasOwnProperty(name);
+  };
+}
+function attachEdgeAttributeSetter(Class2, method, type) {
+  Class2.prototype[method] = function(element, name, value) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 3) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element;
+      const target = "" + name;
+      name = arguments[2];
+      value = arguments[3];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    data.attributes[name] = value;
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "set",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachEdgeAttributeUpdater(Class2, method, type) {
+  Class2.prototype[method] = function(element, name, updater) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 3) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element;
+      const target = "" + name;
+      name = arguments[2];
+      updater = arguments[3];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: updater should be a function.`
+      );
+    data.attributes[name] = updater(data.attributes[name]);
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "set",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachEdgeAttributeRemover(Class2, method, type) {
+  Class2.prototype[method] = function(element, name) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element;
+      const target = "" + name;
+      name = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    delete data.attributes[name];
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "remove",
+      attributes: data.attributes,
+      name
+    });
+    return this;
+  };
+}
+function attachEdgeAttributesReplacer(Class2, method, type) {
+  Class2.prototype[method] = function(element, attributes) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element, target = "" + attributes;
+      attributes = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided attributes are not a plain object.`
+      );
+    data.attributes = attributes;
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "replace",
+      attributes: data.attributes
+    });
+    return this;
+  };
+}
+function attachEdgeAttributesMerger(Class2, method, type) {
+  Class2.prototype[method] = function(element, attributes) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element, target = "" + attributes;
+      attributes = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided attributes are not a plain object.`
+      );
+    assign(data.attributes, attributes);
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "merge",
+      attributes: data.attributes,
+      data: attributes
+    });
+    return this;
+  };
+}
+function attachEdgeAttributesUpdater(Class2, method, type) {
+  Class2.prototype[method] = function(element, updater) {
+    let data;
+    if (this.type !== "mixed" && type !== "mixed" && type !== this.type)
+      throw new UsageGraphError(
+        `Graph.${method}: cannot find this type of edges in your ${this.type} graph.`
+      );
+    if (arguments.length > 2) {
+      if (this.multi)
+        throw new UsageGraphError(
+          `Graph.${method}: cannot use a {source,target} combo when asking about an edge's attributes in a MultiGraph since we cannot infer the one you want information about.`
+        );
+      const source = "" + element, target = "" + updater;
+      updater = arguments[2];
+      data = getMatchingEdge(this, source, target, type);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find an edge for the given path ("${source}" - "${target}").`
+        );
+    } else {
+      if (type !== "mixed")
+        throw new UsageGraphError(
+          `Graph.${method}: calling this method with only a key (vs. a source and target) does not make sense since an edge with this key could have the other type.`
+        );
+      element = "" + element;
+      data = this._edges.get(element);
+      if (!data)
+        throw new NotFoundGraphError(
+          `Graph.${method}: could not find the "${element}" edge in the graph.`
+        );
+    }
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        `Graph.${method}: provided updater is not a function.`
+      );
+    data.attributes = updater(data.attributes);
+    this.emit("edgeAttributesUpdated", {
+      key: data.key,
+      type: "update",
+      attributes: data.attributes
+    });
+    return this;
+  };
+}
+var EDGE_ATTRIBUTES_METHODS = [
+  {
+    name: (element) => `get${element}Attribute`,
+    attacher: attachEdgeAttributeGetter
+  },
+  {
+    name: (element) => `get${element}Attributes`,
+    attacher: attachEdgeAttributesGetter
+  },
+  {
+    name: (element) => `has${element}Attribute`,
+    attacher: attachEdgeAttributeChecker
+  },
+  {
+    name: (element) => `set${element}Attribute`,
+    attacher: attachEdgeAttributeSetter
+  },
+  {
+    name: (element) => `update${element}Attribute`,
+    attacher: attachEdgeAttributeUpdater
+  },
+  {
+    name: (element) => `remove${element}Attribute`,
+    attacher: attachEdgeAttributeRemover
+  },
+  {
+    name: (element) => `replace${element}Attributes`,
+    attacher: attachEdgeAttributesReplacer
+  },
+  {
+    name: (element) => `merge${element}Attributes`,
+    attacher: attachEdgeAttributesMerger
+  },
+  {
+    name: (element) => `update${element}Attributes`,
+    attacher: attachEdgeAttributesUpdater
+  }
+];
+function attachEdgeAttributesMethods(Graph3) {
+  EDGE_ATTRIBUTES_METHODS.forEach(function({ name, attacher }) {
+    attacher(Graph3, name("Edge"), "mixed");
+    attacher(Graph3, name("DirectedEdge"), "directed");
+    attacher(Graph3, name("UndirectedEdge"), "undirected");
+  });
+}
+var EDGES_ITERATION = [
+  {
+    name: "edges",
+    type: "mixed"
+  },
+  {
+    name: "inEdges",
+    type: "directed",
+    direction: "in"
+  },
+  {
+    name: "outEdges",
+    type: "directed",
+    direction: "out"
+  },
+  {
+    name: "inboundEdges",
+    type: "mixed",
+    direction: "in"
+  },
+  {
+    name: "outboundEdges",
+    type: "mixed",
+    direction: "out"
+  },
+  {
+    name: "directedEdges",
+    type: "directed"
+  },
+  {
+    name: "undirectedEdges",
+    type: "undirected"
+  }
+];
+function forEachSimple(breakable, object3, callback, avoid) {
+  let shouldBreak = false;
+  for (const k in object3) {
+    if (k === avoid) continue;
+    const edgeData = object3[k];
+    shouldBreak = callback(
+      edgeData.key,
+      edgeData.attributes,
+      edgeData.source.key,
+      edgeData.target.key,
+      edgeData.source.attributes,
+      edgeData.target.attributes,
+      edgeData.undirected
+    );
+    if (breakable && shouldBreak) return edgeData.key;
+  }
+  return;
+}
+function forEachMulti(breakable, object3, callback, avoid) {
+  let edgeData, source, target;
+  let shouldBreak = false;
+  for (const k in object3) {
+    if (k === avoid) continue;
+    edgeData = object3[k];
+    do {
+      source = edgeData.source;
+      target = edgeData.target;
+      shouldBreak = callback(
+        edgeData.key,
+        edgeData.attributes,
+        source.key,
+        target.key,
+        source.attributes,
+        target.attributes,
+        edgeData.undirected
+      );
+      if (breakable && shouldBreak) return edgeData.key;
+      edgeData = edgeData.next;
+    } while (edgeData !== void 0);
+  }
+  return;
+}
+function createIterator(object3, avoid) {
+  const keys = Object.keys(object3);
+  const l = keys.length;
+  let edgeData;
+  let i = 0;
+  return new import_iterator.default(function next() {
+    do {
+      if (!edgeData) {
+        if (i >= l) return { done: true };
+        const k = keys[i++];
+        if (k === avoid) {
+          edgeData = void 0;
+          continue;
+        }
+        edgeData = object3[k];
+      } else {
+        edgeData = edgeData.next;
+      }
+    } while (!edgeData);
+    return {
+      done: false,
+      value: {
+        edge: edgeData.key,
+        attributes: edgeData.attributes,
+        source: edgeData.source.key,
+        target: edgeData.target.key,
+        sourceAttributes: edgeData.source.attributes,
+        targetAttributes: edgeData.target.attributes,
+        undirected: edgeData.undirected
+      }
+    };
+  });
+}
+function forEachForKeySimple(breakable, object3, k, callback) {
+  const edgeData = object3[k];
+  if (!edgeData) return;
+  const sourceData = edgeData.source;
+  const targetData = edgeData.target;
+  if (callback(
+    edgeData.key,
+    edgeData.attributes,
+    sourceData.key,
+    targetData.key,
+    sourceData.attributes,
+    targetData.attributes,
+    edgeData.undirected
+  ) && breakable)
+    return edgeData.key;
+}
+function forEachForKeyMulti(breakable, object3, k, callback) {
+  let edgeData = object3[k];
+  if (!edgeData) return;
+  let shouldBreak = false;
+  do {
+    shouldBreak = callback(
+      edgeData.key,
+      edgeData.attributes,
+      edgeData.source.key,
+      edgeData.target.key,
+      edgeData.source.attributes,
+      edgeData.target.attributes,
+      edgeData.undirected
+    );
+    if (breakable && shouldBreak) return edgeData.key;
+    edgeData = edgeData.next;
+  } while (edgeData !== void 0);
+  return;
+}
+function createIteratorForKey(object3, k) {
+  let edgeData = object3[k];
+  if (edgeData.next !== void 0) {
+    return new import_iterator.default(function() {
+      if (!edgeData) return { done: true };
+      const value = {
+        edge: edgeData.key,
+        attributes: edgeData.attributes,
+        source: edgeData.source.key,
+        target: edgeData.target.key,
+        sourceAttributes: edgeData.source.attributes,
+        targetAttributes: edgeData.target.attributes,
+        undirected: edgeData.undirected
+      };
+      edgeData = edgeData.next;
+      return {
+        done: false,
+        value
+      };
+    });
+  }
+  return import_iterator.default.of({
+    edge: edgeData.key,
+    attributes: edgeData.attributes,
+    source: edgeData.source.key,
+    target: edgeData.target.key,
+    sourceAttributes: edgeData.source.attributes,
+    targetAttributes: edgeData.target.attributes,
+    undirected: edgeData.undirected
+  });
+}
+function createEdgeArray(graph, type) {
+  if (graph.size === 0) return [];
+  if (type === "mixed" || type === graph.type) {
+    if (typeof Array.from === "function")
+      return Array.from(graph._edges.keys());
+    return (0, import_take.default)(graph._edges.keys(), graph._edges.size);
+  }
+  const size = type === "undirected" ? graph.undirectedSize : graph.directedSize;
+  const list = new Array(size), mask = type === "undirected";
+  const iterator = graph._edges.values();
+  let i = 0;
+  let step, data;
+  while (step = iterator.next(), step.done !== true) {
+    data = step.value;
+    if (data.undirected === mask) list[i++] = data.key;
+  }
+  return list;
+}
+function forEachEdge(breakable, graph, type, callback) {
+  if (graph.size === 0) return;
+  const shouldFilter = type !== "mixed" && type !== graph.type;
+  const mask = type === "undirected";
+  let step, data;
+  let shouldBreak = false;
+  const iterator = graph._edges.values();
+  while (step = iterator.next(), step.done !== true) {
+    data = step.value;
+    if (shouldFilter && data.undirected !== mask) continue;
+    const { key, attributes, source, target } = data;
+    shouldBreak = callback(
+      key,
+      attributes,
+      source.key,
+      target.key,
+      source.attributes,
+      target.attributes,
+      data.undirected
+    );
+    if (breakable && shouldBreak) return key;
+  }
+  return;
+}
+function createEdgeIterator(graph, type) {
+  if (graph.size === 0) return import_iterator.default.empty();
+  const shouldFilter = type !== "mixed" && type !== graph.type;
+  const mask = type === "undirected";
+  const iterator = graph._edges.values();
+  return new import_iterator.default(function next() {
+    let step, data;
+    while (true) {
+      step = iterator.next();
+      if (step.done) return step;
+      data = step.value;
+      if (shouldFilter && data.undirected !== mask) continue;
+      break;
+    }
+    const value = {
+      edge: data.key,
+      attributes: data.attributes,
+      source: data.source.key,
+      target: data.target.key,
+      sourceAttributes: data.source.attributes,
+      targetAttributes: data.target.attributes,
+      undirected: data.undirected
+    };
+    return { value, done: false };
+  });
+}
+function forEachEdgeForNode(breakable, multi, type, direction, nodeData, callback) {
+  const fn = multi ? forEachMulti : forEachSimple;
+  let found;
+  if (type !== "undirected") {
+    if (direction !== "out") {
+      found = fn(breakable, nodeData.in, callback);
+      if (breakable && found) return found;
+    }
+    if (direction !== "in") {
+      found = fn(
+        breakable,
+        nodeData.out,
+        callback,
+        !direction ? nodeData.key : void 0
+      );
+      if (breakable && found) return found;
+    }
+  }
+  if (type !== "directed") {
+    found = fn(breakable, nodeData.undirected, callback);
+    if (breakable && found) return found;
+  }
+  return;
+}
+function createEdgeArrayForNode(multi, type, direction, nodeData) {
+  const edges = [];
+  forEachEdgeForNode(false, multi, type, direction, nodeData, function(key) {
+    edges.push(key);
+  });
+  return edges;
+}
+function createEdgeIteratorForNode(type, direction, nodeData) {
+  let iterator = import_iterator.default.empty();
+  if (type !== "undirected") {
+    if (direction !== "out" && typeof nodeData.in !== "undefined")
+      iterator = (0, import_chain.default)(iterator, createIterator(nodeData.in));
+    if (direction !== "in" && typeof nodeData.out !== "undefined")
+      iterator = (0, import_chain.default)(
+        iterator,
+        createIterator(nodeData.out, !direction ? nodeData.key : void 0)
+      );
+  }
+  if (type !== "directed" && typeof nodeData.undirected !== "undefined") {
+    iterator = (0, import_chain.default)(iterator, createIterator(nodeData.undirected));
+  }
+  return iterator;
+}
+function forEachEdgeForPath(breakable, type, multi, direction, sourceData, target, callback) {
+  const fn = multi ? forEachForKeyMulti : forEachForKeySimple;
+  let found;
+  if (type !== "undirected") {
+    if (typeof sourceData.in !== "undefined" && direction !== "out") {
+      found = fn(breakable, sourceData.in, target, callback);
+      if (breakable && found) return found;
+    }
+    if (typeof sourceData.out !== "undefined" && direction !== "in" && (direction || sourceData.key !== target)) {
+      found = fn(breakable, sourceData.out, target, callback);
+      if (breakable && found) return found;
+    }
+  }
+  if (type !== "directed") {
+    if (typeof sourceData.undirected !== "undefined") {
+      found = fn(breakable, sourceData.undirected, target, callback);
+      if (breakable && found) return found;
+    }
+  }
+  return;
+}
+function createEdgeArrayForPath(type, multi, direction, sourceData, target) {
+  const edges = [];
+  forEachEdgeForPath(
+    false,
+    type,
+    multi,
+    direction,
+    sourceData,
+    target,
+    function(key) {
+      edges.push(key);
+    }
+  );
+  return edges;
+}
+function createEdgeIteratorForPath(type, direction, sourceData, target) {
+  let iterator = import_iterator.default.empty();
+  if (type !== "undirected") {
+    if (typeof sourceData.in !== "undefined" && direction !== "out" && target in sourceData.in)
+      iterator = (0, import_chain.default)(iterator, createIteratorForKey(sourceData.in, target));
+    if (typeof sourceData.out !== "undefined" && direction !== "in" && target in sourceData.out && (direction || sourceData.key !== target))
+      iterator = (0, import_chain.default)(iterator, createIteratorForKey(sourceData.out, target));
+  }
+  if (type !== "directed") {
+    if (typeof sourceData.undirected !== "undefined" && target in sourceData.undirected)
+      iterator = (0, import_chain.default)(
+        iterator,
+        createIteratorForKey(sourceData.undirected, target)
+      );
+  }
+  return iterator;
+}
+function attachEdgeArrayCreator(Class2, description) {
+  const { name, type, direction } = description;
+  Class2.prototype[name] = function(source, target) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type)
+      return [];
+    if (!arguments.length) return createEdgeArray(this, type);
+    if (arguments.length === 1) {
+      source = "" + source;
+      const nodeData = this._nodes.get(source);
+      if (typeof nodeData === "undefined")
+        throw new NotFoundGraphError(
+          `Graph.${name}: could not find the "${source}" node in the graph.`
+        );
+      return createEdgeArrayForNode(
+        this.multi,
+        type === "mixed" ? this.type : type,
+        direction,
+        nodeData
+      );
+    }
+    if (arguments.length === 2) {
+      source = "" + source;
+      target = "" + target;
+      const sourceData = this._nodes.get(source);
+      if (!sourceData)
+        throw new NotFoundGraphError(
+          `Graph.${name}:  could not find the "${source}" source node in the graph.`
+        );
+      if (!this._nodes.has(target))
+        throw new NotFoundGraphError(
+          `Graph.${name}:  could not find the "${target}" target node in the graph.`
+        );
+      return createEdgeArrayForPath(
+        type,
+        this.multi,
+        direction,
+        sourceData,
+        target
+      );
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.${name}: too many arguments (expecting 0, 1 or 2 and got ${arguments.length}).`
+    );
+  };
+}
+function attachForEachEdge(Class2, description) {
+  const { name, type, direction } = description;
+  const forEachName = "forEach" + name[0].toUpperCase() + name.slice(1, -1);
+  Class2.prototype[forEachName] = function(source, target, callback) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type) return;
+    if (arguments.length === 1) {
+      callback = source;
+      return forEachEdge(false, this, type, callback);
+    }
+    if (arguments.length === 2) {
+      source = "" + source;
+      callback = target;
+      const nodeData = this._nodes.get(source);
+      if (typeof nodeData === "undefined")
+        throw new NotFoundGraphError(
+          `Graph.${forEachName}: could not find the "${source}" node in the graph.`
+        );
+      return forEachEdgeForNode(
+        false,
+        this.multi,
+        type === "mixed" ? this.type : type,
+        direction,
+        nodeData,
+        callback
+      );
+    }
+    if (arguments.length === 3) {
+      source = "" + source;
+      target = "" + target;
+      const sourceData = this._nodes.get(source);
+      if (!sourceData)
+        throw new NotFoundGraphError(
+          `Graph.${forEachName}:  could not find the "${source}" source node in the graph.`
+        );
+      if (!this._nodes.has(target))
+        throw new NotFoundGraphError(
+          `Graph.${forEachName}:  could not find the "${target}" target node in the graph.`
+        );
+      return forEachEdgeForPath(
+        false,
+        type,
+        this.multi,
+        direction,
+        sourceData,
+        target,
+        callback
+      );
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.${forEachName}: too many arguments (expecting 1, 2 or 3 and got ${arguments.length}).`
+    );
+  };
+  const mapName = "map" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[mapName] = function() {
+    const args = Array.prototype.slice.call(arguments);
+    const callback = args.pop();
+    let result2;
+    if (args.length === 0) {
+      let length = 0;
+      if (type !== "directed") length += this.undirectedSize;
+      if (type !== "undirected") length += this.directedSize;
+      result2 = new Array(length);
+      let i = 0;
+      args.push((e, ea, s, t, sa, ta, u) => {
+        result2[i++] = callback(e, ea, s, t, sa, ta, u);
+      });
+    } else {
+      result2 = [];
+      args.push((e, ea, s, t, sa, ta, u) => {
+        result2.push(callback(e, ea, s, t, sa, ta, u));
+      });
+    }
+    this[forEachName].apply(this, args);
+    return result2;
+  };
+  const filterName = "filter" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[filterName] = function() {
+    const args = Array.prototype.slice.call(arguments);
+    const callback = args.pop();
+    const result2 = [];
+    args.push((e, ea, s, t, sa, ta, u) => {
+      if (callback(e, ea, s, t, sa, ta, u)) result2.push(e);
+    });
+    this[forEachName].apply(this, args);
+    return result2;
+  };
+  const reduceName = "reduce" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[reduceName] = function() {
+    let args = Array.prototype.slice.call(arguments);
+    if (args.length < 2 || args.length > 4) {
+      throw new InvalidArgumentsGraphError(
+        `Graph.${reduceName}: invalid number of arguments (expecting 2, 3 or 4 and got ${args.length}).`
+      );
+    }
+    if (typeof args[args.length - 1] === "function" && typeof args[args.length - 2] !== "function") {
+      throw new InvalidArgumentsGraphError(
+        `Graph.${reduceName}: missing initial value. You must provide it because the callback takes more than one argument and we cannot infer the initial value from the first iteration, as you could with a simple array.`
+      );
+    }
+    let callback;
+    let initialValue;
+    if (args.length === 2) {
+      callback = args[0];
+      initialValue = args[1];
+      args = [];
+    } else if (args.length === 3) {
+      callback = args[1];
+      initialValue = args[2];
+      args = [args[0]];
+    } else if (args.length === 4) {
+      callback = args[2];
+      initialValue = args[3];
+      args = [args[0], args[1]];
+    }
+    let accumulator = initialValue;
+    args.push((e, ea, s, t, sa, ta, u) => {
+      accumulator = callback(accumulator, e, ea, s, t, sa, ta, u);
+    });
+    this[forEachName].apply(this, args);
+    return accumulator;
+  };
+}
+function attachFindEdge(Class2, description) {
+  const { name, type, direction } = description;
+  const findEdgeName = "find" + name[0].toUpperCase() + name.slice(1, -1);
+  Class2.prototype[findEdgeName] = function(source, target, callback) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type)
+      return false;
+    if (arguments.length === 1) {
+      callback = source;
+      return forEachEdge(true, this, type, callback);
+    }
+    if (arguments.length === 2) {
+      source = "" + source;
+      callback = target;
+      const nodeData = this._nodes.get(source);
+      if (typeof nodeData === "undefined")
+        throw new NotFoundGraphError(
+          `Graph.${findEdgeName}: could not find the "${source}" node in the graph.`
+        );
+      return forEachEdgeForNode(
+        true,
+        this.multi,
+        type === "mixed" ? this.type : type,
+        direction,
+        nodeData,
+        callback
+      );
+    }
+    if (arguments.length === 3) {
+      source = "" + source;
+      target = "" + target;
+      const sourceData = this._nodes.get(source);
+      if (!sourceData)
+        throw new NotFoundGraphError(
+          `Graph.${findEdgeName}:  could not find the "${source}" source node in the graph.`
+        );
+      if (!this._nodes.has(target))
+        throw new NotFoundGraphError(
+          `Graph.${findEdgeName}:  could not find the "${target}" target node in the graph.`
+        );
+      return forEachEdgeForPath(
+        true,
+        type,
+        this.multi,
+        direction,
+        sourceData,
+        target,
+        callback
+      );
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.${findEdgeName}: too many arguments (expecting 1, 2 or 3 and got ${arguments.length}).`
+    );
+  };
+  const someName = "some" + name[0].toUpperCase() + name.slice(1, -1);
+  Class2.prototype[someName] = function() {
+    const args = Array.prototype.slice.call(arguments);
+    const callback = args.pop();
+    args.push((e, ea, s, t, sa, ta, u) => {
+      return callback(e, ea, s, t, sa, ta, u);
+    });
+    const found = this[findEdgeName].apply(this, args);
+    if (found) return true;
+    return false;
+  };
+  const everyName = "every" + name[0].toUpperCase() + name.slice(1, -1);
+  Class2.prototype[everyName] = function() {
+    const args = Array.prototype.slice.call(arguments);
+    const callback = args.pop();
+    args.push((e, ea, s, t, sa, ta, u) => {
+      return !callback(e, ea, s, t, sa, ta, u);
+    });
+    const found = this[findEdgeName].apply(this, args);
+    if (found) return false;
+    return true;
+  };
+}
+function attachEdgeIteratorCreator(Class2, description) {
+  const { name: originalName, type, direction } = description;
+  const name = originalName.slice(0, -1) + "Entries";
+  Class2.prototype[name] = function(source, target) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type)
+      return import_iterator.default.empty();
+    if (!arguments.length) return createEdgeIterator(this, type);
+    if (arguments.length === 1) {
+      source = "" + source;
+      const sourceData = this._nodes.get(source);
+      if (!sourceData)
+        throw new NotFoundGraphError(
+          `Graph.${name}: could not find the "${source}" node in the graph.`
+        );
+      return createEdgeIteratorForNode(type, direction, sourceData);
+    }
+    if (arguments.length === 2) {
+      source = "" + source;
+      target = "" + target;
+      const sourceData = this._nodes.get(source);
+      if (!sourceData)
+        throw new NotFoundGraphError(
+          `Graph.${name}:  could not find the "${source}" source node in the graph.`
+        );
+      if (!this._nodes.has(target))
+        throw new NotFoundGraphError(
+          `Graph.${name}:  could not find the "${target}" target node in the graph.`
+        );
+      return createEdgeIteratorForPath(type, direction, sourceData, target);
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.${name}: too many arguments (expecting 0, 1 or 2 and got ${arguments.length}).`
+    );
+  };
+}
+function attachEdgeIterationMethods(Graph3) {
+  EDGES_ITERATION.forEach((description) => {
+    attachEdgeArrayCreator(Graph3, description);
+    attachForEachEdge(Graph3, description);
+    attachFindEdge(Graph3, description);
+    attachEdgeIteratorCreator(Graph3, description);
+  });
+}
+var NEIGHBORS_ITERATION = [
+  {
+    name: "neighbors",
+    type: "mixed"
+  },
+  {
+    name: "inNeighbors",
+    type: "directed",
+    direction: "in"
+  },
+  {
+    name: "outNeighbors",
+    type: "directed",
+    direction: "out"
+  },
+  {
+    name: "inboundNeighbors",
+    type: "mixed",
+    direction: "in"
+  },
+  {
+    name: "outboundNeighbors",
+    type: "mixed",
+    direction: "out"
+  },
+  {
+    name: "directedNeighbors",
+    type: "directed"
+  },
+  {
+    name: "undirectedNeighbors",
+    type: "undirected"
+  }
+];
+function CompositeSetWrapper() {
+  this.A = null;
+  this.B = null;
+}
+CompositeSetWrapper.prototype.wrap = function(set) {
+  if (this.A === null) this.A = set;
+  else if (this.B === null) this.B = set;
+};
+CompositeSetWrapper.prototype.has = function(key) {
+  if (this.A !== null && key in this.A) return true;
+  if (this.B !== null && key in this.B) return true;
+  return false;
+};
+function forEachInObjectOnce(breakable, visited, nodeData, object3, callback) {
+  for (const k in object3) {
+    const edgeData = object3[k];
+    const sourceData = edgeData.source;
+    const targetData = edgeData.target;
+    const neighborData = sourceData === nodeData ? targetData : sourceData;
+    if (visited && visited.has(neighborData.key)) continue;
+    const shouldBreak = callback(neighborData.key, neighborData.attributes);
+    if (breakable && shouldBreak) return neighborData.key;
+  }
+  return;
+}
+function forEachNeighbor(breakable, type, direction, nodeData, callback) {
+  if (type !== "mixed") {
+    if (type === "undirected")
+      return forEachInObjectOnce(
+        breakable,
+        null,
+        nodeData,
+        nodeData.undirected,
+        callback
+      );
+    if (typeof direction === "string")
+      return forEachInObjectOnce(
+        breakable,
+        null,
+        nodeData,
+        nodeData[direction],
+        callback
+      );
+  }
+  const visited = new CompositeSetWrapper();
+  let found;
+  if (type !== "undirected") {
+    if (direction !== "out") {
+      found = forEachInObjectOnce(
+        breakable,
+        null,
+        nodeData,
+        nodeData.in,
+        callback
+      );
+      if (breakable && found) return found;
+      visited.wrap(nodeData.in);
+    }
+    if (direction !== "in") {
+      found = forEachInObjectOnce(
+        breakable,
+        visited,
+        nodeData,
+        nodeData.out,
+        callback
+      );
+      if (breakable && found) return found;
+      visited.wrap(nodeData.out);
+    }
+  }
+  if (type !== "directed") {
+    found = forEachInObjectOnce(
+      breakable,
+      visited,
+      nodeData,
+      nodeData.undirected,
+      callback
+    );
+    if (breakable && found) return found;
+  }
+  return;
+}
+function createNeighborArrayForNode(type, direction, nodeData) {
+  if (type !== "mixed") {
+    if (type === "undirected") return Object.keys(nodeData.undirected);
+    if (typeof direction === "string") return Object.keys(nodeData[direction]);
+  }
+  const neighbors = [];
+  forEachNeighbor(false, type, direction, nodeData, function(key) {
+    neighbors.push(key);
+  });
+  return neighbors;
+}
+function createDedupedObjectIterator(visited, nodeData, object3) {
+  const keys = Object.keys(object3);
+  const l = keys.length;
+  let i = 0;
+  return new import_iterator.default(function next() {
+    let neighborData = null;
+    do {
+      if (i >= l) {
+        if (visited) visited.wrap(object3);
+        return { done: true };
+      }
+      const edgeData = object3[keys[i++]];
+      const sourceData = edgeData.source;
+      const targetData = edgeData.target;
+      neighborData = sourceData === nodeData ? targetData : sourceData;
+      if (visited && visited.has(neighborData.key)) {
+        neighborData = null;
+        continue;
+      }
+    } while (neighborData === null);
+    return {
+      done: false,
+      value: { neighbor: neighborData.key, attributes: neighborData.attributes }
+    };
+  });
+}
+function createNeighborIterator(type, direction, nodeData) {
+  if (type !== "mixed") {
+    if (type === "undirected")
+      return createDedupedObjectIterator(null, nodeData, nodeData.undirected);
+    if (typeof direction === "string")
+      return createDedupedObjectIterator(null, nodeData, nodeData[direction]);
+  }
+  let iterator = import_iterator.default.empty();
+  const visited = new CompositeSetWrapper();
+  if (type !== "undirected") {
+    if (direction !== "out") {
+      iterator = (0, import_chain.default)(
+        iterator,
+        createDedupedObjectIterator(visited, nodeData, nodeData.in)
+      );
+    }
+    if (direction !== "in") {
+      iterator = (0, import_chain.default)(
+        iterator,
+        createDedupedObjectIterator(visited, nodeData, nodeData.out)
+      );
+    }
+  }
+  if (type !== "directed") {
+    iterator = (0, import_chain.default)(
+      iterator,
+      createDedupedObjectIterator(visited, nodeData, nodeData.undirected)
+    );
+  }
+  return iterator;
+}
+function attachNeighborArrayCreator(Class2, description) {
+  const { name, type, direction } = description;
+  Class2.prototype[name] = function(node) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type)
+      return [];
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (typeof nodeData === "undefined")
+      throw new NotFoundGraphError(
+        `Graph.${name}: could not find the "${node}" node in the graph.`
+      );
+    return createNeighborArrayForNode(
+      type === "mixed" ? this.type : type,
+      direction,
+      nodeData
+    );
+  };
+}
+function attachForEachNeighbor(Class2, description) {
+  const { name, type, direction } = description;
+  const forEachName = "forEach" + name[0].toUpperCase() + name.slice(1, -1);
+  Class2.prototype[forEachName] = function(node, callback) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type) return;
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (typeof nodeData === "undefined")
+      throw new NotFoundGraphError(
+        `Graph.${forEachName}: could not find the "${node}" node in the graph.`
+      );
+    forEachNeighbor(
+      false,
+      type === "mixed" ? this.type : type,
+      direction,
+      nodeData,
+      callback
+    );
+  };
+  const mapName = "map" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[mapName] = function(node, callback) {
+    const result2 = [];
+    this[forEachName](node, (n, a) => {
+      result2.push(callback(n, a));
+    });
+    return result2;
+  };
+  const filterName = "filter" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[filterName] = function(node, callback) {
+    const result2 = [];
+    this[forEachName](node, (n, a) => {
+      if (callback(n, a)) result2.push(n);
+    });
+    return result2;
+  };
+  const reduceName = "reduce" + name[0].toUpperCase() + name.slice(1);
+  Class2.prototype[reduceName] = function(node, callback, initialValue) {
+    if (arguments.length < 3)
+      throw new InvalidArgumentsGraphError(
+        `Graph.${reduceName}: missing initial value. You must provide it because the callback takes more than one argument and we cannot infer the initial value from the first iteration, as you could with a simple array.`
+      );
+    let accumulator = initialValue;
+    this[forEachName](node, (n, a) => {
+      accumulator = callback(accumulator, n, a);
+    });
+    return accumulator;
+  };
+}
+function attachFindNeighbor(Class2, description) {
+  const { name, type, direction } = description;
+  const capitalizedSingular = name[0].toUpperCase() + name.slice(1, -1);
+  const findName = "find" + capitalizedSingular;
+  Class2.prototype[findName] = function(node, callback) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type) return;
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (typeof nodeData === "undefined")
+      throw new NotFoundGraphError(
+        `Graph.${findName}: could not find the "${node}" node in the graph.`
+      );
+    return forEachNeighbor(
+      true,
+      type === "mixed" ? this.type : type,
+      direction,
+      nodeData,
+      callback
+    );
+  };
+  const someName = "some" + capitalizedSingular;
+  Class2.prototype[someName] = function(node, callback) {
+    const found = this[findName](node, callback);
+    if (found) return true;
+    return false;
+  };
+  const everyName = "every" + capitalizedSingular;
+  Class2.prototype[everyName] = function(node, callback) {
+    const found = this[findName](node, (n, a) => {
+      return !callback(n, a);
+    });
+    if (found) return false;
+    return true;
+  };
+}
+function attachNeighborIteratorCreator(Class2, description) {
+  const { name, type, direction } = description;
+  const iteratorName = name.slice(0, -1) + "Entries";
+  Class2.prototype[iteratorName] = function(node) {
+    if (type !== "mixed" && this.type !== "mixed" && type !== this.type)
+      return import_iterator.default.empty();
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (typeof nodeData === "undefined")
+      throw new NotFoundGraphError(
+        `Graph.${iteratorName}: could not find the "${node}" node in the graph.`
+      );
+    return createNeighborIterator(
+      type === "mixed" ? this.type : type,
+      direction,
+      nodeData
+    );
+  };
+}
+function attachNeighborIterationMethods(Graph3) {
+  NEIGHBORS_ITERATION.forEach((description) => {
+    attachNeighborArrayCreator(Graph3, description);
+    attachForEachNeighbor(Graph3, description);
+    attachFindNeighbor(Graph3, description);
+    attachNeighborIteratorCreator(Graph3, description);
+  });
+}
+function forEachAdjacency(breakable, assymetric, disconnectedNodes, graph, callback) {
+  const iterator = graph._nodes.values();
+  const type = graph.type;
+  let step, sourceData, neighbor, adj, edgeData, targetData, shouldBreak;
+  while (step = iterator.next(), step.done !== true) {
+    let hasEdges = false;
+    sourceData = step.value;
+    if (type !== "undirected") {
+      adj = sourceData.out;
+      for (neighbor in adj) {
+        edgeData = adj[neighbor];
+        do {
+          targetData = edgeData.target;
+          hasEdges = true;
+          shouldBreak = callback(
+            sourceData.key,
+            targetData.key,
+            sourceData.attributes,
+            targetData.attributes,
+            edgeData.key,
+            edgeData.attributes,
+            edgeData.undirected
+          );
+          if (breakable && shouldBreak) return edgeData;
+          edgeData = edgeData.next;
+        } while (edgeData);
+      }
+    }
+    if (type !== "directed") {
+      adj = sourceData.undirected;
+      for (neighbor in adj) {
+        if (assymetric && sourceData.key > neighbor) continue;
+        edgeData = adj[neighbor];
+        do {
+          targetData = edgeData.target;
+          if (targetData.key !== neighbor) targetData = edgeData.source;
+          hasEdges = true;
+          shouldBreak = callback(
+            sourceData.key,
+            targetData.key,
+            sourceData.attributes,
+            targetData.attributes,
+            edgeData.key,
+            edgeData.attributes,
+            edgeData.undirected
+          );
+          if (breakable && shouldBreak) return edgeData;
+          edgeData = edgeData.next;
+        } while (edgeData);
+      }
+    }
+    if (disconnectedNodes && !hasEdges) {
+      shouldBreak = callback(
+        sourceData.key,
+        null,
+        sourceData.attributes,
+        null,
+        null,
+        null,
+        null
+      );
+      if (breakable && shouldBreak) return null;
+    }
+  }
+  return;
+}
+function serializeNode(key, data) {
+  const serialized = { key };
+  if (!isEmpty(data.attributes))
+    serialized.attributes = assign({}, data.attributes);
+  return serialized;
+}
+function serializeEdge(type, key, data) {
+  const serialized = {
+    key,
+    source: data.source.key,
+    target: data.target.key
+  };
+  if (!isEmpty(data.attributes))
+    serialized.attributes = assign({}, data.attributes);
+  if (type === "mixed" && data.undirected) serialized.undirected = true;
+  return serialized;
+}
+function validateSerializedNode(value) {
+  if (!isPlainObject4(value))
+    throw new InvalidArgumentsGraphError(
+      'Graph.import: invalid serialized node. A serialized node should be a plain object with at least a "key" property.'
+    );
+  if (!("key" in value))
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: serialized node is missing its key."
+    );
+  if ("attributes" in value && (!isPlainObject4(value.attributes) || value.attributes === null))
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: invalid attributes. Attributes should be a plain object, null or omitted."
+    );
+}
+function validateSerializedEdge(value) {
+  if (!isPlainObject4(value))
+    throw new InvalidArgumentsGraphError(
+      'Graph.import: invalid serialized edge. A serialized edge should be a plain object with at least a "source" & "target" property.'
+    );
+  if (!("source" in value))
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: serialized edge is missing its source."
+    );
+  if (!("target" in value))
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: serialized edge is missing its target."
+    );
+  if ("attributes" in value && (!isPlainObject4(value.attributes) || value.attributes === null))
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: invalid attributes. Attributes should be a plain object, null or omitted."
+    );
+  if ("undirected" in value && typeof value.undirected !== "boolean")
+    throw new InvalidArgumentsGraphError(
+      "Graph.import: invalid undirectedness information. Undirected should be boolean or omitted."
+    );
+}
+var INSTANCE_ID = incrementalIdStartingFromRandomByte();
+var TYPES = /* @__PURE__ */ new Set(["directed", "undirected", "mixed"]);
+var EMITTER_PROPS = /* @__PURE__ */ new Set([
+  "domain",
+  "_events",
+  "_eventsCount",
+  "_maxListeners"
+]);
+var EDGE_ADD_METHODS = [
+  {
+    name: (verb) => `${verb}Edge`,
+    generateKey: true
+  },
+  {
+    name: (verb) => `${verb}DirectedEdge`,
+    generateKey: true,
+    type: "directed"
+  },
+  {
+    name: (verb) => `${verb}UndirectedEdge`,
+    generateKey: true,
+    type: "undirected"
+  },
+  {
+    name: (verb) => `${verb}EdgeWithKey`
+  },
+  {
+    name: (verb) => `${verb}DirectedEdgeWithKey`,
+    type: "directed"
+  },
+  {
+    name: (verb) => `${verb}UndirectedEdgeWithKey`,
+    type: "undirected"
+  }
+];
+var DEFAULTS = {
+  allowSelfLoops: true,
+  multi: false,
+  type: "mixed"
+};
+function addNode(graph, node, attributes) {
+  if (attributes && !isPlainObject4(attributes))
+    throw new InvalidArgumentsGraphError(
+      `Graph.addNode: invalid attributes. Expecting an object but got "${attributes}"`
+    );
+  node = "" + node;
+  attributes = attributes || {};
+  if (graph._nodes.has(node))
+    throw new UsageGraphError(
+      `Graph.addNode: the "${node}" node already exist in the graph.`
+    );
+  const data = new graph.NodeDataClass(node, attributes);
+  graph._nodes.set(node, data);
+  graph.emit("nodeAdded", {
+    key: node,
+    attributes
+  });
+  return data;
+}
+function unsafeAddNode(graph, node, attributes) {
+  const data = new graph.NodeDataClass(node, attributes);
+  graph._nodes.set(node, data);
+  graph.emit("nodeAdded", {
+    key: node,
+    attributes
+  });
+  return data;
+}
+function addEdge(graph, name, mustGenerateKey, undirected, edge, source, target, attributes) {
+  if (!undirected && graph.type === "undirected")
+    throw new UsageGraphError(
+      `Graph.${name}: you cannot add a directed edge to an undirected graph. Use the #.addEdge or #.addUndirectedEdge instead.`
+    );
+  if (undirected && graph.type === "directed")
+    throw new UsageGraphError(
+      `Graph.${name}: you cannot add an undirected edge to a directed graph. Use the #.addEdge or #.addDirectedEdge instead.`
+    );
+  if (attributes && !isPlainObject4(attributes))
+    throw new InvalidArgumentsGraphError(
+      `Graph.${name}: invalid attributes. Expecting an object but got "${attributes}"`
+    );
+  source = "" + source;
+  target = "" + target;
+  attributes = attributes || {};
+  if (!graph.allowSelfLoops && source === target)
+    throw new UsageGraphError(
+      `Graph.${name}: source & target are the same ("${source}"), thus creating a loop explicitly forbidden by this graph 'allowSelfLoops' option set to false.`
+    );
+  const sourceData = graph._nodes.get(source), targetData = graph._nodes.get(target);
+  if (!sourceData)
+    throw new NotFoundGraphError(
+      `Graph.${name}: source node "${source}" not found.`
+    );
+  if (!targetData)
+    throw new NotFoundGraphError(
+      `Graph.${name}: target node "${target}" not found.`
+    );
+  const eventData = {
+    key: null,
+    undirected,
+    source,
+    target,
+    attributes
+  };
+  if (mustGenerateKey) {
+    edge = graph._edgeKeyGenerator();
+  } else {
+    edge = "" + edge;
+    if (graph._edges.has(edge))
+      throw new UsageGraphError(
+        `Graph.${name}: the "${edge}" edge already exists in the graph.`
+      );
+  }
+  if (!graph.multi && (undirected ? typeof sourceData.undirected[target] !== "undefined" : typeof sourceData.out[target] !== "undefined")) {
+    throw new UsageGraphError(
+      `Graph.${name}: an edge linking "${source}" to "${target}" already exists. If you really want to add multiple edges linking those nodes, you should create a multi graph by using the 'multi' option.`
+    );
+  }
+  const edgeData = new EdgeData(
+    undirected,
+    edge,
+    sourceData,
+    targetData,
+    attributes
+  );
+  graph._edges.set(edge, edgeData);
+  const isSelfLoop = source === target;
+  if (undirected) {
+    sourceData.undirectedDegree++;
+    targetData.undirectedDegree++;
+    if (isSelfLoop) {
+      sourceData.undirectedLoops++;
+      graph._undirectedSelfLoopCount++;
+    }
+  } else {
+    sourceData.outDegree++;
+    targetData.inDegree++;
+    if (isSelfLoop) {
+      sourceData.directedLoops++;
+      graph._directedSelfLoopCount++;
+    }
+  }
+  if (graph.multi) edgeData.attachMulti();
+  else edgeData.attach();
+  if (undirected) graph._undirectedSize++;
+  else graph._directedSize++;
+  eventData.key = edge;
+  graph.emit("edgeAdded", eventData);
+  return edge;
+}
+function mergeEdge(graph, name, mustGenerateKey, undirected, edge, source, target, attributes, asUpdater) {
+  if (!undirected && graph.type === "undirected")
+    throw new UsageGraphError(
+      `Graph.${name}: you cannot merge/update a directed edge to an undirected graph. Use the #.mergeEdge/#.updateEdge or #.addUndirectedEdge instead.`
+    );
+  if (undirected && graph.type === "directed")
+    throw new UsageGraphError(
+      `Graph.${name}: you cannot merge/update an undirected edge to a directed graph. Use the #.mergeEdge/#.updateEdge or #.addDirectedEdge instead.`
+    );
+  if (attributes) {
+    if (asUpdater) {
+      if (typeof attributes !== "function")
+        throw new InvalidArgumentsGraphError(
+          `Graph.${name}: invalid updater function. Expecting a function but got "${attributes}"`
+        );
+    } else {
+      if (!isPlainObject4(attributes))
+        throw new InvalidArgumentsGraphError(
+          `Graph.${name}: invalid attributes. Expecting an object but got "${attributes}"`
+        );
+    }
+  }
+  source = "" + source;
+  target = "" + target;
+  let updater;
+  if (asUpdater) {
+    updater = attributes;
+    attributes = void 0;
+  }
+  if (!graph.allowSelfLoops && source === target)
+    throw new UsageGraphError(
+      `Graph.${name}: source & target are the same ("${source}"), thus creating a loop explicitly forbidden by this graph 'allowSelfLoops' option set to false.`
+    );
+  let sourceData = graph._nodes.get(source);
+  let targetData = graph._nodes.get(target);
+  let edgeData;
+  let alreadyExistingEdgeData;
+  if (!mustGenerateKey) {
+    edgeData = graph._edges.get(edge);
+    if (edgeData) {
+      if (edgeData.source.key !== source || edgeData.target.key !== target) {
+        if (!undirected || edgeData.source.key !== target || edgeData.target.key !== source) {
+          throw new UsageGraphError(
+            `Graph.${name}: inconsistency detected when attempting to merge the "${edge}" edge with "${source}" source & "${target}" target vs. ("${edgeData.source.key}", "${edgeData.target.key}").`
+          );
+        }
+      }
+      alreadyExistingEdgeData = edgeData;
+    }
+  }
+  if (!alreadyExistingEdgeData && !graph.multi && sourceData) {
+    alreadyExistingEdgeData = undirected ? sourceData.undirected[target] : sourceData.out[target];
+  }
+  if (alreadyExistingEdgeData) {
+    const info = [alreadyExistingEdgeData.key, false, false, false];
+    if (asUpdater ? !updater : !attributes) return info;
+    if (asUpdater) {
+      const oldAttributes = alreadyExistingEdgeData.attributes;
+      alreadyExistingEdgeData.attributes = updater(oldAttributes);
+      graph.emit("edgeAttributesUpdated", {
+        type: "replace",
+        key: alreadyExistingEdgeData.key,
+        attributes: alreadyExistingEdgeData.attributes
+      });
+    } else {
+      assign(alreadyExistingEdgeData.attributes, attributes);
+      graph.emit("edgeAttributesUpdated", {
+        type: "merge",
+        key: alreadyExistingEdgeData.key,
+        attributes: alreadyExistingEdgeData.attributes,
+        data: attributes
+      });
+    }
+    return info;
+  }
+  attributes = attributes || {};
+  if (asUpdater && updater) attributes = updater(attributes);
+  const eventData = {
+    key: null,
+    undirected,
+    source,
+    target,
+    attributes
+  };
+  if (mustGenerateKey) {
+    edge = graph._edgeKeyGenerator();
+  } else {
+    edge = "" + edge;
+    if (graph._edges.has(edge))
+      throw new UsageGraphError(
+        `Graph.${name}: the "${edge}" edge already exists in the graph.`
+      );
+  }
+  let sourceWasAdded = false;
+  let targetWasAdded = false;
+  if (!sourceData) {
+    sourceData = unsafeAddNode(graph, source, {});
+    sourceWasAdded = true;
+    if (source === target) {
+      targetData = sourceData;
+      targetWasAdded = true;
+    }
+  }
+  if (!targetData) {
+    targetData = unsafeAddNode(graph, target, {});
+    targetWasAdded = true;
+  }
+  edgeData = new EdgeData(undirected, edge, sourceData, targetData, attributes);
+  graph._edges.set(edge, edgeData);
+  const isSelfLoop = source === target;
+  if (undirected) {
+    sourceData.undirectedDegree++;
+    targetData.undirectedDegree++;
+    if (isSelfLoop) {
+      sourceData.undirectedLoops++;
+      graph._undirectedSelfLoopCount++;
+    }
+  } else {
+    sourceData.outDegree++;
+    targetData.inDegree++;
+    if (isSelfLoop) {
+      sourceData.directedLoops++;
+      graph._directedSelfLoopCount++;
+    }
+  }
+  if (graph.multi) edgeData.attachMulti();
+  else edgeData.attach();
+  if (undirected) graph._undirectedSize++;
+  else graph._directedSize++;
+  eventData.key = edge;
+  graph.emit("edgeAdded", eventData);
+  return [edge, true, sourceWasAdded, targetWasAdded];
+}
+function dropEdgeFromData(graph, edgeData) {
+  graph._edges.delete(edgeData.key);
+  const { source: sourceData, target: targetData, attributes } = edgeData;
+  const undirected = edgeData.undirected;
+  const isSelfLoop = sourceData === targetData;
+  if (undirected) {
+    sourceData.undirectedDegree--;
+    targetData.undirectedDegree--;
+    if (isSelfLoop) {
+      sourceData.undirectedLoops--;
+      graph._undirectedSelfLoopCount--;
+    }
+  } else {
+    sourceData.outDegree--;
+    targetData.inDegree--;
+    if (isSelfLoop) {
+      sourceData.directedLoops--;
+      graph._directedSelfLoopCount--;
+    }
+  }
+  if (graph.multi) edgeData.detachMulti();
+  else edgeData.detach();
+  if (undirected) graph._undirectedSize--;
+  else graph._directedSize--;
+  graph.emit("edgeDropped", {
+    key: edgeData.key,
+    attributes,
+    source: sourceData.key,
+    target: targetData.key,
+    undirected
+  });
+}
+var Graph = class _Graph extends EventEmitter {
+  constructor(options) {
+    super();
+    options = assign({}, DEFAULTS, options);
+    if (typeof options.multi !== "boolean")
+      throw new InvalidArgumentsGraphError(
+        `Graph.constructor: invalid 'multi' option. Expecting a boolean but got "${options.multi}".`
+      );
+    if (!TYPES.has(options.type))
+      throw new InvalidArgumentsGraphError(
+        `Graph.constructor: invalid 'type' option. Should be one of "mixed", "directed" or "undirected" but got "${options.type}".`
+      );
+    if (typeof options.allowSelfLoops !== "boolean")
+      throw new InvalidArgumentsGraphError(
+        `Graph.constructor: invalid 'allowSelfLoops' option. Expecting a boolean but got "${options.allowSelfLoops}".`
+      );
+    const NodeDataClass = options.type === "mixed" ? MixedNodeData : options.type === "directed" ? DirectedNodeData : UndirectedNodeData;
+    privateProperty(this, "NodeDataClass", NodeDataClass);
+    const instancePrefix = "geid_" + INSTANCE_ID() + "_";
+    let edgeId = 0;
+    const edgeKeyGenerator = () => {
+      let availableEdgeKey;
+      do {
+        availableEdgeKey = instancePrefix + edgeId++;
+      } while (this._edges.has(availableEdgeKey));
+      return availableEdgeKey;
+    };
+    privateProperty(this, "_attributes", {});
+    privateProperty(this, "_nodes", /* @__PURE__ */ new Map());
+    privateProperty(this, "_edges", /* @__PURE__ */ new Map());
+    privateProperty(this, "_directedSize", 0);
+    privateProperty(this, "_undirectedSize", 0);
+    privateProperty(this, "_directedSelfLoopCount", 0);
+    privateProperty(this, "_undirectedSelfLoopCount", 0);
+    privateProperty(this, "_edgeKeyGenerator", edgeKeyGenerator);
+    privateProperty(this, "_options", options);
+    EMITTER_PROPS.forEach((prop) => privateProperty(this, prop, this[prop]));
+    readOnlyProperty(this, "order", () => this._nodes.size);
+    readOnlyProperty(this, "size", () => this._edges.size);
+    readOnlyProperty(this, "directedSize", () => this._directedSize);
+    readOnlyProperty(this, "undirectedSize", () => this._undirectedSize);
+    readOnlyProperty(
+      this,
+      "selfLoopCount",
+      () => this._directedSelfLoopCount + this._undirectedSelfLoopCount
+    );
+    readOnlyProperty(
+      this,
+      "directedSelfLoopCount",
+      () => this._directedSelfLoopCount
+    );
+    readOnlyProperty(
+      this,
+      "undirectedSelfLoopCount",
+      () => this._undirectedSelfLoopCount
+    );
+    readOnlyProperty(this, "multi", this._options.multi);
+    readOnlyProperty(this, "type", this._options.type);
+    readOnlyProperty(this, "allowSelfLoops", this._options.allowSelfLoops);
+    readOnlyProperty(this, "implementation", () => "graphology");
+  }
+  _resetInstanceCounters() {
+    this._directedSize = 0;
+    this._undirectedSize = 0;
+    this._directedSelfLoopCount = 0;
+    this._undirectedSelfLoopCount = 0;
+  }
+  /**---------------------------------------------------------------------------
+   * Read
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method returning whether the given node is found in the graph.
+   *
+   * @param  {any}     node - The node.
+   * @return {boolean}
+   */
+  hasNode(node) {
+    return this._nodes.has("" + node);
+  }
+  /**
+   * Method returning whether the given directed edge is found in the graph.
+   *
+   * Arity 1:
+   * @param  {any}     edge - The edge's key.
+   *
+   * Arity 2:
+   * @param  {any}     source - The edge's source.
+   * @param  {any}     target - The edge's target.
+   *
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the arguments are invalid.
+   */
+  hasDirectedEdge(source, target) {
+    if (this.type === "undirected") return false;
+    if (arguments.length === 1) {
+      const edge = "" + source;
+      const edgeData = this._edges.get(edge);
+      return !!edgeData && !edgeData.undirected;
+    } else if (arguments.length === 2) {
+      source = "" + source;
+      target = "" + target;
+      const nodeData = this._nodes.get(source);
+      if (!nodeData) return false;
+      return nodeData.out.hasOwnProperty(target);
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.hasDirectedEdge: invalid arity (${arguments.length}, instead of 1 or 2). You can either ask for an edge id or for the existence of an edge between a source & a target.`
+    );
+  }
+  /**
+   * Method returning whether the given undirected edge is found in the graph.
+   *
+   * Arity 1:
+   * @param  {any}     edge - The edge's key.
+   *
+   * Arity 2:
+   * @param  {any}     source - The edge's source.
+   * @param  {any}     target - The edge's target.
+   *
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the arguments are invalid.
+   */
+  hasUndirectedEdge(source, target) {
+    if (this.type === "directed") return false;
+    if (arguments.length === 1) {
+      const edge = "" + source;
+      const edgeData = this._edges.get(edge);
+      return !!edgeData && edgeData.undirected;
+    } else if (arguments.length === 2) {
+      source = "" + source;
+      target = "" + target;
+      const nodeData = this._nodes.get(source);
+      if (!nodeData) return false;
+      return nodeData.undirected.hasOwnProperty(target);
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.hasDirectedEdge: invalid arity (${arguments.length}, instead of 1 or 2). You can either ask for an edge id or for the existence of an edge between a source & a target.`
+    );
+  }
+  /**
+   * Method returning whether the given edge is found in the graph.
+   *
+   * Arity 1:
+   * @param  {any}     edge - The edge's key.
+   *
+   * Arity 2:
+   * @param  {any}     source - The edge's source.
+   * @param  {any}     target - The edge's target.
+   *
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the arguments are invalid.
+   */
+  hasEdge(source, target) {
+    if (arguments.length === 1) {
+      const edge = "" + source;
+      return this._edges.has(edge);
+    } else if (arguments.length === 2) {
+      source = "" + source;
+      target = "" + target;
+      const nodeData = this._nodes.get(source);
+      if (!nodeData) return false;
+      return typeof nodeData.out !== "undefined" && nodeData.out.hasOwnProperty(target) || typeof nodeData.undirected !== "undefined" && nodeData.undirected.hasOwnProperty(target);
+    }
+    throw new InvalidArgumentsGraphError(
+      `Graph.hasEdge: invalid arity (${arguments.length}, instead of 1 or 2). You can either ask for an edge id or for the existence of an edge between a source & a target.`
+    );
+  }
+  /**
+   * Method returning the edge matching source & target in a directed fashion.
+   *
+   * @param  {any} source - The edge's source.
+   * @param  {any} target - The edge's target.
+   *
+   * @return {any|undefined}
+   *
+   * @throws {Error} - Will throw if the graph is multi.
+   * @throws {Error} - Will throw if source or target doesn't exist.
+   */
+  directedEdge(source, target) {
+    if (this.type === "undirected") return;
+    source = "" + source;
+    target = "" + target;
+    if (this.multi)
+      throw new UsageGraphError(
+        "Graph.directedEdge: this method is irrelevant with multigraphs since there might be multiple edges between source & target. See #.directedEdges instead."
+      );
+    const sourceData = this._nodes.get(source);
+    if (!sourceData)
+      throw new NotFoundGraphError(
+        `Graph.directedEdge: could not find the "${source}" source node in the graph.`
+      );
+    if (!this._nodes.has(target))
+      throw new NotFoundGraphError(
+        `Graph.directedEdge: could not find the "${target}" target node in the graph.`
+      );
+    const edgeData = sourceData.out && sourceData.out[target] || void 0;
+    if (edgeData) return edgeData.key;
+  }
+  /**
+   * Method returning the edge matching source & target in a undirected fashion.
+   *
+   * @param  {any} source - The edge's source.
+   * @param  {any} target - The edge's target.
+   *
+   * @return {any|undefined}
+   *
+   * @throws {Error} - Will throw if the graph is multi.
+   * @throws {Error} - Will throw if source or target doesn't exist.
+   */
+  undirectedEdge(source, target) {
+    if (this.type === "directed") return;
+    source = "" + source;
+    target = "" + target;
+    if (this.multi)
+      throw new UsageGraphError(
+        "Graph.undirectedEdge: this method is irrelevant with multigraphs since there might be multiple edges between source & target. See #.undirectedEdges instead."
+      );
+    const sourceData = this._nodes.get(source);
+    if (!sourceData)
+      throw new NotFoundGraphError(
+        `Graph.undirectedEdge: could not find the "${source}" source node in the graph.`
+      );
+    if (!this._nodes.has(target))
+      throw new NotFoundGraphError(
+        `Graph.undirectedEdge: could not find the "${target}" target node in the graph.`
+      );
+    const edgeData = sourceData.undirected && sourceData.undirected[target] || void 0;
+    if (edgeData) return edgeData.key;
+  }
+  /**
+   * Method returning the edge matching source & target in a mixed fashion.
+   *
+   * @param  {any} source - The edge's source.
+   * @param  {any} target - The edge's target.
+   *
+   * @return {any|undefined}
+   *
+   * @throws {Error} - Will throw if the graph is multi.
+   * @throws {Error} - Will throw if source or target doesn't exist.
+   */
+  edge(source, target) {
+    if (this.multi)
+      throw new UsageGraphError(
+        "Graph.edge: this method is irrelevant with multigraphs since there might be multiple edges between source & target. See #.edges instead."
+      );
+    source = "" + source;
+    target = "" + target;
+    const sourceData = this._nodes.get(source);
+    if (!sourceData)
+      throw new NotFoundGraphError(
+        `Graph.edge: could not find the "${source}" source node in the graph.`
+      );
+    if (!this._nodes.has(target))
+      throw new NotFoundGraphError(
+        `Graph.edge: could not find the "${target}" target node in the graph.`
+      );
+    const edgeData = sourceData.out && sourceData.out[target] || sourceData.undirected && sourceData.undirected[target] || void 0;
+    if (edgeData) return edgeData.key;
+  }
+  /**
+   * Method returning whether two nodes are directed neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areDirectedNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areDirectedNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return false;
+    return neighbor in nodeData.in || neighbor in nodeData.out;
+  }
+  /**
+   * Method returning whether two nodes are out neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areOutNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areOutNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return false;
+    return neighbor in nodeData.out;
+  }
+  /**
+   * Method returning whether two nodes are in neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areInNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areInNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return false;
+    return neighbor in nodeData.in;
+  }
+  /**
+   * Method returning whether two nodes are undirected neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areUndirectedNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areUndirectedNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "directed") return false;
+    return neighbor in nodeData.undirected;
+  }
+  /**
+   * Method returning whether two nodes are neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type !== "undirected") {
+      if (neighbor in nodeData.in || neighbor in nodeData.out) return true;
+    }
+    if (this.type !== "directed") {
+      if (neighbor in nodeData.undirected) return true;
+    }
+    return false;
+  }
+  /**
+   * Method returning whether two nodes are inbound neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areInboundNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areInboundNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type !== "undirected") {
+      if (neighbor in nodeData.in) return true;
+    }
+    if (this.type !== "directed") {
+      if (neighbor in nodeData.undirected) return true;
+    }
+    return false;
+  }
+  /**
+   * Method returning whether two nodes are outbound neighbors.
+   *
+   * @param  {any}     node     - The node's key.
+   * @param  {any}     neighbor - The neighbor's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  areOutboundNeighbors(node, neighbor) {
+    node = "" + node;
+    neighbor = "" + neighbor;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.areOutboundNeighbors: could not find the "${node}" node in the graph.`
+      );
+    if (this.type !== "undirected") {
+      if (neighbor in nodeData.out) return true;
+    }
+    if (this.type !== "directed") {
+      if (neighbor in nodeData.undirected) return true;
+    }
+    return false;
+  }
+  /**
+   * Method returning the given node's in degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  inDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.inDegree: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.inDegree;
+  }
+  /**
+   * Method returning the given node's out degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  outDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.outDegree: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.outDegree;
+  }
+  /**
+   * Method returning the given node's directed degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  directedDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.directedDegree: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.inDegree + nodeData.outDegree;
+  }
+  /**
+   * Method returning the given node's undirected degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  undirectedDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.undirectedDegree: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "directed") return 0;
+    return nodeData.undirectedDegree;
+  }
+  /**
+   * Method returning the given node's inbound degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's inbound degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  inboundDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.inboundDegree: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.inDegree;
+    }
+    return degree;
+  }
+  /**
+   * Method returning the given node's outbound degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's outbound degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  outboundDegree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.outboundDegree: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.outDegree;
+    }
+    return degree;
+  }
+  /**
+   * Method returning the given node's directed degree.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  degree(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.degree: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.inDegree + nodeData.outDegree;
+    }
+    return degree;
+  }
+  /**
+   * Method returning the given node's in degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  inDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.inDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.inDegree - nodeData.directedLoops;
+  }
+  /**
+   * Method returning the given node's out degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  outDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.outDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.outDegree - nodeData.directedLoops;
+  }
+  /**
+   * Method returning the given node's directed degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  directedDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.directedDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "undirected") return 0;
+    return nodeData.inDegree + nodeData.outDegree - nodeData.directedLoops * 2;
+  }
+  /**
+   * Method returning the given node's undirected degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's in degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  undirectedDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.undirectedDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    if (this.type === "directed") return 0;
+    return nodeData.undirectedDegree - nodeData.undirectedLoops * 2;
+  }
+  /**
+   * Method returning the given node's inbound degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's inbound degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  inboundDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.inboundDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    let loops = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+      loops += nodeData.undirectedLoops * 2;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.inDegree;
+      loops += nodeData.directedLoops;
+    }
+    return degree - loops;
+  }
+  /**
+   * Method returning the given node's outbound degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's outbound degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  outboundDegreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.outboundDegreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    let loops = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+      loops += nodeData.undirectedLoops * 2;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.outDegree;
+      loops += nodeData.directedLoops;
+    }
+    return degree - loops;
+  }
+  /**
+   * Method returning the given node's directed degree without considering self loops.
+   *
+   * @param  {any}     node - The node's key.
+   * @return {number}       - The node's degree.
+   *
+   * @throws {Error} - Will throw if the node isn't in the graph.
+   */
+  degreeWithoutSelfLoops(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.degreeWithoutSelfLoops: could not find the "${node}" node in the graph.`
+      );
+    let degree = 0;
+    let loops = 0;
+    if (this.type !== "directed") {
+      degree += nodeData.undirectedDegree;
+      loops += nodeData.undirectedLoops * 2;
+    }
+    if (this.type !== "undirected") {
+      degree += nodeData.inDegree + nodeData.outDegree;
+      loops += nodeData.directedLoops * 2;
+    }
+    return degree - loops;
+  }
+  /**
+   * Method returning the given edge's source.
+   *
+   * @param  {any} edge - The edge's key.
+   * @return {any}      - The edge's source.
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  source(edge) {
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.source: could not find the "${edge}" edge in the graph.`
+      );
+    return data.source.key;
+  }
+  /**
+   * Method returning the given edge's target.
+   *
+   * @param  {any} edge - The edge's key.
+   * @return {any}      - The edge's target.
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  target(edge) {
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.target: could not find the "${edge}" edge in the graph.`
+      );
+    return data.target.key;
+  }
+  /**
+   * Method returning the given edge's extremities.
+   *
+   * @param  {any}   edge - The edge's key.
+   * @return {array}      - The edge's extremities.
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  extremities(edge) {
+    edge = "" + edge;
+    const edgeData = this._edges.get(edge);
+    if (!edgeData)
+      throw new NotFoundGraphError(
+        `Graph.extremities: could not find the "${edge}" edge in the graph.`
+      );
+    return [edgeData.source.key, edgeData.target.key];
+  }
+  /**
+   * Given a node & an edge, returns the other extremity of the edge.
+   *
+   * @param  {any}   node - The node's key.
+   * @param  {any}   edge - The edge's key.
+   * @return {any}        - The related node.
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph or if the
+   *                   edge & node are not related.
+   */
+  opposite(node, edge) {
+    node = "" + node;
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.opposite: could not find the "${edge}" edge in the graph.`
+      );
+    const source = data.source.key;
+    const target = data.target.key;
+    if (node === source) return target;
+    if (node === target) return source;
+    throw new NotFoundGraphError(
+      `Graph.opposite: the "${node}" node is not attached to the "${edge}" edge (${source}, ${target}).`
+    );
+  }
+  /**
+   * Returns whether the given edge has the given node as extremity.
+   *
+   * @param  {any}     edge - The edge's key.
+   * @param  {any}     node - The node's key.
+   * @return {boolean}      - The related node.
+   *
+   * @throws {Error} - Will throw if either the node or the edge isn't in the graph.
+   */
+  hasExtremity(edge, node) {
+    edge = "" + edge;
+    node = "" + node;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.hasExtremity: could not find the "${edge}" edge in the graph.`
+      );
+    return data.source.key === node || data.target.key === node;
+  }
+  /**
+   * Method returning whether the given edge is undirected.
+   *
+   * @param  {any}     edge - The edge's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  isUndirected(edge) {
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.isUndirected: could not find the "${edge}" edge in the graph.`
+      );
+    return data.undirected;
+  }
+  /**
+   * Method returning whether the given edge is directed.
+   *
+   * @param  {any}     edge - The edge's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  isDirected(edge) {
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.isDirected: could not find the "${edge}" edge in the graph.`
+      );
+    return !data.undirected;
+  }
+  /**
+   * Method returning whether the given edge is a self loop.
+   *
+   * @param  {any}     edge - The edge's key.
+   * @return {boolean}
+   *
+   * @throws {Error} - Will throw if the edge isn't in the graph.
+   */
+  isSelfLoop(edge) {
+    edge = "" + edge;
+    const data = this._edges.get(edge);
+    if (!data)
+      throw new NotFoundGraphError(
+        `Graph.isSelfLoop: could not find the "${edge}" edge in the graph.`
+      );
+    return data.source === data.target;
+  }
+  /**---------------------------------------------------------------------------
+   * Mutation
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method used to add a node to the graph.
+   *
+   * @param  {any}    node         - The node.
+   * @param  {object} [attributes] - Optional attributes.
+   * @return {any}                 - The node.
+   *
+   * @throws {Error} - Will throw if the given node already exist.
+   * @throws {Error} - Will throw if the given attributes are not an object.
+   */
+  addNode(node, attributes) {
+    const nodeData = addNode(this, node, attributes);
+    return nodeData.key;
+  }
+  /**
+   * Method used to merge a node into the graph.
+   *
+   * @param  {any}    node         - The node.
+   * @param  {object} [attributes] - Optional attributes.
+   * @return {any}                 - The node.
+   */
+  mergeNode(node, attributes) {
+    if (attributes && !isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        `Graph.mergeNode: invalid attributes. Expecting an object but got "${attributes}"`
+      );
+    node = "" + node;
+    attributes = attributes || {};
+    let data = this._nodes.get(node);
+    if (data) {
+      if (attributes) {
+        assign(data.attributes, attributes);
+        this.emit("nodeAttributesUpdated", {
+          type: "merge",
+          key: node,
+          attributes: data.attributes,
+          data: attributes
+        });
+      }
+      return [node, false];
+    }
+    data = new this.NodeDataClass(node, attributes);
+    this._nodes.set(node, data);
+    this.emit("nodeAdded", {
+      key: node,
+      attributes
+    });
+    return [node, true];
+  }
+  /**
+   * Method used to add a node if it does not exist in the graph or else to
+   * update its attributes using a function.
+   *
+   * @param  {any}      node      - The node.
+   * @param  {function} [updater] - Optional updater function.
+   * @return {any}                - The node.
+   */
+  updateNode(node, updater) {
+    if (updater && typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        `Graph.updateNode: invalid updater function. Expecting a function but got "${updater}"`
+      );
+    node = "" + node;
+    let data = this._nodes.get(node);
+    if (data) {
+      if (updater) {
+        const oldAttributes = data.attributes;
+        data.attributes = updater(oldAttributes);
+        this.emit("nodeAttributesUpdated", {
+          type: "replace",
+          key: node,
+          attributes: data.attributes
+        });
+      }
+      return [node, false];
+    }
+    const attributes = updater ? updater({}) : {};
+    data = new this.NodeDataClass(node, attributes);
+    this._nodes.set(node, data);
+    this.emit("nodeAdded", {
+      key: node,
+      attributes
+    });
+    return [node, true];
+  }
+  /**
+   * Method used to drop a single node & all its attached edges from the graph.
+   *
+   * @param  {any}    node - The node.
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if the node doesn't exist.
+   */
+  dropNode(node) {
+    node = "" + node;
+    const nodeData = this._nodes.get(node);
+    if (!nodeData)
+      throw new NotFoundGraphError(
+        `Graph.dropNode: could not find the "${node}" node in the graph.`
+      );
+    let edgeData;
+    if (this.type !== "undirected") {
+      for (const neighbor in nodeData.out) {
+        edgeData = nodeData.out[neighbor];
+        do {
+          dropEdgeFromData(this, edgeData);
+          edgeData = edgeData.next;
+        } while (edgeData);
+      }
+      for (const neighbor in nodeData.in) {
+        edgeData = nodeData.in[neighbor];
+        do {
+          dropEdgeFromData(this, edgeData);
+          edgeData = edgeData.next;
+        } while (edgeData);
+      }
+    }
+    if (this.type !== "directed") {
+      for (const neighbor in nodeData.undirected) {
+        edgeData = nodeData.undirected[neighbor];
+        do {
+          dropEdgeFromData(this, edgeData);
+          edgeData = edgeData.next;
+        } while (edgeData);
+      }
+    }
+    this._nodes.delete(node);
+    this.emit("nodeDropped", {
+      key: node,
+      attributes: nodeData.attributes
+    });
+  }
+  /**
+   * Method used to drop a single edge from the graph.
+   *
+   * Arity 1:
+   * @param  {any}    edge - The edge.
+   *
+   * Arity 2:
+   * @param  {any}    source - Source node.
+   * @param  {any}    target - Target node.
+   *
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if the edge doesn't exist.
+   */
+  dropEdge(edge) {
+    let edgeData;
+    if (arguments.length > 1) {
+      const source = "" + arguments[0];
+      const target = "" + arguments[1];
+      edgeData = getMatchingEdge(this, source, target, this.type);
+      if (!edgeData)
+        throw new NotFoundGraphError(
+          `Graph.dropEdge: could not find the "${source}" -> "${target}" edge in the graph.`
+        );
+    } else {
+      edge = "" + edge;
+      edgeData = this._edges.get(edge);
+      if (!edgeData)
+        throw new NotFoundGraphError(
+          `Graph.dropEdge: could not find the "${edge}" edge in the graph.`
+        );
+    }
+    dropEdgeFromData(this, edgeData);
+    return this;
+  }
+  /**
+   * Method used to drop a single directed edge from the graph.
+   *
+   * @param  {any}    source - Source node.
+   * @param  {any}    target - Target node.
+   *
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if the edge doesn't exist.
+   */
+  dropDirectedEdge(source, target) {
+    if (arguments.length < 2)
+      throw new UsageGraphError(
+        "Graph.dropDirectedEdge: it does not make sense to try and drop a directed edge by key. What if the edge with this key is undirected? Use #.dropEdge for this purpose instead."
+      );
+    if (this.multi)
+      throw new UsageGraphError(
+        "Graph.dropDirectedEdge: cannot use a {source,target} combo when dropping an edge in a MultiGraph since we cannot infer the one you want to delete as there could be multiple ones."
+      );
+    source = "" + source;
+    target = "" + target;
+    const edgeData = getMatchingEdge(this, source, target, "directed");
+    if (!edgeData)
+      throw new NotFoundGraphError(
+        `Graph.dropDirectedEdge: could not find a "${source}" -> "${target}" edge in the graph.`
+      );
+    dropEdgeFromData(this, edgeData);
+    return this;
+  }
+  /**
+   * Method used to drop a single undirected edge from the graph.
+   *
+   * @param  {any}    source - Source node.
+   * @param  {any}    target - Target node.
+   *
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if the edge doesn't exist.
+   */
+  dropUndirectedEdge(source, target) {
+    if (arguments.length < 2)
+      throw new UsageGraphError(
+        "Graph.dropUndirectedEdge: it does not make sense to drop a directed edge by key. What if the edge with this key is undirected? Use #.dropEdge for this purpose instead."
+      );
+    if (this.multi)
+      throw new UsageGraphError(
+        "Graph.dropUndirectedEdge: cannot use a {source,target} combo when dropping an edge in a MultiGraph since we cannot infer the one you want to delete as there could be multiple ones."
+      );
+    const edgeData = getMatchingEdge(this, source, target, "undirected");
+    if (!edgeData)
+      throw new NotFoundGraphError(
+        `Graph.dropUndirectedEdge: could not find a "${source}" -> "${target}" edge in the graph.`
+      );
+    dropEdgeFromData(this, edgeData);
+    return this;
+  }
+  /**
+   * Method used to remove every edge & every node from the graph.
+   *
+   * @return {Graph}
+   */
+  clear() {
+    this._edges.clear();
+    this._nodes.clear();
+    this._resetInstanceCounters();
+    this.emit("cleared");
+  }
+  /**
+   * Method used to remove every edge from the graph.
+   *
+   * @return {Graph}
+   */
+  clearEdges() {
+    const iterator = this._nodes.values();
+    let step;
+    while (step = iterator.next(), step.done !== true) {
+      step.value.clear();
+    }
+    this._edges.clear();
+    this._resetInstanceCounters();
+    this.emit("edgesCleared");
+  }
+  /**---------------------------------------------------------------------------
+   * Attributes-related methods
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method returning the desired graph's attribute.
+   *
+   * @param  {string} name - Name of the attribute.
+   * @return {any}
+   */
+  getAttribute(name) {
+    return this._attributes[name];
+  }
+  /**
+   * Method returning the graph's attributes.
+   *
+   * @return {object}
+   */
+  getAttributes() {
+    return this._attributes;
+  }
+  /**
+   * Method returning whether the graph has the desired attribute.
+   *
+   * @param  {string}  name - Name of the attribute.
+   * @return {boolean}
+   */
+  hasAttribute(name) {
+    return this._attributes.hasOwnProperty(name);
+  }
+  /**
+   * Method setting a value for the desired graph's attribute.
+   *
+   * @param  {string}  name  - Name of the attribute.
+   * @param  {any}     value - Value for the attribute.
+   * @return {Graph}
+   */
+  setAttribute(name, value) {
+    this._attributes[name] = value;
+    this.emit("attributesUpdated", {
+      type: "set",
+      attributes: this._attributes,
+      name
+    });
+    return this;
+  }
+  /**
+   * Method using a function to update the desired graph's attribute's value.
+   *
+   * @param  {string}   name    - Name of the attribute.
+   * @param  {function} updater - Function use to update the attribute's value.
+   * @return {Graph}
+   */
+  updateAttribute(name, updater) {
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateAttribute: updater should be a function."
+      );
+    const value = this._attributes[name];
+    this._attributes[name] = updater(value);
+    this.emit("attributesUpdated", {
+      type: "set",
+      attributes: this._attributes,
+      name
+    });
+    return this;
+  }
+  /**
+   * Method removing the desired graph's attribute.
+   *
+   * @param  {string} name  - Name of the attribute.
+   * @return {Graph}
+   */
+  removeAttribute(name) {
+    delete this._attributes[name];
+    this.emit("attributesUpdated", {
+      type: "remove",
+      attributes: this._attributes,
+      name
+    });
+    return this;
+  }
+  /**
+   * Method replacing the graph's attributes.
+   *
+   * @param  {object} attributes - New attributes.
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if given attributes are not a plain object.
+   */
+  replaceAttributes(attributes) {
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        "Graph.replaceAttributes: provided attributes are not a plain object."
+      );
+    this._attributes = attributes;
+    this.emit("attributesUpdated", {
+      type: "replace",
+      attributes: this._attributes
+    });
+    return this;
+  }
+  /**
+   * Method merging the graph's attributes.
+   *
+   * @param  {object} attributes - Attributes to merge.
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if given attributes are not a plain object.
+   */
+  mergeAttributes(attributes) {
+    if (!isPlainObject4(attributes))
+      throw new InvalidArgumentsGraphError(
+        "Graph.mergeAttributes: provided attributes are not a plain object."
+      );
+    assign(this._attributes, attributes);
+    this.emit("attributesUpdated", {
+      type: "merge",
+      attributes: this._attributes,
+      data: attributes
+    });
+    return this;
+  }
+  /**
+   * Method updating the graph's attributes.
+   *
+   * @param  {function} updater - Function used to update the attributes.
+   * @return {Graph}
+   *
+   * @throws {Error} - Will throw if given updater is not a function.
+   */
+  updateAttributes(updater) {
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateAttributes: provided updater is not a function."
+      );
+    this._attributes = updater(this._attributes);
+    this.emit("attributesUpdated", {
+      type: "update",
+      attributes: this._attributes
+    });
+    return this;
+  }
+  /**
+   * Method used to update each node's attributes using the given function.
+   *
+   * @param {function}  updater - Updater function to use.
+   * @param {object}    [hints] - Optional hints.
+   */
+  updateEachNodeAttributes(updater, hints) {
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateEachNodeAttributes: expecting an updater function."
+      );
+    if (hints && !validateHints(hints))
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateEachNodeAttributes: invalid hints. Expecting an object having the following shape: {attributes?: [string]}"
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      nodeData.attributes = updater(nodeData.key, nodeData.attributes);
+    }
+    this.emit("eachNodeAttributesUpdated", {
+      hints: hints ? hints : null
+    });
+  }
+  /**
+   * Method used to update each edge's attributes using the given function.
+   *
+   * @param {function}  updater - Updater function to use.
+   * @param {object}    [hints] - Optional hints.
+   */
+  updateEachEdgeAttributes(updater, hints) {
+    if (typeof updater !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateEachEdgeAttributes: expecting an updater function."
+      );
+    if (hints && !validateHints(hints))
+      throw new InvalidArgumentsGraphError(
+        "Graph.updateEachEdgeAttributes: invalid hints. Expecting an object having the following shape: {attributes?: [string]}"
+      );
+    const iterator = this._edges.values();
+    let step, edgeData, sourceData, targetData;
+    while (step = iterator.next(), step.done !== true) {
+      edgeData = step.value;
+      sourceData = edgeData.source;
+      targetData = edgeData.target;
+      edgeData.attributes = updater(
+        edgeData.key,
+        edgeData.attributes,
+        sourceData.key,
+        targetData.key,
+        sourceData.attributes,
+        targetData.attributes,
+        edgeData.undirected
+      );
+    }
+    this.emit("eachEdgeAttributesUpdated", {
+      hints: hints ? hints : null
+    });
+  }
+  /**---------------------------------------------------------------------------
+   * Iteration-related methods
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method iterating over the graph's adjacency using the given callback.
+   *
+   * @param  {function}  callback - Callback to use.
+   */
+  forEachAdjacencyEntry(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.forEachAdjacencyEntry: expecting a callback."
+      );
+    forEachAdjacency(false, false, false, this, callback);
+  }
+  forEachAdjacencyEntryWithOrphans(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.forEachAdjacencyEntryWithOrphans: expecting a callback."
+      );
+    forEachAdjacency(false, false, true, this, callback);
+  }
+  /**
+   * Method iterating over the graph's assymetric adjacency using the given callback.
+   *
+   * @param  {function}  callback - Callback to use.
+   */
+  forEachAssymetricAdjacencyEntry(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.forEachAssymetricAdjacencyEntry: expecting a callback."
+      );
+    forEachAdjacency(false, true, false, this, callback);
+  }
+  forEachAssymetricAdjacencyEntryWithOrphans(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.forEachAssymetricAdjacencyEntryWithOrphans: expecting a callback."
+      );
+    forEachAdjacency(false, true, true, this, callback);
+  }
+  /**
+   * Method returning the list of the graph's nodes.
+   *
+   * @return {array} - The nodes.
+   */
+  nodes() {
+    if (typeof Array.from === "function") return Array.from(this._nodes.keys());
+    return (0, import_take.default)(this._nodes.keys(), this._nodes.size);
+  }
+  /**
+   * Method iterating over the graph's nodes using the given callback.
+   *
+   * @param  {function}  callback - Callback (key, attributes, index).
+   */
+  forEachNode(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.forEachNode: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      callback(nodeData.key, nodeData.attributes);
+    }
+  }
+  /**
+   * Method iterating attempting to find a node matching the given predicate
+   * function.
+   *
+   * @param  {function}  callback - Callback (key, attributes).
+   */
+  findNode(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.findNode: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      if (callback(nodeData.key, nodeData.attributes)) return nodeData.key;
+    }
+    return;
+  }
+  /**
+   * Method mapping nodes.
+   *
+   * @param  {function}  callback - Callback (key, attributes).
+   */
+  mapNodes(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.mapNode: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    const result2 = new Array(this.order);
+    let i = 0;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      result2[i++] = callback(nodeData.key, nodeData.attributes);
+    }
+    return result2;
+  }
+  /**
+   * Method returning whether some node verify the given predicate.
+   *
+   * @param  {function}  callback - Callback (key, attributes).
+   */
+  someNode(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.someNode: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      if (callback(nodeData.key, nodeData.attributes)) return true;
+    }
+    return false;
+  }
+  /**
+   * Method returning whether all node verify the given predicate.
+   *
+   * @param  {function}  callback - Callback (key, attributes).
+   */
+  everyNode(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.everyNode: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      if (!callback(nodeData.key, nodeData.attributes)) return false;
+    }
+    return true;
+  }
+  /**
+   * Method filtering nodes.
+   *
+   * @param  {function}  callback - Callback (key, attributes).
+   */
+  filterNodes(callback) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.filterNodes: expecting a callback."
+      );
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    const result2 = [];
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      if (callback(nodeData.key, nodeData.attributes))
+        result2.push(nodeData.key);
+    }
+    return result2;
+  }
+  /**
+   * Method reducing nodes.
+   *
+   * @param  {function}  callback - Callback (accumulator, key, attributes).
+   */
+  reduceNodes(callback, initialValue) {
+    if (typeof callback !== "function")
+      throw new InvalidArgumentsGraphError(
+        "Graph.reduceNodes: expecting a callback."
+      );
+    if (arguments.length < 2)
+      throw new InvalidArgumentsGraphError(
+        "Graph.reduceNodes: missing initial value. You must provide it because the callback takes more than one argument and we cannot infer the initial value from the first iteration, as you could with a simple array."
+      );
+    let accumulator = initialValue;
+    const iterator = this._nodes.values();
+    let step, nodeData;
+    while (step = iterator.next(), step.done !== true) {
+      nodeData = step.value;
+      accumulator = callback(accumulator, nodeData.key, nodeData.attributes);
+    }
+    return accumulator;
+  }
+  /**
+   * Method returning an iterator over the graph's node entries.
+   *
+   * @return {Iterator}
+   */
+  nodeEntries() {
+    const iterator = this._nodes.values();
+    return new import_iterator.default(() => {
+      const step = iterator.next();
+      if (step.done) return step;
+      const data = step.value;
+      return {
+        value: { node: data.key, attributes: data.attributes },
+        done: false
+      };
+    });
+  }
+  /**---------------------------------------------------------------------------
+   * Serialization
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method used to export the whole graph.
+   *
+   * @return {object} - The serialized graph.
+   */
+  export() {
+    const nodes = new Array(this._nodes.size);
+    let i = 0;
+    this._nodes.forEach((data, key) => {
+      nodes[i++] = serializeNode(key, data);
+    });
+    const edges = new Array(this._edges.size);
+    i = 0;
+    this._edges.forEach((data, key) => {
+      edges[i++] = serializeEdge(this.type, key, data);
+    });
+    return {
+      options: {
+        type: this.type,
+        multi: this.multi,
+        allowSelfLoops: this.allowSelfLoops
+      },
+      attributes: this.getAttributes(),
+      nodes,
+      edges
+    };
+  }
+  /**
+   * Method used to import a serialized graph.
+   *
+   * @param  {object|Graph} data  - The serialized graph.
+   * @param  {boolean}      merge - Whether to merge data.
+   * @return {Graph}              - Returns itself for chaining.
+   */
+  import(data, merge2 = false) {
+    if (data instanceof _Graph) {
+      data.forEachNode((n, a) => {
+        if (merge2) this.mergeNode(n, a);
+        else this.addNode(n, a);
+      });
+      data.forEachEdge((e, a, s, t, _sa, _ta, u) => {
+        if (merge2) {
+          if (u) this.mergeUndirectedEdgeWithKey(e, s, t, a);
+          else this.mergeDirectedEdgeWithKey(e, s, t, a);
+        } else {
+          if (u) this.addUndirectedEdgeWithKey(e, s, t, a);
+          else this.addDirectedEdgeWithKey(e, s, t, a);
+        }
+      });
+      return this;
+    }
+    if (!isPlainObject4(data))
+      throw new InvalidArgumentsGraphError(
+        "Graph.import: invalid argument. Expecting a serialized graph or, alternatively, a Graph instance."
+      );
+    if (data.attributes) {
+      if (!isPlainObject4(data.attributes))
+        throw new InvalidArgumentsGraphError(
+          "Graph.import: invalid attributes. Expecting a plain object."
+        );
+      if (merge2) this.mergeAttributes(data.attributes);
+      else this.replaceAttributes(data.attributes);
+    }
+    let i, l, list, node, edge;
+    if (data.nodes) {
+      list = data.nodes;
+      if (!Array.isArray(list))
+        throw new InvalidArgumentsGraphError(
+          "Graph.import: invalid nodes. Expecting an array."
+        );
+      for (i = 0, l = list.length; i < l; i++) {
+        node = list[i];
+        validateSerializedNode(node);
+        const { key, attributes } = node;
+        if (merge2) this.mergeNode(key, attributes);
+        else this.addNode(key, attributes);
+      }
+    }
+    if (data.edges) {
+      let undirectedByDefault = false;
+      if (this.type === "undirected") {
+        undirectedByDefault = true;
+      }
+      list = data.edges;
+      if (!Array.isArray(list))
+        throw new InvalidArgumentsGraphError(
+          "Graph.import: invalid edges. Expecting an array."
+        );
+      for (i = 0, l = list.length; i < l; i++) {
+        edge = list[i];
+        validateSerializedEdge(edge);
+        const {
+          source,
+          target,
+          attributes,
+          undirected = undirectedByDefault
+        } = edge;
+        let method;
+        if ("key" in edge) {
+          method = merge2 ? undirected ? this.mergeUndirectedEdgeWithKey : this.mergeDirectedEdgeWithKey : undirected ? this.addUndirectedEdgeWithKey : this.addDirectedEdgeWithKey;
+          method.call(this, edge.key, source, target, attributes);
+        } else {
+          method = merge2 ? undirected ? this.mergeUndirectedEdge : this.mergeDirectedEdge : undirected ? this.addUndirectedEdge : this.addDirectedEdge;
+          method.call(this, source, target, attributes);
+        }
+      }
+    }
+    return this;
+  }
+  /**---------------------------------------------------------------------------
+   * Utils
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method returning a null copy of the graph, i.e. a graph without nodes
+   * & edges but with the exact same options.
+   *
+   * @param  {object} options - Options to merge with the current ones.
+   * @return {Graph}          - The null copy.
+   */
+  nullCopy(options) {
+    const graph = new _Graph(assign({}, this._options, options));
+    graph.replaceAttributes(assign({}, this.getAttributes()));
+    return graph;
+  }
+  /**
+   * Method returning an empty copy of the graph, i.e. a graph without edges but
+   * with the exact same options.
+   *
+   * @param  {object} options - Options to merge with the current ones.
+   * @return {Graph}          - The empty copy.
+   */
+  emptyCopy(options) {
+    const graph = this.nullCopy(options);
+    this._nodes.forEach((nodeData, key) => {
+      const attributes = assign({}, nodeData.attributes);
+      nodeData = new graph.NodeDataClass(key, attributes);
+      graph._nodes.set(key, nodeData);
+    });
+    return graph;
+  }
+  /**
+   * Method returning an exact copy of the graph.
+   *
+   * @param  {object} options - Upgrade options.
+   * @return {Graph}          - The copy.
+   */
+  copy(options) {
+    options = options || {};
+    if (typeof options.type === "string" && options.type !== this.type && options.type !== "mixed")
+      throw new UsageGraphError(
+        `Graph.copy: cannot create an incompatible copy from "${this.type}" type to "${options.type}" because this would mean losing information about the current graph.`
+      );
+    if (typeof options.multi === "boolean" && options.multi !== this.multi && options.multi !== true)
+      throw new UsageGraphError(
+        "Graph.copy: cannot create an incompatible copy by downgrading a multi graph to a simple one because this would mean losing information about the current graph."
+      );
+    if (typeof options.allowSelfLoops === "boolean" && options.allowSelfLoops !== this.allowSelfLoops && options.allowSelfLoops !== true)
+      throw new UsageGraphError(
+        "Graph.copy: cannot create an incompatible copy from a graph allowing self loops to one that does not because this would mean losing information about the current graph."
+      );
+    const graph = this.emptyCopy(options);
+    const iterator = this._edges.values();
+    let step, edgeData;
+    while (step = iterator.next(), step.done !== true) {
+      edgeData = step.value;
+      addEdge(
+        graph,
+        "copy",
+        false,
+        edgeData.undirected,
+        edgeData.key,
+        edgeData.source.key,
+        edgeData.target.key,
+        assign({}, edgeData.attributes)
+      );
+    }
+    return graph;
+  }
+  /**---------------------------------------------------------------------------
+   * Known methods
+   **---------------------------------------------------------------------------
+   */
+  /**
+   * Method used by JavaScript to perform JSON serialization.
+   *
+   * @return {object} - The serialized graph.
+   */
+  toJSON() {
+    return this.export();
+  }
+  /**
+   * Method returning [object Graph].
+   */
+  toString() {
+    return "[object Graph]";
+  }
+  /**
+   * Method used internally by node's console to display a custom object.
+   *
+   * @return {object} - Formatted object representation of the graph.
+   */
+  inspect() {
+    const nodes = {};
+    this._nodes.forEach((data, key) => {
+      nodes[key] = data.attributes;
+    });
+    const edges = {}, multiIndex = {};
+    this._edges.forEach((data, key) => {
+      const direction = data.undirected ? "--" : "->";
+      let label = "";
+      let source = data.source.key;
+      let target = data.target.key;
+      let tmp;
+      if (data.undirected && source > target) {
+        tmp = source;
+        source = target;
+        target = tmp;
+      }
+      const desc = `(${source})${direction}(${target})`;
+      if (!key.startsWith("geid_")) {
+        label += `[${key}]: `;
+      } else if (this.multi) {
+        if (typeof multiIndex[desc] === "undefined") {
+          multiIndex[desc] = 0;
+        } else {
+          multiIndex[desc]++;
+        }
+        label += `${multiIndex[desc]}. `;
+      }
+      label += desc;
+      edges[label] = data.attributes;
+    });
+    const dummy = {};
+    for (const k in this) {
+      if (this.hasOwnProperty(k) && !EMITTER_PROPS.has(k) && typeof this[k] !== "function" && typeof k !== "symbol")
+        dummy[k] = this[k];
+    }
+    dummy.attributes = this._attributes;
+    dummy.nodes = nodes;
+    dummy.edges = edges;
+    privateProperty(dummy, "constructor", this.constructor);
+    return dummy;
+  }
+};
+if (typeof Symbol !== "undefined")
+  Graph.prototype[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = Graph.prototype.inspect;
+EDGE_ADD_METHODS.forEach((method) => {
+  ["add", "merge", "update"].forEach((verb) => {
+    const name = method.name(verb);
+    const fn = verb === "add" ? addEdge : mergeEdge;
+    if (method.generateKey) {
+      Graph.prototype[name] = function(source, target, attributes) {
+        return fn(
+          this,
+          name,
+          true,
+          (method.type || this.type) === "undirected",
+          null,
+          source,
+          target,
+          attributes,
+          verb === "update"
+        );
+      };
+    } else {
+      Graph.prototype[name] = function(edge, source, target, attributes) {
+        return fn(
+          this,
+          name,
+          false,
+          (method.type || this.type) === "undirected",
+          edge,
+          source,
+          target,
+          attributes,
+          verb === "update"
+        );
+      };
+    }
+  });
+});
+attachNodeAttributesMethods(Graph);
+attachEdgeAttributesMethods(Graph);
+attachEdgeIterationMethods(Graph);
+attachNeighborIterationMethods(Graph);
+var DirectedGraph = class extends Graph {
+  constructor(options) {
+    const finalOptions = assign({ type: "directed" }, options);
+    if ("multi" in finalOptions && finalOptions.multi !== false)
+      throw new InvalidArgumentsGraphError(
+        "DirectedGraph.from: inconsistent indication that the graph should be multi in given options!"
+      );
+    if (finalOptions.type !== "directed")
+      throw new InvalidArgumentsGraphError(
+        'DirectedGraph.from: inconsistent "' + finalOptions.type + '" type in given options!'
+      );
+    super(finalOptions);
+  }
+};
+var UndirectedGraph = class extends Graph {
+  constructor(options) {
+    const finalOptions = assign({ type: "undirected" }, options);
+    if ("multi" in finalOptions && finalOptions.multi !== false)
+      throw new InvalidArgumentsGraphError(
+        "UndirectedGraph.from: inconsistent indication that the graph should be multi in given options!"
+      );
+    if (finalOptions.type !== "undirected")
+      throw new InvalidArgumentsGraphError(
+        'UndirectedGraph.from: inconsistent "' + finalOptions.type + '" type in given options!'
+      );
+    super(finalOptions);
+  }
+};
+var MultiGraph = class extends Graph {
+  constructor(options) {
+    const finalOptions = assign({ multi: true }, options);
+    if ("multi" in finalOptions && finalOptions.multi !== true)
+      throw new InvalidArgumentsGraphError(
+        "MultiGraph.from: inconsistent indication that the graph should be simple in given options!"
+      );
+    super(finalOptions);
+  }
+};
+var MultiDirectedGraph = class extends Graph {
+  constructor(options) {
+    const finalOptions = assign({ type: "directed", multi: true }, options);
+    if ("multi" in finalOptions && finalOptions.multi !== true)
+      throw new InvalidArgumentsGraphError(
+        "MultiDirectedGraph.from: inconsistent indication that the graph should be simple in given options!"
+      );
+    if (finalOptions.type !== "directed")
+      throw new InvalidArgumentsGraphError(
+        'MultiDirectedGraph.from: inconsistent "' + finalOptions.type + '" type in given options!'
+      );
+    super(finalOptions);
+  }
+};
+var MultiUndirectedGraph = class extends Graph {
+  constructor(options) {
+    const finalOptions = assign({ type: "undirected", multi: true }, options);
+    if ("multi" in finalOptions && finalOptions.multi !== true)
+      throw new InvalidArgumentsGraphError(
+        "MultiUndirectedGraph.from: inconsistent indication that the graph should be simple in given options!"
+      );
+    if (finalOptions.type !== "undirected")
+      throw new InvalidArgumentsGraphError(
+        'MultiUndirectedGraph.from: inconsistent "' + finalOptions.type + '" type in given options!'
+      );
+    super(finalOptions);
+  }
+};
+function attachStaticFromMethod(Class2) {
+  Class2.from = function(data, options) {
+    const finalOptions = assign({}, data.options, options);
+    const instance = new Class2(finalOptions);
+    instance.import(data);
+    return instance;
+  };
+}
+attachStaticFromMethod(Graph);
+attachStaticFromMethod(DirectedGraph);
+attachStaticFromMethod(UndirectedGraph);
+attachStaticFromMethod(MultiGraph);
+attachStaticFromMethod(MultiDirectedGraph);
+attachStaticFromMethod(MultiUndirectedGraph);
+Graph.Graph = Graph;
+Graph.DirectedGraph = DirectedGraph;
+Graph.UndirectedGraph = UndirectedGraph;
+Graph.MultiGraph = MultiGraph;
+Graph.MultiDirectedGraph = MultiDirectedGraph;
+Graph.MultiUndirectedGraph = MultiUndirectedGraph;
+Graph.InvalidArgumentsGraphError = InvalidArgumentsGraphError;
+Graph.NotFoundGraphError = NotFoundGraphError;
+Graph.UsageGraphError = UsageGraphError;
+
+// ../shared/src/knowledge-map/partition.ts
+var import_graphology_communities_louvain = __toESM(require_graphology_communities_louvain(), 1);
+var Graph2 = Graph;
+var louvain = import_graphology_communities_louvain.default;
+var PARTITION_SEEDS = [1, 2, 3, 4, 5];
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = a + 1831565813 >>> 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+var byId2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function connectedComponents(graph, nodes) {
+  const labels = {};
+  let next = 0;
+  for (const start2 of nodes) {
+    if (labels[start2] !== void 0) continue;
+    const stack = [start2];
+    labels[start2] = next;
+    while (stack.length > 0) {
+      const id = stack.pop();
+      for (const other of graph.neighbors(id).sort(byId2)) {
+        if (labels[other] === void 0) {
+          labels[other] = next;
+          stack.push(other);
+        }
+      }
+    }
+    next++;
+  }
+  return labels;
+}
+function partition(nodeIds, edges, resolution = 1, seeds = PARTITION_SEEDS) {
+  const nodes = [...new Set(nodeIds)].sort(byId2);
+  const graph = new Graph2({ type: "undirected", multi: false });
+  for (const id of nodes) graph.addNode(id);
+  const sorted = edges.filter((edge) => edge.a !== edge.b && edge.weight > 0).map((edge) => edge.a < edge.b ? edge : { a: edge.b, b: edge.a, weight: edge.weight }).sort((x, y) => byId2(x.a, y.a) || byId2(x.b, y.b));
+  for (const edge of sorted) {
+    if (!graph.hasNode(edge.a) || !graph.hasNode(edge.b)) continue;
+    if (graph.hasEdge(edge.a, edge.b)) {
+      graph.updateEdgeAttribute(edge.a, edge.b, "weight", (w) => (w ?? 0) + edge.weight);
+    } else {
+      graph.addEdge(edge.a, edge.b, { weight: edge.weight });
+    }
+  }
+  if (graph.size === 0) {
+    return { communities: nodes.map((id) => [id]), modularity: 0 };
+  }
+  let best = null;
+  for (const seed of seeds) {
+    const run = louvain.detailed(graph, { resolution, getEdgeWeight: "weight", rng: seededRandom(seed) });
+    if (!best || run.modularity > best.modularity + 1e-12) best = { communities: run.communities, modularity: run.modularity };
+  }
+  const labels = best.modularity > 1e-9 ? best.communities : connectedComponents(graph, nodes);
+  const groups = /* @__PURE__ */ new Map();
+  for (const id of nodes) {
+    const community = labels[id];
+    const list = groups.get(community);
+    if (list) list.push(id);
+    else groups.set(community, [id]);
+  }
+  const communities = [...groups.values()].map((members) => members.sort(byId2)).sort((x, y) => y.length - x.length || byId2(x[0], y[0]));
+  return { communities, modularity: best.modularity };
+}
+
+// ../shared/src/knowledge-map/graph.ts
+var SEMANTIC_MIN = 0.6;
+var SEMANTIC_K = 6;
+var NEAR_DUPLICATE = 0.85;
+var LINK_WEIGHT_CAP = 1.5;
+var byId3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var pairKey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+function itemText(item) {
+  return `${item.description ?? ""} ${item.body}`;
+}
+function linkLayer(items) {
+  const resolver = createLinkResolver(items.map((item) => ({ id: item.id, kind: item.kind, title: item.title })));
+  const linkPairs = /* @__PURE__ */ new Map();
+  const byStage = { exact: 0, apostrophe: 0, punctuation: 0, prefix: 0, subset: 0 };
+  const dangling = [];
+  let resolved = 0;
+  for (const item of items) {
+    for (const target of extractLinkTargets(`${item.body}
+${item.description ?? ""}`)) {
+      const hit = resolver.resolve(target);
+      if (!hit) {
+        if (!target.startsWith("::")) dangling.push({ itemId: item.id, target });
+        continue;
+      }
+      if (hit.id === item.id) continue;
+      resolved++;
+      byStage[hit.stage]++;
+      const key = pairKey(item.id, hit.id);
+      linkPairs.set(key, (linkPairs.get(key) ?? 0) + 1);
+    }
+  }
+  return { linkPairs, dangling, links: { resolved, byStage, dangling: dangling.length } };
+}
+function vectorLayer(input, ids) {
+  const lists = /* @__PURE__ */ new Map();
+  for (const [a, b, similarity] of input.neighbours) {
+    if (!ids.has(a) || !ids.has(b) || a === b) continue;
+    const list = lists.get(a);
+    if (list) list.push([b, similarity]);
+    else lists.set(a, [[b, similarity]]);
+  }
+  const pairs = /* @__PURE__ */ new Map();
+  const topScores = [];
+  for (const id of [...lists.keys()].sort(byId3)) {
+    const top = lists.get(id).sort((x, y) => y[1] - x[1] || byId3(x[0], y[0])).slice(0, SEMANTIC_K);
+    for (const [other, similarity] of top) {
+      topScores.push(similarity);
+      if (similarity < SEMANTIC_MIN) continue;
+      const key = pairKey(id, other);
+      pairs.set(key, Math.max(pairs.get(key) ?? 0, similarity));
+    }
+  }
+  return { pairs, topScores: topScores.sort((x, y) => x - y) };
+}
+function buildContentGraph(input) {
+  const items = [...input.items].sort((a, b) => byId3(a.id, b.id));
+  const ids = new Set(items.map((item) => item.id));
+  const kindOf = new Map(items.map((item) => [item.id, item.kind]));
+  const memoryIds = items.filter((item) => item.kind === "memory").map((item) => item.id);
+  const { linkPairs, dangling, links } = linkLayer(items);
+  const vectors = input.semantic === "lexical" ? null : vectorLayer(input, ids);
+  const hasVectors = vectors !== null && vectors.pairs.size + vectors.topScores.length > 0;
+  const index = buildLexicalIndex(items.map((item) => ({ id: item.id, title: item.title, text: itemText(item) })));
+  const allLists = lexicalNeighbourLists(index, [...ids]);
+  let toVectorScale = (cosine) => knotScale(cosine);
+  if (hasVectors) {
+    const memoryLists = lexicalNeighbourLists(index, memoryIds);
+    const lexicalTop = [...memoryLists.values()].flatMap((list) => list.slice(0, SEMANTIC_K).map((n) => n.cosine)).sort((x, y) => x - y);
+    toVectorScale = quantileScale(lexicalTop, vectors.topScores);
+  }
+  const lexicalPairs = /* @__PURE__ */ new Map();
+  for (const id of [...ids].sort(byId3)) {
+    for (const { id: other, cosine } of allLists.get(id).slice(0, SEMANTIC_K)) {
+      const similarity = toVectorScale(cosine);
+      if (similarity < SEMANTIC_MIN) continue;
+      if (hasVectors && kindOf.get(id) === "memory" && kindOf.get(other) === "memory") continue;
+      const key = pairKey(id, other);
+      lexicalPairs.set(key, Math.max(lexicalPairs.get(key) ?? 0, similarity));
+    }
+  }
+  const vectorPairs = hasVectors ? vectors.pairs : /* @__PURE__ */ new Map();
+  const merged = /* @__PURE__ */ new Map();
+  const add = (key, weight, kind, similarity) => {
+    const edge = merged.get(key) ?? { weight: 0, kinds: /* @__PURE__ */ new Set() };
+    edge.weight += weight;
+    edge.kinds.add(kind);
+    if (similarity !== void 0) edge.similarity = Math.max(edge.similarity ?? 0, similarity);
+    merged.set(key, edge);
+  };
+  for (const key of [...linkPairs.keys()].sort()) add(key, Math.min(LINK_WEIGHT_CAP, linkPairs.get(key)), "link");
+  for (const source of [vectorPairs, lexicalPairs]) {
+    for (const key of [...source.keys()].sort()) {
+      const similarity = source.get(key);
+      add(key, (similarity - 0.5) / 0.5, "semantic", similarity);
+    }
+  }
+  const edges = [...merged.keys()].sort().map((key) => {
+    const [a, b] = key.split("|");
+    const edge = merged.get(key);
+    return {
+      a,
+      b,
+      weight: edge.weight,
+      kinds: [...edge.kinds].sort(),
+      ...edge.similarity !== void 0 ? { similarity: edge.similarity } : {}
+    };
+  });
+  return { edges, linkPairs, vectorPairs, lexicalPairs, dangling, links };
+}
+
+// ../shared/src/knowledge-map/findings.ts
+var SCOPE_DOWN_SHARE = 0.6;
+var JUNCTION_PARTICIPATION = 0.6;
+var JUNCTION_MIN_REGIONS = 3;
+var JUNCTION_MIN_DEGREE = 6;
+var JUNCTION_REGION_SHARE = 0.1;
+var NO_REGION = "";
+var byId4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var round = (x) => Math.round(x * 1e4) / 1e4;
+function consolidationGroups(graph) {
+  const parent = /* @__PURE__ */ new Map();
+  const find = (id) => {
+    let root = id;
+    while (parent.get(root) !== root) root = parent.get(root);
+    for (let node = id; parent.get(node) !== root; ) {
+      const next = parent.get(node);
+      parent.set(node, root);
+      node = next;
+    }
+    return root;
+  };
+  const strong = [...graph.vectorPairs.entries()].filter(([, similarity]) => similarity >= NEAR_DUPLICATE).sort((x, y) => byId4(x[0], y[0]));
+  for (const [key] of strong) {
+    const [a, b] = key.split("|");
+    for (const id of [a, b]) if (!parent.has(id)) parent.set(id, id);
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra < rb ? rb : ra, ra < rb ? ra : rb);
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const id of [...parent.keys()].sort(byId4)) {
+    const root = find(id);
+    const list = groups.get(root);
+    if (list) list.push(id);
+    else groups.set(root, [id]);
+  }
+  return [...groups.values()].map((members) => {
+    const set = new Set(members);
+    const maxSimilarity = Math.max(
+      ...strong.filter(([key]) => key.split("|").every((id) => set.has(id))).map(([, similarity]) => similarity)
+    );
+    return { kind: "consolidate", itemIds: members, maxSimilarity: round(maxSimilarity) };
+  }).sort((x, y) => y.itemIds.length - x.itemIds.length || byId4(x.itemIds[0], y.itemIds[0]));
+}
+function unlinkedCompanions(graph, items) {
+  const out = [];
+  for (const key of [...graph.lexicalPairs.keys()].sort()) {
+    const similarity = graph.lexicalPairs.get(key);
+    const [a, b] = key.split("|");
+    if (similarity < NEAR_DUPLICATE || items[a]?.kind === items[b]?.kind || graph.linkPairs.has(key)) continue;
+    out.push({ kind: "companion_unlinked", itemIds: [a, b], similarity: round(similarity) });
+  }
+  return out;
+}
+function mapFindings(f) {
+  const regionById = new Map(f.regions.map((region) => [region.id, region]));
+  const scopeDown = [];
+  const junctions = [];
+  for (const id of Object.keys(f.items).sort(byId4)) {
+    const regionId = f.regionOf.get(id);
+    if (!regionId || f.loose.has(id)) continue;
+    const ties = /* @__PURE__ */ new Map();
+    let total = 0;
+    for (const [other, weight] of f.adjacency.get(id) ?? []) {
+      const key = f.regionOf.get(other) ?? NO_REGION;
+      ties.set(key, (ties.get(key) ?? 0) + weight);
+      total += weight;
+    }
+    if (total === 0) continue;
+    const item = f.items[id];
+    const region = regionById.get(regionId);
+    const inside = (ties.get(regionId) ?? 0) / total;
+    const atRoot = item.nodePaths.length === 0 || item.nodePaths.every((path) => path === "/");
+    if (atRoot && inside >= SCOPE_DOWN_SHARE && region.pathFit >= SCOPE_DOWN_SHARE && region.homePath !== "/") {
+      scopeDown.push({ kind: "scope_down_candidate", itemId: id, regionId, homePath: region.homePath, share: round(inside) });
+    }
+    const participation = 1 - [...ties.values()].reduce((sum, weight) => sum + (weight / total) ** 2, 0);
+    const touched = [...ties.entries()].filter(([key, weight]) => key !== NO_REGION && weight / total >= JUNCTION_REGION_SHARE).map(([key]) => key).sort(byId4);
+    if (participation >= JUNCTION_PARTICIPATION && touched.length >= JUNCTION_MIN_REGIONS && (f.adjacency.get(id)?.size ?? 0) >= JUNCTION_MIN_DEGREE) {
+      junctions.push({ kind: "junction", itemId: id, regionIds: touched, participation: round(participation) });
+    }
+  }
+  const unused = f.input.usage === null ? [] : Object.values(f.items).filter((item) => item.sessions === 0).map((item) => ({ kind: "unused", itemId: item.id, windowDays: f.input.usageWindowDays ?? 0 })).sort((x, y) => byId4(x.itemId, y.itemId));
+  const dangling = f.graph.dangling.map((d) => ({ kind: "dangling_link", itemId: d.itemId, target: d.target }));
+  return [...consolidationGroups(f.graph), ...unlinkedCompanions(f.graph, f.items), ...dangling, ...scopeDown, ...junctions, ...unused];
+}
+function findingsFor(findings, ids) {
+  return findings.filter(
+    (finding) => "itemIds" in finding ? finding.itemIds.some((id) => ids.has(id)) : ids.has(finding.itemId)
+  );
+}
+
+// ../shared/src/knowledge-map/build.ts
+var MIN_REGION = 3;
+var SUBREGION_MIN_ITEMS = 25;
+var ONE_LINER_MAX = 110;
+var byId5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var charsOf = (item) => item.body.length + (item.description?.length ?? 0);
+function normalizeNodePath2(path) {
+  const segments2 = path.split("/").filter(Boolean);
+  return segments2.length === 0 ? "/" : `/${segments2.join("/")}`;
+}
+function primaryPath(item) {
+  const paths = item.nodePaths.map(normalizeNodePath2).sort(byId5);
+  return paths[0] ?? "/";
+}
+function pathArea(path) {
+  const segments2 = normalizeNodePath2(path).split("/").filter(Boolean);
+  return segments2.length === 0 ? "/" : `/${segments2.slice(0, 2).join("/")}`;
+}
+function oneLiner(body) {
+  for (const raw of (body ?? "").split("\n")) {
+    const line = raw.trim();
+    if (!line || /^(#|---|```|name:|description:|metadata:|type:)/.test(line)) continue;
+    const clean = line.replace(/[*_`>[\]]/g, "").replace(/\s+/g, " ").replace(/^[\s-]+|[\s-]+$/g, "");
+    if (clean.length < 12) continue;
+    return clean.length <= ONE_LINER_MAX ? clean : `${clean.slice(0, ONE_LINER_MAX - 1).trimEnd()}\u2026`;
+  }
+  return "";
+}
+function adjacencyOf(graph, ids) {
+  const adjacency = new Map(ids.map((id) => [id, /* @__PURE__ */ new Map()]));
+  for (const edge of graph.edges) {
+    adjacency.get(edge.a)?.set(edge.b, edge.weight);
+    adjacency.get(edge.b)?.set(edge.a, edge.weight);
+  }
+  return adjacency;
+}
+var weightInside = (adjacency, id, members) => {
+  let sum = 0;
+  for (const [other, weight] of adjacency.get(id) ?? []) if (members.has(other)) sum += weight;
+  return sum;
+};
+function anchorOf(adjacency, members) {
+  const set = new Set(members);
+  let best = members[0];
+  let bestWeight = -1;
+  for (const id of [...members].sort(byId5)) {
+    const weight = weightInside(adjacency, id, set);
+    if (weight > bestWeight) {
+      best = id;
+      bestWeight = weight;
+    }
+  }
+  return best;
+}
+function uniqueId(prefix, anchorId, taken) {
+  let id = `${prefix}${stableHash(anchorId)}`;
+  for (let n = 1; taken.has(id); n++) id = `${prefix}${stableHash(`${anchorId}:${n}`)}`;
+  taken.add(id);
+  return id;
+}
+function regionTerms(memberSets, itemsById) {
+  const words = (item) => new Set(tokenize(`${item.title} ${item.description ?? ""}`).flatMap((token) => token.split(/[-_]+/)).filter(Boolean));
+  const counts = memberSets.map((members) => {
+    const tf = /* @__PURE__ */ new Map();
+    for (const id of members) for (const word of words(itemsById.get(id))) tf.set(word, (tf.get(word) ?? 0) + 1);
+    return tf;
+  });
+  const regionsWith = /* @__PURE__ */ new Map();
+  for (const tf of counts) for (const word of tf.keys()) regionsWith.set(word, (regionsWith.get(word) ?? 0) + 1);
+  return counts.map((tf, r) => {
+    const size = memberSets[r].length;
+    return [...tf.entries()].filter(([, count2]) => count2 >= 2).map(([word, count2]) => [word, count2 / size * Math.log(1 + memberSets.length / regionsWith.get(word))]).sort((x, y) => y[1] - x[1] || byId5(x[0], y[0])).slice(0, 3).map(([word]) => word);
+  });
+}
+function buildKnowledgeMap(input, options) {
+  const items = [...input.items].sort((a, b) => byId5(a.id, b.id));
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const ids = items.map((item) => item.id);
+  const graph = buildContentGraph(input);
+  const adjacency = adjacencyOf(graph, ids);
+  const { communities } = partition(ids, graph.edges);
+  const groups = communities.filter((members) => members.length >= MIN_REGION).map((members) => [...members]);
+  const regionOf = /* @__PURE__ */ new Map();
+  groups.forEach((members, r) => members.forEach((id) => regionOf.set(id, r)));
+  const unplaced = [];
+  for (const members of communities.filter((group) => group.length < MIN_REGION)) {
+    for (const id of members) {
+      const ties = /* @__PURE__ */ new Map();
+      for (const [other, weight] of adjacency.get(id)) {
+        const r = regionOf.get(other);
+        if (r !== void 0) ties.set(r, (ties.get(r) ?? 0) + weight);
+      }
+      const best = [...ties.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0];
+      if (best) {
+        groups[best[0]].push(id);
+        regionOf.set(id, best[0]);
+      } else unplaced.push(id);
+    }
+  }
+  const loose = /* @__PURE__ */ new Set();
+  const conventions = [];
+  for (const id of unplaced) {
+    const item = itemsById.get(id);
+    let home;
+    for (let path = primaryPath(item); path !== "/" && home === void 0; path = normalizeNodePath2(path.split("/").slice(0, -1).join("/"))) {
+      const counts = /* @__PURE__ */ new Map();
+      for (const [other, r] of regionOf) {
+        if (!loose.has(other) && itemsById.get(other).nodePaths.map(normalizeNodePath2).includes(path)) counts.set(r, (counts.get(r) ?? 0) + 1);
+      }
+      home = [...counts.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0]?.[0];
+    }
+    if (home === void 0) conventions.push(id);
+    else {
+      loose.add(id);
+      groups[home].push(id);
+      regionOf.set(id, home);
+    }
+  }
+  const takenIds = /* @__PURE__ */ new Set();
+  const terms = regionTerms(groups, itemsById);
+  const regionIds = [];
+  const regions = groups.map((members, r) => {
+    const placed = members.filter((id2) => !loose.has(id2));
+    const set = new Set(members);
+    const anchorId = anchorOf(adjacency, placed.length > 0 ? placed : members);
+    const id = uniqueId("rg_", anchorId, takenIds);
+    regionIds[r] = id;
+    const ordered = [...members].sort((x, y) => weightInside(adjacency, y, set) - weightInside(adjacency, x, set) || byId5(x, y));
+    const areas = /* @__PURE__ */ new Map();
+    for (const member of members) {
+      const area = pathArea(primaryPath(itemsById.get(member)));
+      areas.set(area, (areas.get(area) ?? 0) + 1);
+    }
+    const [homePath, homeCount] = [...areas.entries()].sort((x, y) => y[1] - x[1] || byId5(x[0], y[0]))[0];
+    let inside = 0;
+    let outside = 0;
+    for (const member of members) {
+      for (const [other, weight] of adjacency.get(member)) {
+        if (regionOf.get(other) === r) inside += weight;
+        else outside += weight;
+      }
+    }
+    const subRegions = [];
+    if (placed.length >= SUBREGION_MIN_ITEMS) {
+      const placedSet = new Set(placed);
+      const subEdges = graph.edges.filter((edge) => placedSet.has(edge.a) && placedSet.has(edge.b));
+      for (const group of partition(placed, subEdges).communities) {
+        const subAnchor = anchorOf(adjacency, group);
+        const groupSet = new Set(group);
+        subRegions.push({
+          id: uniqueId("sr_", subAnchor, takenIds),
+          anchorId: subAnchor,
+          memberIds: [...group].sort((x, y) => weightInside(adjacency, y, groupSet) - weightInside(adjacency, x, groupSet) || byId5(x, y))
+        });
+      }
+    }
+    return {
+      id,
+      anchorId,
+      memberIds: ordered,
+      terms: terms[r],
+      homePath,
+      pathFit: homeCount / members.length,
+      cohesion: inside + outside > 0 ? inside / (inside + outside) : 0,
+      tokens: Math.floor(members.reduce((sum, member) => sum + charsOf(itemsById.get(member)), 0) / 4),
+      neighbours: [],
+      subRegions
+    };
+  });
+  regions.forEach((region, r) => {
+    const cross = /* @__PURE__ */ new Map();
+    for (const member of groups[r]) {
+      for (const [other, weight] of adjacency.get(member)) {
+        const otherRegion = regionOf.get(other);
+        if (otherRegion !== void 0 && otherRegion !== r) cross.set(otherRegion, (cross.get(otherRegion) ?? 0) + weight);
+      }
+    }
+    region.neighbours = [...cross.entries()].map(([other, weight]) => ({ regionId: regionIds[other], weight })).sort((x, y) => y.weight - x.weight || byId5(x.regionId, y.regionId)).slice(0, 3);
+  });
+  const subRegionOf = /* @__PURE__ */ new Map();
+  for (const region of regions) for (const sub of region.subRegions) for (const member of sub.memberIds) subRegionOf.set(member, sub.id);
+  const mapItems = {};
+  for (const item of items) {
+    const r = regionOf.get(item.id);
+    const nodePaths = [...new Set(item.nodePaths.map(normalizeNodePath2))].sort(byId5);
+    mapItems[item.id] = {
+      id: item.id,
+      kind: item.kind,
+      title: item.title,
+      nodePaths,
+      oneLiner: oneLiner(item.body || item.description),
+      tokens: Math.floor(charsOf(item) / 4),
+      updatedAt: item.updatedAt,
+      anchors: resolveItemAnchors(extractPathAnchors(`${item.body}
+${item.description ?? ""}`), nodePaths),
+      regionId: r === void 0 ? null : regionIds[r],
+      subRegionId: subRegionOf.get(item.id) ?? null,
+      loose: loose.has(item.id),
+      sessions: input.usage ? input.usage[item.id] ?? 0 : null
+    };
+  }
+  const findings = mapFindings({ input, graph, adjacency, regions, regionOf: new Map([...regionOf].map(([id, r]) => [id, regionIds[r]])), items: mapItems, loose });
+  return {
+    algorithm: KNOWLEDGE_MAP_ALGORITHM,
+    workspaceId: input.workspaceId,
+    fingerprint: options.fingerprint,
+    generatedAt: options.generatedAt,
+    semantic: graph.vectorPairs.size > 0 ? input.semantic : "lexical",
+    items: mapItems,
+    edges: graph.edges,
+    regions,
+    conventions: conventions.sort(byId5),
+    findings,
+    links: graph.links
+  };
+}
+
+// ../shared/src/knowledge-map/coverage.ts
+var ANCHOR_MIN_DEPTH = 3;
+var COMMIT_SCOPE_MIN_SHARE = 1 / 3;
+
+// ../shared/src/knowledge-map/render.ts
+var ATLAS_MAX_CHARS = 4e3;
+var REGION_PAGE_MAX_CHARS = 18e3;
+var RELATED_MAX_CHARS = 4e3;
+var PAGE_MAX_MEMBERS = 40;
+var AUDIT_CHECKLIST = "Audit checklist: 1) statements that contradict each other; 2) a rule its companion skill or memory contradicts; 3) memories that say the same thing; 4) references to code that no longer exists; 5) knowledge older than the code it describes. Compare boundary items with neighbour regions only. File drift with pathrule_request_refresh; edit knowledge only when asked.";
+var KIND_LETTER = { memory: "M", rule: "R", skill: "S" };
+function short(value, max) {
+  const clean = value.replace(/\s+/g, " ").replace(/\|/g, "/").trim();
+  return clean.length <= max ? clean : `${clean.slice(0, max - 1).trimEnd()}\u2026`;
+}
+var percent = (x) => `${Math.round(x * 100)}%`;
+var thousands = (n) => n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n);
+function capLines(lines, max, more) {
+  const out = [];
+  let size = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const tail = more(lines.length - i);
+    if (size + line.length + 1 + tail.length + 1 > max) {
+      out.push(tail);
+      return out.join("\n");
+    }
+    out.push(line);
+    size += line.length + 1;
+  }
+  return out.join("\n");
+}
+function kindCounts(map, ids) {
+  const counts = { memory: 0, rule: 0, skill: 0 };
+  for (const id of ids) counts[map.items[id].kind]++;
+  return `${counts.memory}/${counts.rule}/${counts.skill}`;
+}
+function regionIssueCounts(map, region) {
+  const members = new Set(region.memberIds);
+  const related = findingsFor(map.findings, members);
+  return {
+    consolidate: related.filter((f) => f.kind === "consolidate").reduce((sum, f) => sum + ("itemIds" in f ? f.itemIds.filter((id) => members.has(id)).length : 0), 0),
+    companions: related.filter((f) => f.kind === "companion_unlinked").length,
+    unused: related.filter((f) => f.kind === "unused").length
+  };
+}
+var NODE_MIN_DEPTH = 2;
+function touchesScope(path, scope, minAncestorDepth) {
+  if (!path) return false;
+  return path === scope || path.startsWith(`${scope}/`) || scope.startsWith(`${path}/`) && pathDepth(path) >= minAncestorDepth;
+}
+function regionOpenGaps(map, region, openScopes) {
+  let count2 = 0;
+  for (const scope of openScopes) {
+    const touched = region.memberIds.some((id) => {
+      const item = map.items[id];
+      return item.anchors.some((path) => touchesScope(path, scope, ANCHOR_MIN_DEPTH)) || item.nodePaths.some((node) => touchesScope(node.replace(/^\/+|\/+$/g, ""), scope, NODE_MIN_DEPTH));
+    });
+    if (touched) count2++;
+  }
+  return count2;
+}
+function gapsLine(gaps) {
+  return `Knowledge gaps: ${gaps.openScopes.length} open, ${gaps.closedLast30Days} closed in 30 days. A gap closes when recorded knowledge anchors its files, or when a person dismisses it in Knowledge Maintenance.`;
+}
+function renderAtlas(map, extras = {}) {
+  const items = Object.values(map.items);
+  const all = items.map((item) => item.id);
+  const number3 = new Map(map.regions.map((region, i) => [region.id, i + 1]));
+  const gaps = extras.gaps && (extras.gaps.openScopes.length > 0 || extras.gaps.closedLast30Days > 0) ? extras.gaps : null;
+  const gapColumn = (gaps?.openScopes.length ?? 0) > 0;
+  const lines = [
+    `Knowledge atlas: ${items.length} items (M/R/S ${kindCounts(map, all)}) in ${map.regions.length} regions, grouped by links and meaning, not folders. Semantic source: ${map.semantic}.`,
+    ...gaps ? [gapsLine(gaps)] : [],
+    "Open a region with view=region region_id=<id>; issues are counts, the region page lists them.",
+    `| # | id | anchor item | terms | M/R/S | ~tokens | home (fit) | cohesion | neighbours | consolidate | unlinked companions | unused |${gapColumn ? " open gaps |" : ""}`,
+    `|---|---|---|---|---|---|---|---|---|---|---|---|${gapColumn ? "---|" : ""}`
+  ];
+  const rows = map.regions.map((region, i) => {
+    const issues = regionIssueCounts(map, region);
+    const neighbours = region.neighbours.map((n) => `#${number3.get(n.regionId)}`).join(", ") || "-";
+    const gapCell = gapColumn ? ` ${regionOpenGaps(map, region, gaps.openScopes)} |` : "";
+    return `| ${i + 1} | ${region.id} | ${short(map.items[region.anchorId].title, 48)} | ${region.terms.join(", ") || "-"} | ${kindCounts(map, region.memberIds)} | ${thousands(region.tokens)} | ${region.homePath} (${percent(region.pathFit)}) | ${percent(region.cohesion)} | ${neighbours} | ${issues.consolidate} | ${issues.companions} | ${issues.unused} |${gapCell}`;
+  });
+  const loose = items.filter((item) => item.loose).length;
+  const footer = `Loosely attached by path only: ${loose}. Workspace conventions (no topical edge): ${map.conventions.length}. Map ${map.algorithm}, fingerprint ${map.fingerprint.slice(0, 12)}.`;
+  return capLines([...lines, ...rows, footer], ATLAS_MAX_CHARS, (left) => `(+${left} more lines; the region pages carry the rest)`);
+}
+function regionPages(map, region) {
+  const pages = [];
+  const groups = region.subRegions.length > 0 ? region.subRegions.map((sub) => ({ id: sub.id, anchorId: sub.anchorId, memberIds: sub.memberIds })) : [{ id: null, anchorId: region.anchorId, memberIds: region.memberIds.filter((id) => !map.items[id].loose) }];
+  for (const group of groups) {
+    for (let start2 = 0; start2 < group.memberIds.length; start2 += PAGE_MAX_MEMBERS) {
+      pages.push({
+        number: pages.length + 1,
+        title: map.items[group.anchorId].title,
+        memberIds: group.memberIds.slice(start2, start2 + PAGE_MAX_MEMBERS),
+        subRegionId: group.id
+      });
+    }
+  }
+  const loose = region.memberIds.filter((id) => map.items[id].loose);
+  for (let start2 = 0; start2 < loose.length; start2 += PAGE_MAX_MEMBERS) {
+    pages.push({ number: pages.length + 1, title: "Loosely attached by path", memberIds: loose.slice(start2, start2 + PAGE_MAX_MEMBERS), subRegionId: null });
+  }
+  return pages;
+}
+function memberLine(item) {
+  const path = item.nodePaths[0] ?? "/";
+  return `- [${KIND_LETTER[item.kind]}] ${short(item.title, 90)} (${path}) ${item.id}${item.oneLiner ? `: ${item.oneLiner}` : ""}`;
+}
+function issueLine(map, finding) {
+  const title = (id) => short(map.items[id]?.title ?? id, 60);
+  switch (finding.kind) {
+    case "consolidate":
+      return `- consolidate ${finding.itemIds.length} memories (similarity up to ${finding.maxSimilarity}): ${finding.itemIds.map(title).join(" | ")}`;
+    case "companion_unlinked":
+      return `- companions that do not link each other (${finding.similarity}): [${KIND_LETTER[map.items[finding.itemIds[0]].kind]}] ${title(finding.itemIds[0])} <-> [${KIND_LETTER[map.items[finding.itemIds[1]].kind]}] ${title(finding.itemIds[1])}`;
+    case "dangling_link":
+      return `- dangling [[${short(finding.target, 60)}]] in ${title(finding.itemId)}`;
+    case "scope_down_candidate":
+      return `- candidate only: ${title(finding.itemId)} sits at / while ${percent(finding.share)} of its ties are in this region (home ${finding.homePath})`;
+    case "junction":
+      return `- junction: ${title(finding.itemId)} ties ${finding.regionIds.length} regions (${finding.regionIds.join(", ")})`;
+    case "unused":
+      return null;
+  }
+}
+function renderRegion(map, region, options = {}) {
+  const pages = regionPages(map, region);
+  const page = pages[Math.min(Math.max(1, options.page ?? 1), Math.max(1, pages.length)) - 1];
+  const members = page?.memberIds ?? [];
+  const memberSet = new Set(members);
+  const byId7 = new Map(map.regions.map((r) => [r.id, r]));
+  const areas = /* @__PURE__ */ new Map();
+  for (const id of region.memberIds) {
+    const path = map.items[id].nodePaths[0] ?? "/";
+    areas.set(path, (areas.get(path) ?? 0) + 1);
+  }
+  const head2 = [
+    `Region ${region.id}: ${short(map.items[region.anchorId].title, 90)} (page ${page?.number ?? 1} of ${Math.max(1, pages.length)})`,
+    `Terms: ${region.terms.join(", ") || "-"}. ${region.memberIds.length} items (M/R/S ${kindCounts(map, region.memberIds)}), ~${region.tokens} tokens of bodies, cohesion ${percent(region.cohesion)}, home ${region.homePath} (${percent(region.pathFit)}).`,
+    `Paths: ${[...areas.entries()].sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1)).slice(0, 5).map(([p, n]) => `${p} ${n}`).join(", ")}`,
+    `Neighbour regions: ${region.neighbours.map((n) => `${n.regionId} (${short(map.items[byId7.get(n.regionId).anchorId].title, 40)})`).join(", ") || "-"}`,
+    "",
+    `## ${page?.subRegionId ? `Sub-region ${page.subRegionId}: ` : ""}${short(page?.title ?? "", 80)} (${members.length} items). Read bodies with pathrule_read by id.`,
+    ...members.map((id) => memberLine(map.items[id]))
+  ];
+  const boundary = [];
+  const adjacency = /* @__PURE__ */ new Map();
+  for (const edge of map.edges) {
+    if (memberSet.has(edge.a)) adjacency.set(edge.a, (adjacency.get(edge.a) ?? /* @__PURE__ */ new Map()).set(edge.b, edge.weight));
+    if (memberSet.has(edge.b)) adjacency.set(edge.b, (adjacency.get(edge.b) ?? /* @__PURE__ */ new Map()).set(edge.a, edge.weight));
+  }
+  const outside = members.map((id) => {
+    const ties = /* @__PURE__ */ new Map();
+    for (const [other] of adjacency.get(id) ?? []) {
+      const r = map.items[other]?.regionId;
+      if (r && r !== region.id) ties.set(r, (ties.get(r) ?? 0) + 1);
+    }
+    return { id, ties };
+  }).filter((entry) => entry.ties.size > 0).sort((x, y) => [...y.ties.values()].reduce((s, v) => s + v, 0) - [...x.ties.values()].reduce((s, v) => s + v, 0) || (x.id < y.id ? -1 : 1)).slice(0, 8);
+  if (outside.length > 0) {
+    boundary.push("", "## Boundary (ties outside this region; check these against their neighbours)");
+    for (const entry of outside) {
+      boundary.push(`- ${short(map.items[entry.id].title, 80)} -> ${[...entry.ties.entries()].sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1)).slice(0, 3).map(([r, n]) => `${r} x${n}`).join(", ")}`);
+    }
+  }
+  const issues = findingsFor(map.findings, memberSet).map((finding) => issueLine(map, finding)).filter((line) => line !== null);
+  const unused = members.filter((id) => map.items[id].sessions === 0).length;
+  const tail = [
+    ...issues.length > 0 || unused > 0 ? ["", "## Issues", ...issues, ...unused > 0 ? [`- ${unused} items here received no session in the usage window (rarely needed procedures are not necessarily dead)`] : []] : [],
+    ...options.purpose === "audit" ? ["", AUDIT_CHECKLIST] : [],
+    ...page && page.number < pages.length ? ["", `Next: view=region region_id=${region.id} page=${page.number + 1}`] : []
+  ];
+  return capLines([...head2, ...boundary, ...tail], REGION_PAGE_MAX_CHARS, (left) => `(+${left} more lines; narrow with view=related)`);
+}
+
+// ../shared/src/knowledge-map/related.ts
+var RELATED_DEFAULT_LIMIT = 8;
+var RELATED_MAX_LIMIT = 12;
+var PARENT_REF_MIN_DEPTH = 3;
+var QUERY_SEEDS = 3;
+var QUERY_WEIGHT = 3;
+var CHAIN_STRENGTH = 0.5;
+var MIN_SEMANTIC_WEIGHT = 0.3;
+var HOP_ROOM = 2;
+var byId6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function fileAnchor(item, file, referenceWeight2 = 1) {
+  const path = normalizeAnchorPath(file);
+  const [dir, parent, ...above] = ancestorDirectories(path);
+  const nodes = item.nodePaths.map(normalizeAnchorPath).filter(Boolean);
+  let best = null;
+  const consider = (reason, strength) => {
+    if (!best || strength > best.strength) best = { reason, strength };
+  };
+  if (item.anchors.includes(path)) consider(`references ${path}`, 3 * referenceWeight2);
+  else if (dir && item.anchors.includes(dir)) consider(`references ${dir}`, 2 * referenceWeight2);
+  else if (parent && pathDepth(parent) >= PARENT_REF_MIN_DEPTH && item.anchors.includes(parent)) consider(`references ${parent}`, referenceWeight2);
+  if (dir && nodes.includes(dir)) consider(`lives at /${dir}`, 2);
+  else if (parent && nodes.includes(parent)) consider(`lives at /${parent}`, 1);
+  else {
+    const up = above.find((directory) => nodes.includes(directory));
+    if (up) consider(`lives at /${up}, above the file`, CHAIN_STRENGTH * pathDepth(up) / pathDepth(dir));
+  }
+  return best;
+}
+function referenceWeight(item, roots) {
+  const areas = /* @__PURE__ */ new Set();
+  for (const anchor of item.anchors) {
+    const [first, second] = anchor.split("/");
+    if (first && second && roots.has(first)) areas.add(`${first}/${second}`);
+  }
+  return 1 / Math.sqrt(Math.max(1, areas.size));
+}
+function fileNameText(file) {
+  const base = normalizeAnchorPath(file).split("/").pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  const stem = dot > 0 ? base.slice(0, dot) : base;
+  const parts = stem.replace(new RegExp("(\\p{Ll}|\\p{N})(\\p{Lu})", "gu"), "$1 $2").replace(new RegExp("(\\p{Lu})(\\p{Lu}\\p{Ll})", "gu"), "$1 $2").split(/[\s._-]+/u);
+  return [stem, ...parts].filter(Boolean).join(" ");
+}
+function scaledScores(index, text) {
+  const scores = queryScores(index, text);
+  const best = scores[0]?.[1] ?? 0;
+  return new Map(best > 0 ? scores.map(([id, score]) => [id, score / best]) : []);
+}
+function relation(edge, kindA, kindB) {
+  const weight = edge.weight * (edge.kinds.includes("link") ? 1.2 : 1);
+  if (edge.kinds.includes("link")) return { label: "link", weight };
+  if ((edge.similarity ?? 0) >= NEAR_DUPLICATE) return { label: kindA === kindB ? "duplicate" : "companion", weight };
+  return { label: "related", weight };
+}
+function relatedKnowledge(map, query) {
+  const limit = Math.min(Math.max(1, query.limit ?? RELATED_DEFAULT_LIMIT), RELATED_MAX_LIMIT);
+  const items = map.items;
+  const seeds = /* @__PURE__ */ new Map();
+  const addSeed = (id, reason) => {
+    if (items[id] && !seeds.has(id)) seeds.set(id, reason);
+  };
+  for (const id of query.itemIds ?? []) addSeed(id, "direct match");
+  if (query.titles?.length) {
+    const resolver = createLinkResolver(Object.values(items).map((item) => ({ id: item.id, kind: item.kind, title: item.title })));
+    for (const title2 of query.titles) {
+      const hit = resolver.resolve(title2.trim().startsWith("::") ? title2.trim() : title2);
+      if (hit) addSeed(hit.id, "direct match");
+    }
+  }
+  const files = [...new Set((query.files ?? []).map(normalizeAnchorPath))].filter(Boolean);
+  const text = query.query?.trim() ?? "";
+  if (files.length > 0 || text) {
+    const index = buildLexicalIndex(Object.values(items).map((item) => ({ id: item.id, title: item.title, text: item.oneLiner })));
+    const byQuery = text ? scaledScores(index, text) : /* @__PURE__ */ new Map();
+    const byName = files.length > 0 ? scaledScores(index, files.map(fileNameText).join(" ")) : /* @__PURE__ */ new Map();
+    const queryPicks = new Set([...byQuery.keys()].slice(0, QUERY_SEEDS));
+    const roots = new Set(Object.values(items).flatMap((item) => item.nodePaths.map((node) => normalizeAnchorPath(node).split("/")[0]).filter(Boolean)));
+    const ranked2 = [];
+    for (const id of Object.keys(items).sort(byId6)) {
+      const weight = files.length > 0 ? referenceWeight(items[id], roots) : 1;
+      let strength = 0;
+      let covered = 0;
+      let first = null;
+      for (const file of files) {
+        const anchor = fileAnchor(items[id], file, weight);
+        if (!anchor) continue;
+        strength += anchor.strength;
+        covered++;
+        if (!first || anchor.strength > first.strength) first = anchor;
+      }
+      if (!first && !queryPicks.has(id)) continue;
+      const score = (files.length > 0 ? strength / files.length : 0) + QUERY_WEIGHT * (byQuery.get(id) ?? 0);
+      const reason = !first ? "matches the query" : covered > 1 ? `${first.reason} and ${covered - 1} more of the given files` : first.reason;
+      ranked2.push({ id, score, name: first ? byName.get(id) ?? 0 : 0, reason });
+    }
+    ranked2.sort((x, y) => y.score - x.score || y.name - x.name || byId6(x.id, y.id));
+    for (const r of ranked2) addSeed(r.id, r.reason);
+  }
+  const allSeeds = [...seeds.entries()];
+  const shown = new Set(allSeeds.slice(0, Math.max(1, limit - HOP_ROOM)).map(([id]) => id));
+  const candidates = /* @__PURE__ */ new Map();
+  for (const edge of map.edges) {
+    for (const [seed, other] of [[edge.a, edge.b], [edge.b, edge.a]]) {
+      if (!shown.has(seed) || seeds.has(other)) continue;
+      const rel = relation(edge, items[seed].kind, items[other].kind);
+      const bonus = rel.label === "companion" ? 0.5 : rel.label === "duplicate" ? 0.3 : 0;
+      const entry2 = candidates.get(other) ?? { score: 0, best: { label: rel.label, weight: -1, via: seed } };
+      entry2.score += rel.weight + bonus;
+      if (rel.weight > entry2.best.weight || rel.weight === entry2.best.weight && byId6(seed, entry2.best.via) < 0) {
+        entry2.best = { label: rel.label, weight: rel.weight, via: seed, similarity: edge.similarity };
+      }
+      candidates.set(other, entry2);
+    }
+  }
+  const title = (id) => items[id].title;
+  const entry = (id, reason, score, seed) => ({
+    id,
+    kind: items[id].kind,
+    title: items[id].title,
+    nodePath: items[id].nodePaths[0] ?? "/",
+    reason,
+    score: Math.round(score * 1e3) / 1e3,
+    seed
+  });
+  const ranked = [...candidates.entries()].filter(([, c]) => !(c.best.label === "related" && c.best.weight < MIN_SEMANTIC_WEIGHT)).sort((x, y) => y[1].score - x[1].score || byId6(x[0], y[0]));
+  const seedRoom = Math.max(shown.size, limit - Math.min(HOP_ROOM, ranked.length));
+  const out = allSeeds.slice(0, seedRoom).map(([id, reason]) => entry(id, reason, 0, true));
+  for (const [id, c] of ranked) {
+    const similarity = c.best.similarity !== void 0 ? ` (${Math.round(c.best.similarity * 100) / 100})` : "";
+    const reason = c.best.label === "link" ? `links with ${title(c.best.via)}` : c.best.label === "companion" ? `companion of ${title(c.best.via)}; update them together` : c.best.label === "duplicate" ? `says nearly the same as ${title(c.best.via)}${similarity}` : `related to ${title(c.best.via)}${similarity}`;
+    out.push(entry(id, reason, c.score, false));
+  }
+  return out.slice(0, limit);
+}
+var KIND_LETTER2 = { memory: "M", rule: "R", skill: "S" };
+function renderRelated(entries) {
+  if (entries.length === 0) return "No related knowledge found for these seeds.";
+  const lines = [
+    `Related knowledge (${entries.length}): seeds first, then one-hop neighbours. Read with pathrule_read by id; companions usually need the same change.`,
+    ...entries.map((e) => `- [${KIND_LETTER2[e.kind]}] ${e.title} (${e.nodePath}) ${e.id}: ${e.reason}`)
+  ];
+  return capLines(lines, RELATED_MAX_CHARS, (left) => `(+${left} more; pass fewer seeds or a smaller limit)`);
+}
+
+// ../shared/src/knowledge-map/cache.ts
+var KNOWLEDGE_MAP_BUDGET_MS = 3e3;
+var KNOWLEDGE_MAP_TTL_MS = 10 * 6e4;
+var KNOWLEDGE_MAP_RETRY_AFTER_MS = 2e3;
+var MAX_WORKSPACES = 8;
+var ready = /* @__PURE__ */ new Map();
+var running = /* @__PURE__ */ new Map();
+function knowledgeMapCacheKey(workspaceId, fingerprint) {
+  return `${workspaceId}:${fingerprint}:${KNOWLEDGE_MAP_ALGORITHM}`;
+}
+function remember(workspaceId, entry) {
+  ready.delete(workspaceId);
+  ready.set(workspaceId, entry);
+  while (ready.size > MAX_WORKSPACES) ready.delete(ready.keys().next().value);
+}
+function start(workspaceId, fingerprint, build) {
+  const key = knowledgeMapCacheKey(workspaceId, fingerprint);
+  let job = running.get(key);
+  if (!job) {
+    job = build().then((map) => {
+      remember(workspaceId, { fingerprint, map, builtAt: Date.now() });
+      return map;
+    });
+    const settled = job;
+    running.set(key, settled);
+    void settled.finally(() => {
+      if (running.get(key) === settled) running.delete(key);
+    }).catch(() => {
+    });
+  }
+  return job;
+}
+async function loadKnowledgeMap(args) {
+  const now = args.now ?? Date.now;
+  const hit = ready.get(args.workspaceId);
+  if (hit && hit.fingerprint === args.fingerprint) {
+    if (now() - hit.builtAt > KNOWLEDGE_MAP_TTL_MS) void start(args.workspaceId, args.fingerprint, args.build).catch(() => {
+    });
+    return { status: "ready", map: hit.map };
+  }
+  const job = start(args.workspaceId, args.fingerprint, args.build);
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), args.budgetMs ?? KNOWLEDGE_MAP_BUDGET_MS);
+    timer.unref?.();
+  });
+  try {
+    const result2 = await Promise.race([job, timeout]);
+    return result2 === "timeout" ? { status: "computing", retryAfterMs: KNOWLEDGE_MAP_RETRY_AFTER_MS } : { status: "ready", map: result2 };
+  } catch (error2) {
+    return { status: "error", error: error2 };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function getCachedMap(workspaceId) {
+  return ready.get(workspaceId)?.map ?? null;
+}
+
+// ../shared/src/knowledge-map/tool.ts
+var KNOWLEDGE_MAP_TOOL_DESCRIPTION = "Read-only map of this workspace's memories, rules and skills, grouped into regions by links and meaning. view=atlas: the whole system in under 1k tokens. view=region: one region's items, relations and issues, paged (purpose=audit adds a checklist). view=related: what else to read or update with given item_ids, titles, files or a query. Use before a quality pass, before updating knowledge, or to see how things relate. No confirmation needed.";
+var result = (data) => ({ ok: true, data });
+var SERVERLESS_KNOWLEDGE_MAP_BUDGET_MS = 25e3;
+async function knowledgeMapHandler(ctx, args, options = {}) {
+  const base = { view: args.view, algorithm: KNOWLEDGE_MAP_ALGORITHM };
+  if (args.view === "region" && !args.region_id) {
+    return { ok: false, error: { code: "invalid_args", message: "view=region needs region_id (an rg_ or sr_ id from view=atlas)." } };
+  }
+  if (args.view === "related" && !(args.item_ids?.length || args.titles?.length || args.files?.length || args.query?.trim())) {
+    return { ok: false, error: { code: "invalid_args", message: "view=related needs at least one of item_ids, titles, files or query." } };
+  }
+  const backend = ctx.backend;
+  if (!backend) return { ok: false, error: { code: "upstream_error", message: "No backend configured." } };
+  if (!backend.buildKnowledgeMapInput || !backend.knowledgeMapFingerprint) {
+    return result({ ...base, status: "unavailable", text: "This backend does not provide a knowledge map." });
+  }
+  let fingerprint;
+  try {
+    fingerprint = await backend.knowledgeMapFingerprint(args.workspace_id);
+  } catch (error2) {
+    return { ok: false, error: mapSupabaseError(error2) };
+  }
+  if (!fingerprint) return result({ ...base, status: "unavailable", text: "This workspace has no knowledge map yet." });
+  const buildInput = backend.buildKnowledgeMapInput.bind(backend);
+  const load = await loadKnowledgeMap({
+    workspaceId: args.workspace_id,
+    fingerprint,
+    budgetMs: options.budgetMs,
+    build: async () => {
+      const input = await buildInput(args.workspace_id);
+      if (!input) throw new Error("The backend returned no knowledge map input.");
+      return buildKnowledgeMap(input, { fingerprint, generatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+    }
+  });
+  if (load.status === "computing") {
+    return result({ ...base, status: "computing", retry_after_ms: load.retryAfterMs, text: "The knowledge map is being built; call again shortly." });
+  }
+  if (load.status === "error") {
+    return { ok: false, error: mapSupabaseError(load.error) };
+  }
+  const map = load.map;
+  const ready2 = { ...base, status: "ready", semantic: map.semantic };
+  if (args.view === "atlas") {
+    const gaps = backend.knowledgeGapSummary ? await backend.knowledgeGapSummary(args.workspace_id).catch(() => null) : null;
+    return result({ ...ready2, text: renderAtlas(map, { gaps }) });
+  }
+  if (args.view === "region") {
+    const id = args.region_id;
+    const region = map.regions.find((r) => r.id === id || r.subRegions.some((sub) => sub.id === id));
+    if (!region) {
+      return {
+        ok: false,
+        error: { code: "not_found", message: `No region ${id} in the current map; region ids change only when the knowledge does, so read view=atlas again.` }
+      };
+    }
+    const pages = regionPages(map, region);
+    const page = id.startsWith("sr_") && !args.page ? Math.max(1, pages.findIndex((p) => p.subRegionId === id) + 1) : args.page ?? 1;
+    return result({ ...ready2, region_id: region.id, page, pages: pages.length, text: renderRegion(map, region, { page, purpose: args.purpose }) });
+  }
+  const related = relatedKnowledge(map, {
+    itemIds: args.item_ids,
+    titles: args.titles,
+    files: args.files,
+    query: args.query,
+    limit: args.limit
+  });
+  return result({ ...ready2, related, text: renderRelated(related) });
+}
+
+// ../shared/src/knowledge-map/write-hint.ts
+var RELATED_TO_CHECK_MAX = 3;
+var RELATED_TO_CHECK_MAX_CHARS = 600;
+var RANK = { companion: 0, link: 1, duplicate: 2 };
+function strongRelation(edge, sameKind) {
+  if ((edge.similarity ?? 0) >= NEAR_DUPLICATE) return sameKind ? "duplicate" : "companion";
+  if (edge.kinds.includes("link")) return "link";
+  return null;
+}
+function relatedToCheck(map, itemId) {
+  const self2 = map?.items[itemId];
+  if (!map || !self2) return [];
+  const candidates = [];
+  for (const edge of map.edges) {
+    const other = edge.a === itemId ? edge.b : edge.b === itemId ? edge.a : null;
+    if (!other || !map.items[other]) continue;
+    const relation2 = strongRelation(edge, map.items[other].kind === self2.kind);
+    if (relation2) candidates.push({ id: other, relation: relation2, edge });
+  }
+  candidates.sort(
+    (x, y) => RANK[x.relation] - RANK[y.relation] || y.edge.weight - x.edge.weight || (x.id < y.id ? -1 : 1)
+  );
+  const out = [];
+  let size = 0;
+  for (const { id, relation: relation2, edge } of candidates.slice(0, RELATED_TO_CHECK_MAX)) {
+    const item = map.items[id];
+    const title = item.title.length <= 80 ? item.title : `${item.title.slice(0, 79).trimEnd()}\u2026`;
+    const reason = relation2 === "companion" ? `says the same as this ${self2.kind}; it may need the same change` : relation2 === "duplicate" ? `near duplicate (${Math.round((edge.similarity ?? 0) * 100) / 100}); consider merging` : "links with this item";
+    const entry = { id, kind: item.kind, title, reason };
+    size += JSON.stringify(entry).length;
+    if (size > RELATED_TO_CHECK_MAX_CHARS) break;
+    out.push(entry);
+  }
+  return out;
+}
 
 // src/tools/read-compact.ts
 function compactMemory(row) {
@@ -65078,7 +72922,7 @@ function formatThrown2(error2) {
     }
   };
 }
-function normalizeNodePath2(path) {
+function normalizeNodePath3(path) {
   const trimmed = path?.trim();
   if (!trimmed || trimmed === ".") return "/";
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
@@ -65160,16 +73004,16 @@ var getContextTool = {
   response: { includeLocalRuntimeCta: true },
   handler: async (args, ctx) => {
     try {
-      const result = await getContextHandler(toToolContext2(ctx, args.workspace_id), {
+      const result2 = await getContextHandler(toToolContext2(ctx, args.workspace_id), {
         workspace_id: args.workspace_id,
-        relative_path: normalizeNodePath2(args.node_path),
+        relative_path: normalizeNodePath3(args.node_path),
         user_intent: args.user_intent
       });
-      if (!result.ok) return formatToolError2(result.error);
+      if (!result2.ok) return formatToolError2(result2.error);
       return {
         ok: true,
         workspace_id: args.workspace_id,
-        ...result.data,
+        ...result2.data,
         protocol_version: PATHRULE_PROTOCOL_VERSION,
         ...args.known_protocol_version === PATHRULE_PROTOCOL_VERSION ? { protocol_unchanged: true } : { protocol: PATHRULE_PROTOCOL }
       };
@@ -65194,9 +73038,9 @@ var getTreeTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await getTreeHandler(toToolContext2(ctx, args.workspace_id), args);
-      if (!result.ok) return formatToolError2(result.error);
-      return { ok: true, nodes: result.data };
+      const result2 = await getTreeHandler(toToolContext2(ctx, args.workspace_id), args);
+      if (!result2.ok) return formatToolError2(result2.error);
+      return { ok: true, nodes: result2.data };
     } catch (error2) {
       return formatThrown2(error2);
     }
@@ -65221,9 +73065,9 @@ var getNodeTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await getNodeHandler(toToolContext2(ctx, null), args);
-      if (!result.ok) return formatToolError2(result.error);
-      if (result.data.workspace_id !== args.workspace_id) {
+      const result2 = await getNodeHandler(toToolContext2(ctx, null), args);
+      if (!result2.ok) return formatToolError2(result2.error);
+      if (result2.data.workspace_id !== args.workspace_id) {
         return {
           ok: false,
           error: {
@@ -65232,7 +73076,7 @@ var getNodeTool = {
           }
         };
       }
-      return { ok: true, ...result.data };
+      return { ok: true, ...result2.data };
     } catch (error2) {
       return formatThrown2(error2);
     }
@@ -65262,11 +73106,11 @@ var listMemoriesTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await listMemoriesHandler(toToolContext2(ctx, null), args);
-      if (!result.ok) return formatToolError2(result.error);
+      const result2 = await listMemoriesHandler(toToolContext2(ctx, null), args);
+      if (!result2.ok) return formatToolError2(result2.error);
       return {
         ok: true,
-        memories: result.data.map((memory) => ({
+        memories: result2.data.map((memory) => ({
           id: memory.id,
           title: memory.title,
           preview: memory.content.slice(0, 160),
@@ -65301,9 +73145,9 @@ var readMemoryTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await readMemoryHandler(toToolContext2(ctx, null), args);
-      if (!result.ok) return formatToolError2(result.error);
-      return { ok: true, ...compactMemory(result.data) };
+      const result2 = await readMemoryHandler(toToolContext2(ctx, null), args);
+      if (!result2.ok) return formatToolError2(result2.error);
+      return { ok: true, ...compactMemory(result2.data) };
     } catch (error2) {
       return formatThrown2(error2);
     }
@@ -65332,9 +73176,9 @@ var readRuleTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await readRuleHandler(toToolContext2(ctx, null), args);
-      if (!result.ok) return formatToolError2(result.error);
-      return { ok: true, ...compactRule(result.data) };
+      const result2 = await readRuleHandler(toToolContext2(ctx, null), args);
+      if (!result2.ok) return formatToolError2(result2.error);
+      return { ok: true, ...compactRule(result2.data) };
     } catch (error2) {
       return formatThrown2(error2);
     }
@@ -65362,9 +73206,9 @@ var readSkillTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await readSkillHandler(toToolContext2(ctx, null), args);
-      if (!result.ok) return formatToolError2(result.error);
-      return { ok: true, ...compactSkill(result.data) };
+      const result2 = await readSkillHandler(toToolContext2(ctx, null), args);
+      if (!result2.ok) return formatToolError2(result2.error);
+      return { ok: true, ...compactSkill(result2.data) };
     } catch (error2) {
       return formatThrown2(error2);
     }
@@ -65445,6 +73289,50 @@ var gotoTool = {
     }
   }
 };
+var knowledgeMapTool = {
+  name: "pathrule_knowledge_map",
+  title: "Knowledge Map",
+  description: KNOWLEDGE_MAP_TOOL_DESCRIPTION,
+  inputSchema: {
+    workspace_id: external_exports.string().uuid().describe("Workspace UUID from pathrule_list_workspaces."),
+    view: external_exports.enum(["atlas", "region", "related"]).describe("atlas: all regions; region: one region's page; related: neighbours of the given seeds."),
+    region_id: external_exports.string().regex(/^(rg|sr)_[0-9a-f]{8}$/).optional().describe("Region (rg_) or sub-region (sr_) id from the atlas (view=region)."),
+    page: external_exports.number().int().min(1).max(50).optional().describe("Region page (view=region)."),
+    purpose: external_exports.enum(["audit", "browse"]).optional().describe("audit appends the audit checklist to region pages."),
+    item_ids: external_exports.array(external_exports.string().uuid()).max(20).optional().describe("Memory, rule or skill ids to start from (view=related)."),
+    titles: external_exports.array(external_exports.string().min(1).max(200)).max(10).optional().describe("Titles or names to start from (view=related)."),
+    files: external_exports.array(external_exports.string().min(1).max(480)).max(100).optional().describe("Workspace-relative file paths (view=related)."),
+    query: external_exports.string().min(2).max(300).optional().describe("Free-text query to start from (view=related)."),
+    limit: external_exports.number().int().min(1).max(12).optional().describe("Max related entries (default 8).")
+  },
+  outputSchema: remoteToolOutput({
+    status: external_exports.enum(["ready", "computing", "unavailable"]).optional().describe("ready, computing (call again after retry_after_ms) or unavailable."),
+    view: external_exports.enum(["atlas", "region", "related"]).optional().describe("The view that was rendered."),
+    algorithm: external_exports.string().optional().describe("Map algorithm version; region ids are stable within it."),
+    semantic: external_exports.enum(["voyage", "local", "lexical"]).optional().describe("Where memory similarity came from."),
+    region_id: external_exports.string().optional().describe("The region rendered (view=region)."),
+    page: external_exports.number().optional().describe("The page rendered (view=region)."),
+    pages: external_exports.number().optional().describe("Pages in the region (view=region)."),
+    text: external_exports.string().optional().describe("The rendered view."),
+    related: external_exports.array(unknownPayload()).optional().describe("Related entries with ids, reasons and scores (view=related)."),
+    retry_after_ms: external_exports.number().optional().describe("When status is computing, how long to wait before calling again.")
+  }),
+  requiredScopes: ["pathrule:read"],
+  mode: "read",
+  workspace: { required: true, subscriptionRequired: true },
+  response: { includeLocalRuntimeCta: false },
+  handler: async (args, ctx) => {
+    try {
+      const result2 = await knowledgeMapHandler(toToolContext2(ctx, args.workspace_id), args, {
+        budgetMs: SERVERLESS_KNOWLEDGE_MAP_BUDGET_MS
+      });
+      if (!result2.ok) return formatToolError2(result2.error);
+      return { ok: true, ...result2.data };
+    } catch (error2) {
+      return formatThrown2(error2);
+    }
+  }
+};
 var readTools = [
   pingTool,
   getContextTool,
@@ -65454,7 +73342,8 @@ var readTools = [
   listMemoriesTool,
   readMemoryTool,
   readRuleTool,
-  readSkillTool
+  readSkillTool,
+  knowledgeMapTool
 ];
 
 // src/tools/setup-tools.ts
@@ -65472,7 +73361,7 @@ function formatThrown3(error2) {
     }
   };
 }
-function slugify(value) {
+function slugify2(value) {
   return value.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
 var REMOTE_BOOTSTRAP_PREAMBLE = `## Remote MCP context note
@@ -65660,7 +73549,7 @@ var createWorkspaceTool = {
           arguments: { workspace_id: data.id, locale: "en" }
         },
         local_runtime: { cta: LOCAL_RUNTIME_CTA },
-        _slug_hint: slugify(name) || slugSuffix
+        _slug_hint: slugify2(name) || slugSuffix
       };
     } catch (error2) {
       return formatThrown3(error2);
@@ -66031,6 +73920,14 @@ var readSnapshotTool = {
 var snapshotTools = [takeSnapshotTool, listSnapshotsTool, readSnapshotTool];
 
 // src/tools/write-tools.ts
+function relatedToCheckField(workspaceId, itemId) {
+  if (!workspaceId) return {};
+  const hint = relatedToCheck(getCachedMap(workspaceId), itemId);
+  return hint.length > 0 ? { related_to_check: hint } : {};
+}
+var RELATED_TO_CHECK_OUTPUT = {
+  related_to_check: external_exports.array(unknownPayload()).optional().describe("Up to 3 items that may need the same change (companions, links, near duplicates), from a cached knowledge map.")
+};
 function toToolContext3(ctx, workspaceId) {
   return {
     supabase: ctx.supabase,
@@ -66115,19 +74012,19 @@ var writeMemoryTool = {
   handler: async (args, ctx) => {
     try {
       const workspaceId = requireWorkspaceId(args);
-      const result = await writeMemoryHandler(toToolContext3(ctx, workspaceId), {
+      const result2 = await writeMemoryHandler(toToolContext3(ctx, workspaceId), {
         node_path: args.node_path,
         title: args.title,
         content: args.content,
         source: args.source,
         allow_duplicate: args.allow_duplicate
       });
-      if (!result.ok) return formatToolError3(result.error);
+      if (!result2.ok) return formatToolError3(result2.error);
       if (workspaceId && args.related_paths && args.related_paths.length > 0) {
-        await ccSetContextPaths(ctx.supabase, workspaceId, result.data.id, args.related_paths).catch(() => {
+        await ccSetContextPaths(ctx.supabase, workspaceId, result2.data.id, args.related_paths).catch(() => {
         });
       }
-      return { ok: true, data: result.data, warnings: result.warnings ?? [] };
+      return { ok: true, data: result2.data, warnings: result2.warnings ?? [] };
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66150,7 +74047,8 @@ var updateMemoryTool = {
     )
   },
   outputSchema: remoteDataOutput(
-    "Updated memory: id, version_id, and the title it now carries."
+    "Updated memory: id, version_id, and the title it now carries.",
+    RELATED_TO_CHECK_OUTPUT
   ),
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -66159,7 +74057,7 @@ var updateMemoryTool = {
   handler: async (args, ctx) => {
     try {
       const workspaceId = requireWorkspaceId(args);
-      const result = await updateMemoryHandler(toToolContext3(ctx, workspaceId), {
+      const result2 = await updateMemoryHandler(toToolContext3(ctx, workspaceId), {
         memory_id: args.memory_id,
         content: args.content,
         title: args.title,
@@ -66167,12 +74065,12 @@ var updateMemoryTool = {
         move_to_path: args.move_to_path,
         allow_duplicate: args.allow_duplicate
       });
-      if (!result.ok) return formatToolError3(result.error);
+      if (!result2.ok) return formatToolError3(result2.error);
       if (workspaceId && args.related_paths !== null && args.related_paths !== void 0) {
         await ccSetContextPaths(ctx.supabase, workspaceId, args.memory_id, args.related_paths).catch(() => {
         });
       }
-      return { ok: true, data: result.data };
+      return { ok: true, data: result2.data, ...relatedToCheckField(workspaceId, args.memory_id) };
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66199,12 +74097,12 @@ var deleteMemoryTool = {
     try {
       const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
       const before = await toolCtx.backend?.readMemory(args.memory_id).catch(() => null);
-      const result = await deleteMemoryHandler(toolCtx, {
+      const result2 = await deleteMemoryHandler(toolCtx, {
         memory_id: args.memory_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: { ...result.data, title: before?.title } } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: { ...result2.data, title: before?.title } } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66236,7 +74134,7 @@ var writeRuleTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await writeRuleHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const result2 = await writeRuleHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
         node_path: args.node_path,
         name: args.name,
         content: args.content,
@@ -66244,7 +74142,7 @@ var writeRuleTool = {
         priority: args.priority,
         allow_duplicate: args.allow_duplicate
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: result2.data } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66272,7 +74170,8 @@ var updateRuleTool = {
     allow_duplicate: external_exports.boolean().optional().describe("Set true only when intentionally allowing another rule with the same name.")
   },
   outputSchema: remoteDataOutput(
-    "Updated rule: id, version_id, and the name it now carries."
+    "Updated rule: id, version_id, and the name it now carries.",
+    RELATED_TO_CHECK_OUTPUT
   ),
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -66280,14 +74179,15 @@ var updateRuleTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await updateRuleHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const workspaceId = requireWorkspaceId(args);
+      const result2 = await updateRuleHandler(toToolContext3(ctx, workspaceId), {
         rule_id: args.rule_id,
         expected_version_id: args.expected_version_id,
         patch: args.patch,
         move_to_path: args.move_to_path,
         allow_duplicate: args.allow_duplicate
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: result2.data, ...relatedToCheckField(workspaceId, args.rule_id) } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66314,12 +74214,12 @@ var deleteRuleTool = {
     try {
       const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
       const before = await toolCtx.backend?.readRule(args.rule_id).catch(() => null);
-      const result = await deleteRuleHandler(toolCtx, {
+      const result2 = await deleteRuleHandler(toolCtx, {
         rule_id: args.rule_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: { ...result.data, name: before?.name } } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: { ...result2.data, name: before?.name } } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66350,7 +74250,7 @@ var writeSkillTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await writeSkillHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const result2 = await writeSkillHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
         node_path: args.node_path,
         name: args.name,
         description: args.description,
@@ -66359,7 +74259,7 @@ var writeSkillTool = {
         github_url: args.github_url,
         tags: args.tags
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: result2.data } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66390,7 +74290,8 @@ var updateSkillTool = {
     )
   },
   outputSchema: remoteDataOutput(
-    "Updated skill: id, version_id, and the name it now carries."
+    "Updated skill: id, version_id, and the name it now carries.",
+    RELATED_TO_CHECK_OUTPUT
   ),
   requiredScopes: ["pathrule:write"],
   mode: "write_beta",
@@ -66398,13 +74299,14 @@ var updateSkillTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await updateSkillHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const workspaceId = requireWorkspaceId(args);
+      const result2 = await updateSkillHandler(toToolContext3(ctx, workspaceId), {
         skill_id: args.skill_id,
         expected_version_id: args.expected_version_id,
         patch: args.patch,
         move_to_path: args.move_to_path
       });
-      return result.ok ? { ok: true, data: result.data } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: result2.data, ...relatedToCheckField(workspaceId, args.skill_id) } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66431,12 +74333,12 @@ var deleteSkillTool = {
     try {
       const toolCtx = toToolContext3(ctx, requireWorkspaceId(args));
       const before = await toolCtx.backend?.readSkill(args.skill_id).catch(() => null);
-      const result = await deleteSkillHandler(toolCtx, {
+      const result2 = await deleteSkillHandler(toolCtx, {
         skill_id: args.skill_id,
         hard: args.hard,
         expected_version_id: args.expected_version_id
       });
-      return result.ok ? { ok: true, data: { ...result.data, name: before?.name } } : formatToolError3(result.error);
+      return result2.ok ? { ok: true, data: { ...result2.data, name: before?.name } } : formatToolError3(result2.error);
     } catch (error2) {
       return formatThrown5(error2);
     }
@@ -66472,12 +74374,12 @@ var importPatternTool = {
         const preview = previewPattern(args.slug, args.node_path);
         return preview.ok ? { ok: true, dry_run: true, ...preview.data } : formatToolError3(preview.error);
       }
-      const result = await importPatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const result2 = await importPatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
         slug: args.slug,
         node_path: args.node_path
       });
-      if (!result.ok) return formatToolError3(result.error);
-      const data = result.data;
+      if (!result2.ok) return formatToolError3(result2.error);
+      const data = result2.data;
       const human_message = formatPatternImportMessage(data);
       return args.verbose ? { ok: true, ...data, human_message } : {
         ok: true,
@@ -66516,12 +74418,12 @@ var removePatternTool = {
   response: { includeLocalRuntimeCta: false },
   handler: async (args, ctx) => {
     try {
-      const result = await removePatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
+      const result2 = await removePatternHandler(toToolContext3(ctx, requireWorkspaceId(args)), {
         slug: args.slug,
         node_path: args.node_path
       });
-      if (!result.ok) return formatToolError3(result.error);
-      const data = result.data;
+      if (!result2.ok) return formatToolError3(result2.error);
+      const data = result2.data;
       const human_message = formatPatternRemoveMessage(data);
       return args.verbose ? { ok: true, ...data, human_message } : { ok: true, slug: data.slug, removed: data.removed, not_found: data.not_found, human_message };
     } catch (error2) {
@@ -66560,7 +74462,7 @@ var PATHRULE_SERVER_NAME = "pathrule-cloud-connector";
 var PATHRULE_SERVER_TITLE = "Pathrule";
 var PATHRULE_SERVER_DESCRIPTION = "Persistent project memory, rules and skills that give AI coding agents lasting path-scoped context.";
 var PATHRULE_SERVER_WEBSITE_URL = "https://www.pathrule.io/products/mcp";
-var PATHRULE_SERVER_VERSION = "0.4.0";
+var PATHRULE_SERVER_VERSION = "0.5.0";
 var PATHRULE_SERVER_REPOSITORY = {
   url: "https://github.com/pathrule/mcp",
   source: "github"
