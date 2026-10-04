@@ -3,7 +3,7 @@
   "name": "io.pathrule/pathrule-remote-mcp",
   "title": "Pathrule",
   "description": "Persistent project memory, rules and skills that give AI coding agents lasting path-scoped context.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "websiteUrl": "https://www.pathrule.io/products/mcp",
   "icons": [
     {

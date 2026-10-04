@@ -28840,9 +28840,57 @@ function countOccurrences(haystack, needle) {
   return count2;
 }
 var HEADING_RE = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
+var FENCE_RE = /^ {0,3}(`{3,}|~{3,})(.*?)\s*$/;
 function headingText(raw) {
   const m = raw.match(HEADING_RE);
   return (m ? m[2] ?? raw : raw).trim();
+}
+function scanFences(lines) {
+  const inCode = new Array(lines.length).fill(false);
+  let open = null;
+  let malformed = false;
+  for (let i = 0; i < lines.length; i++) {
+    const m = (lines[i] ?? "").match(FENCE_RE);
+    const run = m?.[1] ?? "";
+    const info = m?.[2] ?? "";
+    if (open) {
+      inCode[i] = true;
+      if (m && run[0] === open.marker && run.length >= open.size) {
+        if (info === "") open = null;
+        else malformed = true;
+      }
+    } else if (m && !(run[0] === "`" && info.includes("`"))) {
+      inCode[i] = true;
+      open = { marker: run[0] ?? "", size: run.length };
+    }
+  }
+  return { inCode, malformed: malformed || open !== null };
+}
+function locateSection(lines, target, skip) {
+  const headingAt = (i) => skip?.[i] ? null : (lines[i] ?? "").match(HEADING_RE);
+  const matches = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = headingAt(i);
+    if (m && (m[2] ?? "").trim().toLowerCase() === target) {
+      matches.push({ index: i, level: (m[1] ?? "").length });
+    }
+  }
+  if (matches.length === 0) return { ok: false, code: "not_found" };
+  if (matches.length > 1) return { ok: false, code: "ambiguous" };
+  const { index, level } = matches[0];
+  let end = lines.length;
+  for (let i = index + 1; i < lines.length; i++) {
+    const m = headingAt(i);
+    if (m && (m[1] ?? "").length <= level) {
+      end = i;
+      break;
+    }
+  }
+  return { ok: true, start: index, end };
+}
+function sameLookup(a, b) {
+  if (a.ok && b.ok) return a.start === b.start && a.end === b.end;
+  return !a.ok && !b.ok && a.code === b.code;
 }
 function applyReplaceSection(current, heading, body) {
   const target = headingText(heading).toLowerCase();
@@ -28850,48 +28898,40 @@ function applyReplaceSection(current, heading, body) {
     return { ok: false, code: "invalid_args", message: "replace_section requires a non-empty heading." };
   }
   const lines = current.split("\n");
-  const matches = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? "";
-    const m = line.match(HEADING_RE);
-    if (m && (m[2] ?? "").trim().toLowerCase() === target) {
-      matches.push({ index: i, level: (m[1] ?? "").length });
-    }
+  const fences = scanFences(lines);
+  const found = locateSection(lines, target, fences.inCode);
+  const plain = locateSection(lines, target, null);
+  if (fences.malformed && !sameLookup(found, plain)) {
+    return {
+      ok: false,
+      code: "ambiguous",
+      message: `A code fence in this content is never closed, so where "${headingText(heading)}" ends is ambiguous. Fix the fence with str_replace first, or make this change with str_replace.`
+    };
   }
-  if (matches.length === 0) {
+  if (!found.ok && found.code === "not_found") {
+    const insideCode = plain.ok || plain.code === "ambiguous";
     return {
       ok: false,
       code: "not_found",
-      message: `No markdown heading matching "${headingText(heading)}" was found. Use the exact heading text, or use str_replace / append instead.`
+      message: insideCode ? `"${headingText(heading)}" only appears inside a fenced code block, which is code, not a heading. Use str_replace instead.` : `No markdown heading matching "${headingText(heading)}" was found. Use the exact heading text, or use str_replace / append instead.`
     };
   }
-  if (matches.length > 1) {
+  if (!found.ok) {
     return {
       ok: false,
       code: "ambiguous",
       message: `Multiple headings match "${headingText(heading)}". Sections must be uniquely named to use replace_section; use str_replace with surrounding context instead.`
     };
   }
-  const first = matches[0];
-  const { index, level } = first;
-  let end = lines.length;
-  for (let i = index + 1; i < lines.length; i++) {
-    const m = (lines[i] ?? "").match(HEADING_RE);
-    if (m && (m[1] ?? "").length <= level) {
-      end = i;
-      break;
-    }
-  }
-  const headingLine = lines[index] ?? "";
+  const newBody = body.replace(/^(?:[ \t]*\r?\n)+/, "").replace(/\s+$/, "");
   const rebuilt = [
-    ...lines.slice(0, index),
-    headingLine,
+    ...lines.slice(0, found.start),
+    lines[found.start] ?? "",
     "",
-    body.replace(/\s+$/, ""),
-    "",
-    ...lines.slice(end)
+    ...newBody ? [newBody, ""] : [],
+    ...lines.slice(found.end)
   ];
-  return { ok: true, content: rebuilt.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "") + "\n" };
+  return { ok: true, content: rebuilt.join("\n").replace(/\s+$/, "") + "\n" };
 }
 function applyContentEdit(current, edit) {
   switch (edit.op) {
@@ -28936,7 +28976,8 @@ ${rest}`;
           message: `The \`find\` text appears ${n} times. Add surrounding context so it matches exactly once.`
         };
       }
-      return { ok: true, content: current.replace(edit.find, edit.replace) };
+      const at = current.indexOf(edit.find);
+      return { ok: true, content: current.slice(0, at) + edit.replace + current.slice(at + edit.find.length) };
     }
     case "replace_section":
       return applyReplaceSection(current, edit.heading, edit.body);
@@ -74462,7 +74503,7 @@ var PATHRULE_SERVER_NAME = "pathrule-cloud-connector";
 var PATHRULE_SERVER_TITLE = "Pathrule";
 var PATHRULE_SERVER_DESCRIPTION = "Persistent project memory, rules and skills that give AI coding agents lasting path-scoped context.";
 var PATHRULE_SERVER_WEBSITE_URL = "https://www.pathrule.io/products/mcp";
-var PATHRULE_SERVER_VERSION = "0.5.0";
+var PATHRULE_SERVER_VERSION = "0.5.1";
 var PATHRULE_SERVER_REPOSITORY = {
   url: "https://github.com/pathrule/mcp",
   source: "github"
